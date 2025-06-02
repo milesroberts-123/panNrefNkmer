@@ -1,2 +1,3 @@
-# snakemake-vg-
-A snakemake workflow to analyze short reads with a pangenome reference, linear reference, or no reference
+# vg-kmer-ref-snakes
+
+A snakemake workflow to analyze short reads with a either pangenome reference, linear reference, and/or no reference
