@@ -1,0 +1,7 @@
+**.vcf
+**.fasta
+**.gff
+**.fastq
+**.fastq.gz
+**/.snakemake
+**/results
