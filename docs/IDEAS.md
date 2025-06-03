@@ -11,3 +11,5 @@ Ideally, I want
 [11 species pangenome database](https://ngdc.cncb.ac.cn/plantpan/)
 
 [M. polymorpha](https://www.nature.com/articles/s41588-024-02071-4) - this paper has genome fastas, but no pangenome graph
+
+[Millet](https://www.nature.com/articles/s41588-023-01423-w#Abs1) - cool study, but they don't give the vg file, only fastas, even though they said they made a graph...
