@@ -3,7 +3,7 @@ rule vg_surject:
         xg = "{ref}.xg",
         gam = "{ID}_{ref}_filtered.gam"
     output:
-        "{ID}_{ref}.bam"
+        "vg_results/{ID}_{ref}.bam"
     conda:
         "../envs/vg.yaml"
     shell:

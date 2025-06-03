@@ -1,7 +1,7 @@
 rule vg_map:
     input:
-        read1 = "{ID}_R1.fastq",
-        read2 = "{ID}_R2.fastq",
+        read1 = "fastp_results/trimmed_paired_R1_{ID}.fastq.gz",
+        read2 = "fastp_results/trimmed_paired_R1_{ID}.fastq.gz",
         xg = "{ref}.xg",
         gcsa = "{ref}.gcsa",
     output:

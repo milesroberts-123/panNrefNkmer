@@ -27,8 +27,17 @@ configfile: "../config/config.yaml"
 
 rule all:
     input:
-        expand("{ID}_{ref}.bam", ID = [1], ref = ["x"])
+        expand("{ID}_{ref}.done", ID = config["samples"], ref = config["linrefs"]),
+        expand("{ID}_{ref}.done", ID = config["samples"], ref = config["panrefs"])
 
+rule all_per_id:
+    input:
+        "vg_results/{ID}_{ref}.bam"
+    output:
+        "{ID}_{ref}.done"
+
+include: "rules/sra.smk"
+include: "rules/fastp.smk"
 include: "rules/vg_index.smk"
 include: "rules/vg_map.smk"
 include: "rules/vg_filter.smk"
