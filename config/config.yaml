@@ -1,0 +1,7 @@
+k: 16
+
+contamination_directory: "config/contaminants/"
+
+linear_reference: "tests/x.fa"
+
+pangenome_reference: "tests/x.vg"

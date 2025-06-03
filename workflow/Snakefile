@@ -1,0 +1,35 @@
+# load packages
+
+import pandas as pd
+import os
+from snakemake.utils import validate
+from snakemake.utils import min_version
+
+min_version("9.3.3")
+
+# configuration
+configfile: "../config/config.yaml"
+
+
+#validate(config, "../config/config.schema.yaml")
+
+
+# container version of workflow
+#containerized: "docker://milesroberts/poolseq-kmers"
+
+
+# load samples
+#parameters = pd.read_table(
+#    "../config/parameters.tsv", sep="\t", dtype={"ID": str}
+#).set_index(["ID"], drop=False)
+
+#validate(parameters, "../config/parameters.schema.yaml")
+
+rule all:
+    input:
+        expand("{ID}_{ref}.bam", ID = [1], ref = ["x"])
+
+include: "rules/vg_index.smk"
+include: "rules/vg_map.smk"
+include: "rules/vg_filter.smk"
+include: "rules/vg_surject.smk"
