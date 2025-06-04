@@ -1,0 +1,8 @@
+name: datasets
+channels:
+  - conda-forge
+dependencies:
+  - ca-certificates=2025.4.26=hbd8a1cb_0
+  - ncbi-datasets-cli=18.3.0=ha770c72_0
+
+prefix: "/mnt/ffs24/home/robe1195/.local/share/mamba/envs/datasets"

@@ -32,12 +32,16 @@ rule all:
 
 rule all_per_id:
     input:
+        "no_contam_reads/{ID}.fastq",
         "vg_results/{ID}_{ref}.bam"
     output:
         "{ID}_{ref}.done"
 
+include: "rules/datasets.smk"
 include: "rules/sra.smk"
 include: "rules/fastp.smk"
+include: "rules/kmc_contam_db.smk"
+include: "rules/kmc_rm_contam.smk"
 include: "rules/vg_index.smk"
 include: "rules/vg_map.smk"
 include: "rules/vg_filter.smk"

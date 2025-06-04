@@ -1,0 +1,334 @@
+host: dev-intel18
+Building DAG of jobs...
+Job stats:
+job              count
+-------------  -------
+all                  1
+all_per_id           4
+datasets             1
+fastp                2
+kmc_contam_db        1
+kmc_rm_contam        2
+sra                  2
+vg_filter            4
+vg_index             2
+vg_map               4
+vg_surject           4
+total               27
+
+
+[Tue Jun  3 21:10:23 2025]
+rule vg_index:
+    input: y.vg
+    output: y.gcsa, y.xg
+    log: logs/vg_index/y.log
+    jobid: 13
+    reason: Missing output files: y.xg, y.gcsa
+    wildcards: ref=y
+    resources: tmpdir=<TBD>
+
+
+[Tue Jun  3 21:10:23 2025]
+rule datasets:
+    output: contam.fa
+    jobid: 6
+    reason: Missing output files: contam.fa
+    resources: tmpdir=<TBD>
+
+
+[Tue Jun  3 21:10:23 2025]
+rule vg_index:
+    input: x.vg
+    output: x.gcsa, x.xg
+    log: logs/vg_index/x.log
+    jobid: 8
+    reason: Missing output files: x.xg, x.gcsa
+    wildcards: ref=x
+    resources: tmpdir=<TBD>
+
+
+[Tue Jun  3 21:10:23 2025]
+rule sra:
+    output: raw_reads/reads_SR1234567_1.fastq.gz, raw_reads/reads_SR1234567_2.fastq.gz
+    log: logs/sra/reads_SR1234567.log
+    jobid: 4
+    reason: Missing output files: raw_reads/reads_SR1234567_2.fastq.gz, raw_reads/reads_SR1234567_1.fastq.gz
+    wildcards: ID=reads_SR1234567
+    resources: tmpdir=<TBD>
+
+
+[Tue Jun  3 21:10:23 2025]
+rule sra:
+    output: raw_reads/reads_SR7676756_1.fastq.gz, raw_reads/reads_SR7676756_2.fastq.gz
+    log: logs/sra/reads_SR7676756.log
+    jobid: 19
+    reason: Missing output files: raw_reads/reads_SR7676756_1.fastq.gz, raw_reads/reads_SR7676756_2.fastq.gz
+    wildcards: ID=reads_SR7676756
+    resources: tmpdir=<TBD>
+
+
+[Tue Jun  3 21:10:23 2025]
+rule kmc_contam_db:
+    input: contam.fa
+    output: contam.kmc_pre, contam.kmc_suf
+    jobid: 5
+    reason: Missing output files: contam.kmc_pre, contam.kmc_suf; Input files updated by another job: contam.fa
+    resources: tmpdir=<TBD>
+
+
+[Tue Jun  3 21:10:23 2025]
+rule fastp:
+    input: raw_reads/reads_SR1234567_1.fastq.gz, raw_reads/reads_SR1234567_2.fastq.gz
+    output: fastp_results/dedup_paired_R1_SR1234567.fastq.gz, fastp_results/dedup_paired_R2_SR1234567.fastq.gz, fastp_results/dedup_unpaired_R1_SR1234567.fastq.gz, fastp_results/dedup_unpaired_R2_SR1234567.fastq.gz, fastp_results/trimmed_paired_R1_SR1234567.fastq.gz, fastp_results/trimmed_paired_R2_SR1234567.fastq.gz, fastp_results/trimmed_unpaired_R1_SR1234567.fastq.gz, fastp_results/trimmed_unpaired_R2_SR1234567.fastq.gz, fastp_results/SR1234567_R1R2.json, fastp_results/SR1234567_U1.json, fastp_results/SR1234567_U2.json
+    log: logs/fastp/SR1234567.log
+    jobid: 3
+    reason: Missing output files: fastp_results/trimmed_paired_R1_SR1234567.fastq.gz, fastp_results/trimmed_unpaired_R2_SR1234567.fastq.gz, fastp_results/trimmed_unpaired_R1_SR1234567.fastq.gz, fastp_results/trimmed_paired_R2_SR1234567.fastq.gz; Input files updated by another job: raw_reads/reads_SR1234567_2.fastq.gz, raw_reads/reads_SR1234567_1.fastq.gz
+    wildcards: ID=SR1234567
+    resources: tmpdir=<TBD>
+
+
+[Tue Jun  3 21:10:23 2025]
+rule fastp:
+    input: raw_reads/reads_SR7676756_1.fastq.gz, raw_reads/reads_SR7676756_2.fastq.gz
+    output: fastp_results/dedup_paired_R1_SR7676756.fastq.gz, fastp_results/dedup_paired_R2_SR7676756.fastq.gz, fastp_results/dedup_unpaired_R1_SR7676756.fastq.gz, fastp_results/dedup_unpaired_R2_SR7676756.fastq.gz, fastp_results/trimmed_paired_R1_SR7676756.fastq.gz, fastp_results/trimmed_paired_R2_SR7676756.fastq.gz, fastp_results/trimmed_unpaired_R1_SR7676756.fastq.gz, fastp_results/trimmed_unpaired_R2_SR7676756.fastq.gz, fastp_results/SR7676756_R1R2.json, fastp_results/SR7676756_U1.json, fastp_results/SR7676756_U2.json
+    log: logs/fastp/SR7676756.log
+    jobid: 18
+    reason: Missing output files: fastp_results/trimmed_paired_R1_SR7676756.fastq.gz, fastp_results/trimmed_paired_R2_SR7676756.fastq.gz, fastp_results/trimmed_unpaired_R1_SR7676756.fastq.gz, fastp_results/trimmed_unpaired_R2_SR7676756.fastq.gz; Input files updated by another job: raw_reads/reads_SR7676756_1.fastq.gz, raw_reads/reads_SR7676756_2.fastq.gz
+    wildcards: ID=SR7676756
+    resources: tmpdir=<TBD>
+
+Would remove temporary output raw_reads/reads_SR1234567_2.fastq.gz
+Would remove temporary output raw_reads/reads_SR1234567_1.fastq.gz
+Would remove temporary output fastp_results/dedup_paired_R1_SR1234567.fastq.gz
+Would remove temporary output fastp_results/dedup_paired_R2_SR1234567.fastq.gz
+Would remove temporary output fastp_results/dedup_unpaired_R1_SR1234567.fastq.gz
+Would remove temporary output fastp_results/dedup_unpaired_R2_SR1234567.fastq.gz
+Would remove temporary output raw_reads/reads_SR7676756_1.fastq.gz
+Would remove temporary output raw_reads/reads_SR7676756_2.fastq.gz
+Would remove temporary output fastp_results/dedup_paired_R1_SR7676756.fastq.gz
+Would remove temporary output fastp_results/dedup_paired_R2_SR7676756.fastq.gz
+Would remove temporary output fastp_results/dedup_unpaired_R1_SR7676756.fastq.gz
+Would remove temporary output fastp_results/dedup_unpaired_R2_SR7676756.fastq.gz
+
+[Tue Jun  3 21:10:23 2025]
+rule vg_map:
+    input: fastp_results/trimmed_paired_R1_SR1234567.fastq.gz, fastp_results/trimmed_paired_R1_SR1234567.fastq.gz, y.xg, y.gcsa
+    output: SR1234567_y.gam
+    jobid: 15
+    reason: Missing output files: SR1234567_y.gam; Input files updated by another job: fastp_results/trimmed_paired_R1_SR1234567.fastq.gz, y.xg, y.gcsa
+    wildcards: ID=SR1234567, ref=y
+    resources: tmpdir=<TBD>
+
+
+[Tue Jun  3 21:10:23 2025]
+rule kmc_rm_contam:
+    input: fastp_results/trimmed_paired_R1_SR7676756.fastq.gz, fastp_results/trimmed_paired_R2_SR7676756.fastq.gz, fastp_results/trimmed_unpaired_R1_SR7676756.fastq.gz, fastp_results/trimmed_unpaired_R2_SR7676756.fastq.gz, contam.kmc_pre, contam.kmc_suf
+    output: no_contam_reads/SR7676756.fastq, input_SR7676756.txt
+    jobid: 17
+    reason: Missing output files: no_contam_reads/SR7676756.fastq; Input files updated by another job: contam.kmc_suf, fastp_results/trimmed_unpaired_R1_SR7676756.fastq.gz, fastp_results/trimmed_paired_R2_SR7676756.fastq.gz, contam.kmc_pre, fastp_results/trimmed_paired_R1_SR7676756.fastq.gz, fastp_results/trimmed_unpaired_R2_SR7676756.fastq.gz
+    wildcards: ID=SR7676756
+    resources: tmpdir=<TBD>
+
+
+[Tue Jun  3 21:10:23 2025]
+rule vg_map:
+    input: fastp_results/trimmed_paired_R1_SR7676756.fastq.gz, fastp_results/trimmed_paired_R1_SR7676756.fastq.gz, y.xg, y.gcsa
+    output: SR7676756_y.gam
+    jobid: 26
+    reason: Missing output files: SR7676756_y.gam; Input files updated by another job: y.xg, fastp_results/trimmed_paired_R1_SR7676756.fastq.gz, y.gcsa
+    wildcards: ID=SR7676756, ref=y
+    resources: tmpdir=<TBD>
+
+
+[Tue Jun  3 21:10:23 2025]
+rule kmc_rm_contam:
+    input: fastp_results/trimmed_paired_R1_SR1234567.fastq.gz, fastp_results/trimmed_paired_R2_SR1234567.fastq.gz, fastp_results/trimmed_unpaired_R1_SR1234567.fastq.gz, fastp_results/trimmed_unpaired_R2_SR1234567.fastq.gz, contam.kmc_pre, contam.kmc_suf
+    output: no_contam_reads/SR1234567.fastq, input_SR1234567.txt
+    jobid: 2
+    reason: Missing output files: no_contam_reads/SR1234567.fastq; Input files updated by another job: fastp_results/trimmed_unpaired_R2_SR1234567.fastq.gz, contam.kmc_suf, contam.kmc_pre, fastp_results/trimmed_paired_R1_SR1234567.fastq.gz, fastp_results/trimmed_unpaired_R1_SR1234567.fastq.gz, fastp_results/trimmed_paired_R2_SR1234567.fastq.gz
+    wildcards: ID=SR1234567
+    resources: tmpdir=<TBD>
+
+
+[Tue Jun  3 21:10:23 2025]
+rule vg_map:
+    input: fastp_results/trimmed_paired_R1_SR1234567.fastq.gz, fastp_results/trimmed_paired_R1_SR1234567.fastq.gz, x.xg, x.gcsa
+    output: SR1234567_x.gam
+    jobid: 10
+    reason: Missing output files: SR1234567_x.gam; Input files updated by another job: fastp_results/trimmed_paired_R1_SR1234567.fastq.gz, x.xg, x.gcsa
+    wildcards: ID=SR1234567, ref=x
+    resources: tmpdir=<TBD>
+
+
+[Tue Jun  3 21:10:23 2025]
+rule vg_map:
+    input: fastp_results/trimmed_paired_R1_SR7676756.fastq.gz, fastp_results/trimmed_paired_R1_SR7676756.fastq.gz, x.xg, x.gcsa
+    output: SR7676756_x.gam
+    jobid: 22
+    reason: Missing output files: SR7676756_x.gam; Input files updated by another job: x.xg, fastp_results/trimmed_paired_R1_SR7676756.fastq.gz, x.gcsa
+    wildcards: ID=SR7676756, ref=x
+    resources: tmpdir=<TBD>
+
+Would remove temporary output fastp_results/trimmed_paired_R2_SR7676756.fastq.gz
+Would remove temporary output fastp_results/trimmed_unpaired_R1_SR7676756.fastq.gz
+Would remove temporary output fastp_results/trimmed_unpaired_R2_SR7676756.fastq.gz
+Would remove temporary output input_SR7676756.txt
+Would remove temporary output fastp_results/trimmed_unpaired_R2_SR1234567.fastq.gz
+Would remove temporary output fastp_results/trimmed_unpaired_R1_SR1234567.fastq.gz
+Would remove temporary output fastp_results/trimmed_paired_R2_SR1234567.fastq.gz
+Would remove temporary output input_SR1234567.txt
+Would remove temporary output fastp_results/trimmed_paired_R1_SR1234567.fastq.gz
+Would remove temporary output fastp_results/trimmed_paired_R1_SR7676756.fastq.gz
+
+[Tue Jun  3 21:10:23 2025]
+rule vg_filter:
+    input: x.xg, SR7676756_x.gam
+    output: SR7676756_x_filtered.gam
+    jobid: 21
+    reason: Missing output files: SR7676756_x_filtered.gam; Input files updated by another job: x.xg, SR7676756_x.gam
+    wildcards: ID=SR7676756, ref=x
+    resources: tmpdir=<TBD>
+
+
+[Tue Jun  3 21:10:23 2025]
+rule vg_filter:
+    input: y.xg, SR1234567_y.gam
+    output: SR1234567_y_filtered.gam
+    jobid: 14
+    reason: Missing output files: SR1234567_y_filtered.gam; Input files updated by another job: y.xg, SR1234567_y.gam
+    wildcards: ID=SR1234567, ref=y
+    resources: tmpdir=<TBD>
+
+
+[Tue Jun  3 21:10:23 2025]
+rule vg_filter:
+    input: y.xg, SR7676756_y.gam
+    output: SR7676756_y_filtered.gam
+    jobid: 25
+    reason: Missing output files: SR7676756_y_filtered.gam; Input files updated by another job: SR7676756_y.gam, y.xg
+    wildcards: ID=SR7676756, ref=y
+    resources: tmpdir=<TBD>
+
+
+[Tue Jun  3 21:10:23 2025]
+rule vg_filter:
+    input: x.xg, SR1234567_x.gam
+    output: SR1234567_x_filtered.gam
+    jobid: 9
+    reason: Missing output files: SR1234567_x_filtered.gam; Input files updated by another job: x.xg, SR1234567_x.gam
+    wildcards: ID=SR1234567, ref=x
+    resources: tmpdir=<TBD>
+
+
+[Tue Jun  3 21:10:23 2025]
+rule vg_surject:
+    input: y.xg, SR1234567_y_filtered.gam
+    output: vg_results/SR1234567_y.bam
+    jobid: 12
+    reason: Missing output files: vg_results/SR1234567_y.bam; Input files updated by another job: y.xg, SR1234567_y_filtered.gam
+    wildcards: ID=SR1234567, ref=y
+    resources: tmpdir=<TBD>
+
+
+[Tue Jun  3 21:10:23 2025]
+rule vg_surject:
+    input: y.xg, SR7676756_y_filtered.gam
+    output: vg_results/SR7676756_y.bam
+    jobid: 24
+    reason: Missing output files: vg_results/SR7676756_y.bam; Input files updated by another job: y.xg, SR7676756_y_filtered.gam
+    wildcards: ID=SR7676756, ref=y
+    resources: tmpdir=<TBD>
+
+
+[Tue Jun  3 21:10:23 2025]
+rule vg_surject:
+    input: x.xg, SR1234567_x_filtered.gam
+    output: vg_results/SR1234567_x.bam
+    jobid: 7
+    reason: Missing output files: vg_results/SR1234567_x.bam; Input files updated by another job: x.xg, SR1234567_x_filtered.gam
+    wildcards: ID=SR1234567, ref=x
+    resources: tmpdir=<TBD>
+
+
+[Tue Jun  3 21:10:23 2025]
+rule vg_surject:
+    input: x.xg, SR7676756_x_filtered.gam
+    output: vg_results/SR7676756_x.bam
+    jobid: 20
+    reason: Missing output files: vg_results/SR7676756_x.bam; Input files updated by another job: x.xg, SR7676756_x_filtered.gam
+    wildcards: ID=SR7676756, ref=x
+    resources: tmpdir=<TBD>
+
+
+[Tue Jun  3 21:10:23 2025]
+rule all_per_id:
+    input: no_contam_reads/SR1234567.fastq, vg_results/SR1234567_y.bam
+    output: SR1234567_y.done
+    jobid: 11
+    reason: Missing output files: SR1234567_y.done; Input files updated by another job: vg_results/SR1234567_y.bam, no_contam_reads/SR1234567.fastq
+    wildcards: ID=SR1234567, ref=y
+    resources: tmpdir=<TBD>
+
+
+[Tue Jun  3 21:10:23 2025]
+rule all_per_id:
+    input: no_contam_reads/SR7676756.fastq, vg_results/SR7676756_x.bam
+    output: SR7676756_x.done
+    jobid: 16
+    reason: Missing output files: SR7676756_x.done; Input files updated by another job: vg_results/SR7676756_x.bam, no_contam_reads/SR7676756.fastq
+    wildcards: ID=SR7676756, ref=x
+    resources: tmpdir=<TBD>
+
+
+[Tue Jun  3 21:10:23 2025]
+rule all_per_id:
+    input: no_contam_reads/SR1234567.fastq, vg_results/SR1234567_x.bam
+    output: SR1234567_x.done
+    jobid: 1
+    reason: Missing output files: SR1234567_x.done; Input files updated by another job: no_contam_reads/SR1234567.fastq, vg_results/SR1234567_x.bam
+    wildcards: ID=SR1234567, ref=x
+    resources: tmpdir=<TBD>
+
+
+[Tue Jun  3 21:10:23 2025]
+rule all_per_id:
+    input: no_contam_reads/SR7676756.fastq, vg_results/SR7676756_y.bam
+    output: SR7676756_y.done
+    jobid: 23
+    reason: Missing output files: SR7676756_y.done; Input files updated by another job: no_contam_reads/SR7676756.fastq, vg_results/SR7676756_y.bam
+    wildcards: ID=SR7676756, ref=y
+    resources: tmpdir=<TBD>
+
+Would remove temporary output no_contam_reads/SR1234567.fastq
+Would remove temporary output no_contam_reads/SR7676756.fastq
+
+[Tue Jun  3 21:10:23 2025]
+rule all:
+    input: SR1234567_x.done, SR1234567_y.done, SR7676756_x.done, SR7676756_y.done, SR1234567_x.done, SR7676756_x.done
+    jobid: 0
+    reason: Input files updated by another job: SR1234567_y.done, SR7676756_y.done, SR1234567_x.done, SR7676756_x.done
+    resources: tmpdir=<TBD>
+
+Job stats:
+job              count
+-------------  -------
+all                  1
+all_per_id           4
+datasets             1
+fastp                2
+kmc_contam_db        1
+kmc_rm_contam        2
+sra                  2
+vg_filter            4
+vg_index             2
+vg_map               4
+vg_surject           4
+total               27
+
+Reasons:
+    (check individual jobs above for details)
+    input files updated by another job:
+        all, all_per_id, fastp, kmc_contam_db, kmc_rm_contam, vg_filter, vg_map, vg_surject
+    output files have to be generated:
+        all_per_id, datasets, fastp, kmc_contam_db, kmc_rm_contam, sra, vg_filter, vg_index, vg_map, vg_surject
+This was a dry-run (flag -n). The order of jobs does not reflect the order of execution.

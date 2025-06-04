@@ -1,29 +1,28 @@
-rule kmc_contam_db:
+rule kmc_rm_contam:
     input:
-        "raw_reads/{ID}_1.fastq.gz",
-        "raw_reads/{ID}_2.fastq.gz",
-        "contam.kmc_pre",
-        "contam.kmc_suf"
+        pread1="fastp_results/trimmed_paired_R1_{ID}.fastq.gz",
+        pread2="fastp_results/trimmed_paired_R2_{ID}.fastq.gz",
+        uread1="fastp_results/trimmed_unpaired_R1_{ID}.fastq.gz",
+        uread2="fastp_results/trimmed_unpaired_R2_{ID}.fastq.gz",
+        pre="contam.kmc_pre",
+        suf="contam.kmc_suf"
     output:
-        "no_contam_reads/{ID}_1.fastq.gz",
-        "no_contam_reads/{ID}_2.fastq.gz"
+        filt=temp("no_contam_reads/{ID}.fastq"),
+        list=temp("input_{ID}.txt")
     conda:
         "../envs/kmc.yaml"
-    params:
-        k = config["k"]
     shell:
         """
-        kmc_tools contam kmc_db @input_files.txt -cx50 filtered.fastq
+        if [ ! -d "no_contam_reads" ]; then
+            mkdir no_contam_reads/
+        fi
 
         # create file list
-        echo {input} | tr ' ' '\n' > {output.list}
+        echo {input.pread1} {input.pread2} {input.uread1} {input.uread2} | tr ' ' '\n' > {output.list}
 
-        # create tmp dir
-        mkdir kmc_tmp_dir
+        # filter reads
+        kmc_tools filter contam @{output.list} -ci0 -cx3 {output.filt}
 
-        # build kmc db
-        kmc -k{params.k} -fq @{output.list} contam kmc_tmp_dir/
-
-        # clean up
-        rm -r kmc_tmp_dir/
+        # compress reads
+        # gzip no_contam_reads/{wildcards.ID}.fastq
         """
