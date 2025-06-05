@@ -6,12 +6,14 @@ A snakemake workflow to analyze short reads with a either pangenome reference, l
 
 - [x] add mitochondrial and chloroplast genomes as contaminants
 
-- [ ] figure out vg surject
+- [x] figure out vg surject
 
-- [ ] add genotype calling
-
-- [ ] add kmer counts
+- [x] add kmer counts
 
 - [ ] remove k-mers from cds sequences?
 
 - [ ] counting bloom filter
+
+- [ ] add genotype calling for linear references
+
+- [ ] create linear references for pangenome snp calling depending on path: Use `vg paths -F` to get fasta sequences for paths, then use that as the linear reference for genotype calling
