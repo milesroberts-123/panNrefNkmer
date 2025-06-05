@@ -1,12 +1,14 @@
 rule datasets:
     output:
         "contam.fa"
+    params:
+        contams = config["ncbi_contams"]
     conda:
         "../envs/datasets.yaml"
     shell:
         r"""
         # get all contaminating genomes
-        datasets download genome taxon eubacteria human fungi --reference --dehydrated --filename contam.zip
+        datasets download genome taxon {params.contams} --reference --dehydrated --filename contam.zip
 
         # unpack metadata
         unzip contam.zip -d contam_genomes

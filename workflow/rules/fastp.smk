@@ -1,7 +1,7 @@
 rule fastp:
     input:
-        read1="raw_reads/reads_{ID}_1.fastq.gz",
-        read2="raw_reads/reads_{ID}_2.fastq.gz",
+        read1="raw_reads/{ID}_1.fastq.gz",
+        read2="raw_reads/{ID}_2.fastq.gz",
     output:
         dpread1=temp("fastp_results/dedup_paired_R1_{ID}.fastq.gz"),
         dpread2=temp("fastp_results/dedup_paired_R2_{ID}.fastq.gz"),

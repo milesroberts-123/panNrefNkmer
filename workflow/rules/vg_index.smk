@@ -1,14 +1,14 @@
 rule vg_index:
     input:
-        "{ref}.vg"
+        "../config/pangenomes/{ref}.gfa"
     output:
-        gcsa = "{ref}.gcsa",
-        xg = "{ref}.xg"
-    params:
-        k = config["k"]
+        dist = "../config/pangenomes/{ref}.dist",
+        gbz = "../config/pangenomes/{ref}.giraffe.gbz",
+        min = "../config/pangenomes/{ref}.shortread.withzip.min",
+        zip = "../config/pangenomes/{ref}.shortread.zipcodes"
     log:
         "logs/vg_index/{ref}.log"
     conda:
         "../envs/vg.yaml"
     shell:
-        "vg index -x {output.xg} -g {output.gcsa} -k {params.k} {input} &> {log}"
+        "vg autoindex -w giraffe -g {input} -p {wildcards.ref}"

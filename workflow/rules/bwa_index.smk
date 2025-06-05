@@ -1,16 +1,16 @@
 rule bwa_index:
     input:
-        "reference_genomes/{ref}.fasta",
+        "../config/linear_genomes/{ref}.fa",
     output:
-        amb=temp("reference_genomes/{ref}.fasta.amb"),
-        ann=temp("reference_genomes/{ref}.fasta.ann"),
-        bwt=temp("reference_genomes/{ref}.fasta.bwt"),
-        pac=temp("reference_genomes/{ref}.fasta.pac"),
-        sa=temp("reference_genomes/{ref}.fasta.sa"),
+        amb=temp("../config/linear_genomes/{ref}.fa.amb"),
+        ann=temp("../config/linear_genomes/{ref}.fa.ann"),
+        bwt=temp("../config/linear_genomes/{ref}.fa.bwt"),
+        pac=temp("../config/linear_genomes/{ref}.fa.pac"),
+        sa=temp("../config/linear_genomes/{ref}.fa.sa"),
     conda:
         "../envs/bwa.yaml"
     log:
-        "logs/bwa_index/{ID}.log",
+        "logs/bwa_index/{ref}.log",
     shell:
         """
         # index reference

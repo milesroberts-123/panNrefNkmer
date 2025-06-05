@@ -1,29 +1,49 @@
-# k-mer length
-k: 16
+# kmc parameters ====================================================
 
-# unqualified_percent_limit for fastp: how many percents of bases are allowed to be unqualified in terms of quality score
+## k-mer length
+k: 31
+
+## minimum k-mer count for kmc3
+mincount: 1
+
+## maximum k-mer count for kmc3
+maxcount: 100000
+
+# fastp parameters ===================================================
+
+## unqualified_percent_limit for fastp: how many percents of bases are allowed to be unqualified in terms of quality score
 unqualLimit: 40
 
-# quality score for read trimming
+## quality score for read trimming
 qualThresh: 30
 
-# window length for read trimming
+## window length for read trimming
 windowLength: 1
 
-# samples to download from SRA
+# samples to download from SRA =======================================
 samples:
  - "SR1234567"
  - "SR7676756"
 
-# contaminants to include in read QC
-contams:
- - "human"
+# contaminants to include in read QC =================================
 
-# linear reference genome to align samples to
+## contaminants to download from ncbi
+ncbi_contams:
+ - "human"
+ - "eubacteria"
+ - "fungi"
+
+## custom contaminants
+custom_contams:
+ - "arabiodpsis_thaliana_chrc_chrm"
+
+# references =========================================================
+
+## linear reference genome to align samples to
 linrefs:
  - "x"
  - "y"
 
-# pangenomes to align samples to
+## pangenomes to align samples to
 panrefs:
- - "x"
+ - "z"

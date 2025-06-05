@@ -27,22 +27,26 @@ configfile: "../config/config.yaml"
 
 rule all:
     input:
-        expand("{ID}_{ref}.done", ID = config["samples"], ref = config["linrefs"]),
-        expand("{ID}_{ref}.done", ID = config["samples"], ref = config["panrefs"])
+        expand("{ID}_{linref}_{panref}.done", ID = config["samples"], linref = config["linrefs"], panref = config["panrefs"]),
 
 rule all_per_id:
     input:
-        "no_contam_reads/{ID}.fastq",
-        "vg_results/{ID}_{ref}.bam"
+        "kmc_results/kmer_counts_{ID}.txt",
+        "bwa_results/{ID}_{linref}.bam",
+        "vg_surject_results/{ID}_{panref}_{linref}.bam"
     output:
-        "{ID}_{ref}.done"
+        touch("{ID}_{linref}_{panref}.done")
 
 include: "rules/datasets.smk"
 include: "rules/sra.smk"
 include: "rules/fastp.smk"
+include: "rules/bwa_index.smk"
+include: "rules/bwa_mem.smk"
+include: "rules/datasets.smk"
 include: "rules/kmc_contam_db.smk"
 include: "rules/kmc_rm_contam.smk"
+include: "rules/kmc.smk"
 include: "rules/vg_index.smk"
-include: "rules/vg_map.smk"
+include: "rules/vg_giraffe.smk"
 include: "rules/vg_filter.smk"
 include: "rules/vg_surject.smk"

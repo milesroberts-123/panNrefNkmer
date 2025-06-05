@@ -1,10 +1,11 @@
 rule vg_surject:
     input:
-        xg = "{ref}.xg",
-        gam = "{ID}_{ref}_filtered.gam"
+        gbz = "../config/pangenomes/{panref}.giraffe.gbz",
+        gam = "vg_filter_results/{ID}_{panref}.gam",
+        paths = "../config/pangenomes/paths/{linref}.txt"
     output:
-        "vg_results/{ID}_{ref}.bam"
+        temp("vg_surject_results/{ID}_{panref}_{linref}.bam")
     conda:
         "../envs/vg.yaml"
     shell:
-        "vg surject -x {input.xg} -b {input.gam} > {output}"
+        "vg surject -x {input.gbz} -F {input.paths} -b {input.gam} > {output}"
