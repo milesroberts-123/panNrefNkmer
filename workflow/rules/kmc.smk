@@ -2,7 +2,7 @@ rule kmc:
     input:
         "no_contam_reads/{ID}.fastq"
     output:
-        counts=temp("kmc_results/kmer_counts_{ID}.txt"),
+        counts=temp("kmc_results/{ID}.txt"),
         tmp_pre=temp("kmc_db_{ID}.kmc_pre"),
         tmp_suf=temp("kmc_db_{ID}.kmc_suf")
     conda:

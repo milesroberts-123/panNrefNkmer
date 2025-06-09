@@ -18,6 +18,14 @@ A snakemake workflow to analyze short reads with a either a pangenome reference,
 
 - [x] create linear references for pangenome snp calling depending on path: Use `vg paths -F` to get fasta sequences for paths, then use that as the linear reference for genotype calling
 
+- [x] counting bloom filter
+
+- [ ] k-mer distances
+
+- [ ] dn/ds between references?
+
+- [ ] gene expression for different references
+
 - [ ] tajima's D by gene
 
 - [ ] synonymous diversity by gene
@@ -29,10 +37,6 @@ A snakemake workflow to analyze short reads with a either a pangenome reference,
 - [ ] add bcftools concat to concat genotype calls split by chromosome
 
 - [ ] find read duplicates with samtools
-
-- [ ] counting bloom filter
-
-- [ ] k-mer distances
 
 - [ ] remove k-mers from cds sequences?
 

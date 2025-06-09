@@ -9,6 +9,12 @@ mincount: 1
 ## maximum k-mer count for kmc3
 maxcount: 100000
 
+## size of counting bloom filter array
+array_size: 10000
+
+## number of hash functions
+num_hash: 4
+
 # fastp parameters ===================================================
 
 ## unqualified_percent_limit for fastp: how many percents of bases are allowed to be unqualified in terms of quality score

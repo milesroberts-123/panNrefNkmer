@@ -31,27 +31,39 @@ rule all:
 
 rule all_per_id:
     input:
-        "kmc_results/kmer_counts_{ID}.txt",
+        "cbf_results/{ID}.txt",
         "bcftools_linref_results/{ID}_{linref}.vcf",
         "bcftools_panref_results/{ID}_{panref}_{linref}.vcf",
         "mk_test_{linref}/mk.tsv"
     output:
         touch("{ID}_{linref}_{panref}.done")
 
+## data download and QC rules
 include: "rules/datasets.smk"
 include: "rules/sra.smk"
 include: "rules/fastp.smk"
+
+## linear alignment rules
 include: "rules/bwa_index.smk"
 include: "rules/bwa_mem.smk"
+
+## genotype calling rules
 include: "rules/bcftools_call.smk"
 include: "rules/bcftools_merge.smk"
+
+## k-mer counting rules
 include: "rules/datasets.smk"
 include: "rules/kmc_contam_db.smk"
 include: "rules/kmc_rm_contam.smk"
 include: "rules/kmc.smk"
+include: "rules/counting_bloom_filter.smk"
+
+## pangenome alignment rules
 include: "rules/vg_index.smk"
 include: "rules/vg_giraffe.smk"
 include: "rules/vg_filter.smk"
 include: "rules/vg_surject.smk"
 include: "rules/vg_paths.smk"
+
+## population genetics summary rules
 include: "rules/mk_test.smk"
