@@ -35,6 +35,7 @@ rule all_per_id:
         "bcftools_linref_results/{ID}_{linref}.vcf",
         "bcftools_panref_results/{ID}_{panref}_{linref}.vcf",
         "mk_test_{linref}/mk.tsv",
+        "{linref}_salmon_quant.txt"
     output:
         touch("{ID}_{linref}_{panref}.done")
 
@@ -66,6 +67,11 @@ include: "rules/vg_giraffe.smk"
 include: "rules/vg_filter.smk"
 include: "rules/vg_surject.smk"
 include: "rules/vg_paths.smk"
+
+## gene expression quantification
+include: "rules/salmon_index.smk"
+include: "rules/salmon_quantmerge.smk"
+include: "rules/salmon_quant.smk"
 
 ## population genetics summary rules
 include: "rules/mk_test.smk"

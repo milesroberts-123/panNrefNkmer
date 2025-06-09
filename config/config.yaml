@@ -37,6 +37,10 @@ outgroup:
  - "SR1892370"
  - "SR7676756"
 
+rna:
+ - "SR168745698"
+ - "SR324786643"
+ - "SR2345678"
 # contaminants to include in read QC =================================
 
 ## contaminants to download from ncbi
