@@ -1,12 +1,12 @@
 rule bwa_index:
     input:
-        "../config/linear_genomes/{ref}.fa",
+        "../config/linear_genomes/sequence/{ref}.fa",
     output:
-        amb=temp("../config/linear_genomes/{ref}.fa.amb"),
-        ann=temp("../config/linear_genomes/{ref}.fa.ann"),
-        bwt=temp("../config/linear_genomes/{ref}.fa.bwt"),
-        pac=temp("../config/linear_genomes/{ref}.fa.pac"),
-        sa=temp("../config/linear_genomes/{ref}.fa.sa"),
+        amb=temp("../config/linear_genomes/sequence/{ref}.fa.amb"),
+        ann=temp("../config/linear_genomes/sequence/{ref}.fa.ann"),
+        bwt=temp("../config/linear_genomes/sequence/{ref}.fa.bwt"),
+        pac=temp("../config/linear_genomes/sequence/{ref}.fa.pac"),
+        sa=temp("../config/linear_genomes/sequence/{ref}.fa.sa"),
     conda:
         "../envs/bwa.yaml"
     log:

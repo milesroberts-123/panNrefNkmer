@@ -24,6 +24,12 @@ windowLength: 1
 samples:
  - "SR1234567"
  - "SR7676756"
+ - "SR9812379"
+ - "SR1892370"
+
+outgroup:
+ - "SR1892370"
+ - "SR7676756"
 
 # contaminants to include in read QC =================================
 

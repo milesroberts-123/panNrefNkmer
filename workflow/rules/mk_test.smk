@@ -1,10 +1,13 @@
 rule mk_test:
     input:
-        gff =,
-        fa =,
-        vcf =
+        gff = "../config/linear_genomes/annotation/{ref}.gff",
+        fa = "../config/linear_genomes/sequence/{ref}.fa",
+        vcf = "bcftools_linref_merge_results/{ref}.vcf"
     output:
+        "mk_test_{ref}/mk.tsv"
+    params:
+        outgroup = config["outgroup"]
     conda:
         "../envs/degenotate.yaml"
     shell:
-        "degenotate.py -a [annotation file] -g [genome fasta file] -v [vcf file] -u [sample ID(s) of outgroup in VCF file] -o [output directory] -sfs"
+        "degenotate.py -a {input.gff} -g {input.fa} -v {input.vcf} -u {params.outgroup} -o mk_test_{wildcards.ref} -sfs"

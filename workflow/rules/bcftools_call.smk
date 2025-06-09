@@ -1,13 +1,13 @@
 rule bcftools_linref_call:
     input:
         bam = "bwa_results/{ID}_{ref}.bam",
-        ref = "../config/linear_genomes/{ref}.fa"
+        ref = "../config/linear_genomes/sequence/{ref}.fa"
     output:
         "bcftools_linref_results/{ID}_{ref}.vcf"
     conda:
         "../envs/samtools.yaml"
     shell:
-        "bcftools mpileup -f {input.ref} -Ou {input.bam} | bcftools call -mv > {output}"
+        "samtools sort -O SAM {input.bam} | bcftools mpileup -f {input.ref} -Ou - | bcftools call -mv > {output}"
 
 rule bcftools_panref_call:
     input:
@@ -18,5 +18,5 @@ rule bcftools_panref_call:
     conda:
         "../envs/samtools.yaml"
     shell:
-        "bcftools mpileup -f {input.ref} -Ou {input.bam} | bcftools call -mv > {output}"
+        "samtools sort -O SAM {input.bam} | bcftools mpileup -f {input.ref} -Ou - | bcftools call -mv > {output}"
 
