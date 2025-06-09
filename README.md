@@ -10,10 +10,14 @@ A snakemake workflow to analyze short reads with a either pangenome reference, l
 
 - [x] add kmer counts
 
-- [ ] remove k-mers from cds sequences?
+- [x] add genotype calling for linear references
+
+- [ ] add MK test in degenotate?
 
 - [ ] counting bloom filter
 
-- [ ] add genotype calling for linear references
+- [ ] k-mer distances
+
+- [ ] remove k-mers from cds sequences?
 
 - [ ] create linear references for pangenome snp calling depending on path: Use `vg paths -F` to get fasta sequences for paths, then use that as the linear reference for genotype calling
