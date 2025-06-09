@@ -12,6 +12,10 @@ A snakemake workflow to analyze short reads with a either pangenome reference, l
 
 - [x] add genotype calling for linear references
 
+- [ ] sort bam files
+
+- [ ] find read duplicates with samtools
+
 - [ ] add MK test in degenotate?
 
 - [ ] counting bloom filter
