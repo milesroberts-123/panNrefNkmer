@@ -1,0 +1,61 @@
+# kmc parameters ====================================================
+
+## k-mer length
+k: 31
+
+## minimum k-mer count for kmc3
+mincount: 1
+
+## maximum k-mer count for kmc3
+maxcount: 100000
+
+## size of counting bloom filter array
+array_size: 10000
+
+## number of hash functions
+num_hash: 4
+
+# fastp parameters ===================================================
+
+## unqualified_percent_limit for fastp: how many percents of bases are allowed to be unqualified in terms of quality score
+unqualLimit: 40
+
+## quality score for read trimming
+qualThresh: 30
+
+## window length for read trimming
+windowLength: 1
+
+# samples to download from SRA =======================================
+samples:
+ - "SR1234567"
+ - "SR7676756"
+ - "SR9812379"
+ - "SR1892370"
+
+outgroup:
+ - "SR1892370"
+ - "SR7676756"
+
+# contaminants to include in read QC =================================
+
+## contaminants to download from ncbi
+ncbi_contams:
+ - "human"
+ - "eubacteria"
+ - "fungi"
+
+## custom contaminants
+custom_contams:
+ - "arabiodpsis_thaliana_chrc_chrm"
+
+# references =========================================================
+
+## linear reference genome to align samples to
+linrefs:
+ - "x"
+ - "y"
+
+## pangenomes to align samples to
+panrefs:
+ - "z"

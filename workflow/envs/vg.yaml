@@ -1,0 +1,7 @@
+name: vg
+channels:
+  - bioconda
+dependencies:
+  - vg=1.65.0=h9ee0642_0
+
+prefix: "/mnt/ffs24/home/robe1195/.local/share/mamba/envs/vg"

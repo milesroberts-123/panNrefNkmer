@@ -1,0 +1,12 @@
+**.vcf
+**.fa
+**.vg
+**.fasta
+**.gff
+**.fastq
+**.fastq.gz
+**.txt
+**/.snakemake
+**/results
+**/pangenomes
+**/linear_genomes

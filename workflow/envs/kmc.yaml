@@ -1,0 +1,16 @@
+name: kmc
+channels:
+  - bioconda
+  - conda-forge
+dependencies:
+  - _libgcc_mutex=0.1=conda_forge
+  - _openmp_mutex=4.5=2_gnu
+  - bzip2=1.0.8=h4bc722e_7
+  - kmc=3.2.4=haf24da9_3
+  - libgcc=15.1.0=h767d61c_2
+  - libgcc-ng=15.1.0=h69a702a_2
+  - libgomp=15.1.0=h767d61c_2
+  - libstdcxx=15.1.0=h8f9b012_2
+  - libzlib=1.3.1=hb9d3cd8_2
+
+prefix: "/mnt/ffs24/home/robe1195/.local/share/mamba/envs/kmc"
