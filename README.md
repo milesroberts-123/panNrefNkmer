@@ -20,11 +20,13 @@ A snakemake workflow to analyze short reads with a either a pangenome reference,
 
 - [x] counting bloom filter
 
-- [ ] k-mer distances
-
-- [ ] dn/ds between references?
+- [x] k-mer distances
 
 - [ ] gene expression for different references
+
+- [ ] add chromosomes.tsv: two column file with assembly prefix in one column and chromosome names in the other column, useful to split workflow by chromosome 
+
+- [ ] dn/ds between references?
 
 - [ ] tajima's D by gene
 

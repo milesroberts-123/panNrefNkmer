@@ -1,4 +1,4 @@
-name: cbf
+name: click
 channels:
   - conda-forge
 dependencies:
@@ -7,6 +7,7 @@ dependencies:
   - bzip2=1.0.8=h4bc722e_7
   - ca-certificates=2025.4.26=hbd8a1cb_0
   - click=8.2.1=pyh707e725_0
+  - joblib=1.5.1=pyhd8ed1ab_0
   - ld_impl_linux-64=2.43=h712a8e2_4
   - libblas=3.9.0=31_h59b9bed_openblas
   - libcblas=3.9.0=31_he106b2a_openblas
@@ -37,8 +38,12 @@ dependencies:
   - python_abi=3.13=7_cp313
   - pytz=2025.2=pyhd8ed1ab_0
   - readline=8.2=h8c095d6_2
+  - scikit-learn=1.7.0=py313h8ef605b_1
+  - scipy=1.15.2=py313h86fcf2b_0
+  - setuptools=80.9.0=pyhff2d567_0
   - six=1.17.0=pyhd8ed1ab_0
+  - threadpoolctl=3.6.0=pyhecae5ae_0
   - tk=8.6.13=noxft_hd72426e_102
   - tzdata=2025b=h78e105d_0
 
-prefix: "/mnt/ffs24/home/robe1195/.local/share/mamba/envs/cbf"
+prefix: "/mnt/ffs24/home/robe1195/.local/share/mamba/envs/click"

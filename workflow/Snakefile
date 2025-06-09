@@ -5,11 +5,10 @@ import os
 from snakemake.utils import validate
 from snakemake.utils import min_version
 
-min_version("9.3.3")
+min_version("9.5.1")
 
 # configuration
 configfile: "../config/config.yaml"
-
 
 #validate(config, "../config/config.schema.yaml")
 
@@ -28,13 +27,14 @@ configfile: "../config/config.yaml"
 rule all:
     input:
         expand("{ID}_{linref}_{panref}.done", ID = config["samples"], linref = config["linrefs"], panref = config["panrefs"]),
+        "kmer_distances.txt",
 
 rule all_per_id:
     input:
         "cbf_results/{ID}.txt",
         "bcftools_linref_results/{ID}_{linref}.vcf",
         "bcftools_panref_results/{ID}_{panref}_{linref}.vcf",
-        "mk_test_{linref}/mk.tsv"
+        "mk_test_{linref}/mk.tsv",
     output:
         touch("{ID}_{linref}_{panref}.done")
 
@@ -57,6 +57,8 @@ include: "rules/kmc_contam_db.smk"
 include: "rules/kmc_rm_contam.smk"
 include: "rules/kmc.smk"
 include: "rules/counting_bloom_filter.smk"
+include: "rules/cbind.smk"
+include: "rules/kmer_distances.smk"
 
 ## pangenome alignment rules
 include: "rules/vg_index.smk"
@@ -67,3 +69,4 @@ include: "rules/vg_paths.smk"
 
 ## population genetics summary rules
 include: "rules/mk_test.smk"
+include: "rules/degenotate.smk"
