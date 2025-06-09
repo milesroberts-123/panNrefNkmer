@@ -1,10 +1,9 @@
 rule vg_paths:
     input:
-        xg = "{ref}.xg",
-        gam = "{ID}_{ref}_filtered.gam"
+        "../config/pangenomes/{ref}.giraffe.gbz",
     output:
-        "vg_results/{ID}_{ref}.bam"
+        "vg_paths_results/{ref}.fa"
     conda:
         "../envs/vg.yaml"
     shell:
-        "vg surject -x {input.xg} -b {input.gam} > {output}"
+        "vg paths -F -x {input} > {output}"

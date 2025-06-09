@@ -1,10 +1,14 @@
 # Potential graph genomes to use
 
-Ideally, I want
+Ideally, I want:
 
-- genome fasta and gff of individual genotypes
+- genome fasta individual genotypes
 
-- vg genome graph of all genomes combined
+- gff of individual genotypes
+
+- gfa pangenome graph of all genomes combined
+
+[Arabidopsis thaliana pangenome](https://doi.org/10.1038/s41467-023-42029-4)
 
 [tea pangenome](https://www.tea-pangenome.cn/)
 
