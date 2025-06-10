@@ -12,13 +12,13 @@
 # output information about how this job is running using bash commands
 echo "This job is running on $HOSTNAME on `date`"
 
-# Load conda module, helps nodes find my conda path for some reason
+# Load mamba module, helps nodes find my mamba path for some reason
 module purge
 module load Conda/3
 
 # load snakemake
 echo Loading snakemake...
-conda activate snakemake
+mamba activate snakemake
 
 # change directory of cache to scratch, can't accumulate files in my home space
 #echo Changing cache directory...
