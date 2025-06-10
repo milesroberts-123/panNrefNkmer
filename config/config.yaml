@@ -68,10 +68,48 @@ custom_contams:
 # references =========================================================
 
 ## linear reference genome to align samples to
+
+#linrefs:
+# - "x"
+# - "y"
+
 linrefs:
- - "x"
- - "y"
+ - "ah_7"
+ - "arb_0"
+ - "belmonte_4_94"
+ - "bor_1"
+ - "cdm_0"
+ - "col"
+ - "dra_2"
+ - "elk_1"
+ - "etna_2"
+ - "got_22"
+ - "hs_0"
+ - "kelsterbach_2"
+ - "ket_10"
+ - "kondara"
+ - "kz_9"
+ - "li_of_095"
+ - "ll_0"
+ - "mammo_1"
+ - "meh_0"
+ - "ms_0"
+ - "nz_1"
+ - "per_1"
+ - "pra_6"
+ - "pu_2_23"
+ - "sha"
+ - "sij_1"
+ - "sij_2"
+ - "sorbo"
+ - "st_0"
+ - "tibet"
+ - "tu_sb30_3"
+ - "yilong"
 
 ## pangenomes to align samples to
+#panrefs:
+# - "z"
+ 
 panrefs:
- - "z"
+ - "panFS_graph"
