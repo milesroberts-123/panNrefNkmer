@@ -7,7 +7,7 @@ rule counting_bloom_filter:
         array_size = config["array_size"],
         num_hash = config["num_hash"]
     conda:
-        "../envs/cbf.smk"
+        "../envs/cbf.yaml"
     shell:
         "scripts/counting_bloom_filter.py --input {input} --output {output} --array-size {params.array_size} --num-hash {params.num_hash}"
 

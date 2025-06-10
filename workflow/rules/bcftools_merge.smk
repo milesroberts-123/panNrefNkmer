@@ -13,6 +13,8 @@ rule bcftools_concat:
         expand("bcftools_linref_merge_results/{{ref}}_{chrom}.vcf", chrom = config["chroms"])
     output:
         "bcftools_concat_results/{ref}.vcf"
+    conda:
+        "../envs/samtools.yaml"
     shell:
         "bcftools concat {input} > {output}"
 
