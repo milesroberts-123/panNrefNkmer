@@ -1,3 +1,11 @@
+# List of chromosome names, for parallelization =========================
+chroms:
+ - "Chr1"
+ - "Chr2"
+ - "Chr3"
+ - "Chr4"
+ - "Chr5"
+
 # kmc parameters ====================================================
 
 ## k-mer length
@@ -10,7 +18,7 @@ mincount: 1
 maxcount: 100000
 
 ## size of counting bloom filter array
-array_size: 10000
+array_size: 100000
 
 ## number of hash functions
 num_hash: 4
@@ -41,6 +49,7 @@ rna:
  - "SR168745698"
  - "SR324786643"
  - "SR2345678"
+
 # contaminants to include in read QC =================================
 
 ## contaminants to download from ncbi

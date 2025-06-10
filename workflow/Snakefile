@@ -28,14 +28,16 @@ rule all:
     input:
         expand("{ID}_{linref}_{panref}.done", ID = config["samples"], linref = config["linrefs"], panref = config["panrefs"]),
         "kmer_distances.txt",
+        "multiqc_report.html"
 
 rule all_per_id:
     input:
         "cbf_results/{ID}.txt",
-        "bcftools_linref_results/{ID}_{linref}.vcf",
         "bcftools_panref_results/{ID}_{panref}_{linref}.vcf",
         "mk_test_{linref}/mk.tsv",
-        "{linref}_salmon_quant.txt"
+        "{linref}_salmon_quant.txt",
+        "bcftools_concat_results/{linref}.vcf",
+        expand("pixy_results/{{linref}}_{chrom}.txt", chrom = config["chroms"])
     output:
         touch("{ID}_{linref}_{panref}.done")
 
@@ -43,10 +45,12 @@ rule all_per_id:
 include: "rules/datasets.smk"
 include: "rules/sra.smk"
 include: "rules/fastp.smk"
+include: "rules/multiqc.smk"
 
 ## linear alignment rules
 include: "rules/bwa_index.smk"
 include: "rules/bwa_mem.smk"
+include: "rules/mark_dup.smk"
 
 ## genotype calling rules
 include: "rules/bcftools_call.smk"
@@ -76,3 +80,5 @@ include: "rules/salmon_quant.smk"
 ## population genetics summary rules
 include: "rules/mk_test.smk"
 include: "rules/degenotate.smk"
+include: "rules/split_sites.smk"
+include: "rules/pixy.smk"

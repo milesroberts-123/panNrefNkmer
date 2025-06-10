@@ -24,21 +24,29 @@ A snakemake workflow to analyze short reads with a either a pangenome reference,
 
 - [x] gene expression for different references
 
-- [ ] add chromosomes.tsv: two column file with assembly prefix in one column and chromosome names in the other column, useful to split workflow by chromosome 
+- [x] add chromosomes.tsv: two column file with assembly prefix in one column and chromosome names in the other column, useful to split workflow by chromosome 
+
+- [x] split genotype calling by chromosome?
+
+- [x] add bcftools concat to concat genotype calls split by chromosome
+
+- [x] find read duplicates with samtools
+
+- [x] multiqc
+
+- [x] tajimas d
+
+- [x] pi
+
+- [x] watterson's theta
+
+- [ ] add profiles
+
+- [ ] add localrules
+
+- [ ] more variant filtering
 
 - [ ] dn/ds between references?
-
-- [ ] tajima's D by gene
-
-- [ ] synonymous diversity by gene
-
-- [ ] nonsynonymous diversity by gene
-
-- [ ] split genotype calling by chromosome?
-
-- [ ] add bcftools concat to concat genotype calls split by chromosome
-
-- [ ] find read duplicates with samtools
 
 - [ ] remove k-mers from cds sequences?
 
