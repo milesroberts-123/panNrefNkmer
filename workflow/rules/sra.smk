@@ -2,8 +2,6 @@ rule sra:
     output:
         temp("raw_reads/{ID}_1.fastq.gz"),
         temp("raw_reads/{ID}_2.fastq.gz")
-    log:
-        "logs/sra/{ID}.log"
     conda:
         "../envs/sra.yaml"
     shell:
@@ -14,7 +12,7 @@ rule sra:
         fi
 
         # download data
-        fasterq-dump --gzip --split-files --skip-technical --clip {wildcards.ID} &> {log}
+        fasterq-dump --gzip --split-files --skip-technical --clip {wildcards.ID} 
         
         # move data to folder
         mv {wildcards.ID}_1.fastq.gz raw_reads/
