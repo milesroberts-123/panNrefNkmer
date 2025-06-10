@@ -35,20 +35,21 @@ qualThresh: 30
 windowLength: 1
 
 # samples to download from SRA =======================================
+# arabiodpsis thaliana: 
 samples:
- - "SR1234567"
- - "SR7676756"
- - "SR9812379"
- - "SR1892370"
+ - "SRR1946569"
+ - "SRR1946568"
 
+# arabidopsis lyrata: https://doi.org/10.1093/molbev/msx193
 outgroup:
- - "SR1892370"
- - "SR7676756"
+ - "SRR5124999"
+ - "SRR5124997"
 
+# arabiodpsis thaliana:
 rna:
- - "SR168745698"
- - "SR324786643"
- - "SR2345678"
+ - "ERR1589014"
+ - "ERR1589013"
+ - "ERR1589012"
 
 # contaminants to include in read QC =================================
 
