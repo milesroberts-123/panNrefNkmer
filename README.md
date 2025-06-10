@@ -44,7 +44,11 @@ A snakemake workflow to analyze short reads with a either a pangenome reference,
 
 - [ ] add localrules
 
-- [ ] more variant filtering
+- [ ] add schema
+
+- [ ] split vcfs into variant and invariant sites
+
+- [ ] variant filtering
 
 - [ ] dn/ds between references?
 

@@ -57,8 +57,10 @@ ncbi_contams:
  - "human"
  - "eubacteria"
  - "fungi"
+ - "archaea"
+ - "viruses"
 
-## custom contaminants
+## custom contaminants, user provides fasta file
 custom_contams:
  - "arabiodpsis_thaliana_chrc_chrm"
 
