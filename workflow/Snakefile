@@ -33,7 +33,7 @@ rule all:
 rule all_per_id:
     input:
         "cbf_results/{ID}.txt",
-        "bcftools_panref_results/{ID}_{panref}_{linref}.vcf",
+        #"bcftools_panref_results/{ID}_{panref}_{linref}.vcf",
         "mk_test_{linref}/mk.tsv",
         "{linref}_salmon_quant.txt",
         "bcftools_concat_results/{linref}.vcf",

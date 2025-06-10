@@ -41,7 +41,7 @@ snakemake --unlock --cores 1
 
 ## RUN WHOLE WORKFLOW ON SLURM CLUSTER WITH CONDA ##
 
-snakemake --sdm conda --rerun-incomplete --rerun-triggers mtime --scheduler greedy --retries 1 --keep-going
+snakemake --sdm conda --rerun-incomplete --rerun-triggers mtime --scheduler greedy 
 
 ## RUN WHOLE WORKFLOW ON SLURM CLUSTER WITH SINGULARITY + CONDA ##
 
