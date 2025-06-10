@@ -8,4 +8,4 @@ rule degenotate:
     conda:
         "../envs/degenotate.yaml"
     shell:
-        "degenotate.py -a {input.gff} -g {input.fasta} -l -o degenotate_results/{wildcards.ref}"
+        "degenotate.py --overwrite -a {input.gff} -g {input.fasta} -l -o degenotate_results/{wildcards.ref}"
