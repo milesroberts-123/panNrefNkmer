@@ -14,7 +14,7 @@ def load_matrix(filename):
     return df
 
 def bray_curtis(x, y):
-    return 1 - 2*sum(2*np.minimum(x, y))/sum(np.add(x, y))
+    return 1 - (2*sum(np.minimum(x, y)))/sum(np.add(x, y))
 
 #def jaccard(df1, df2):
 
