@@ -4,4 +4,6 @@ rule split_sites:
     output:
         "split_sites_results/{ref}_{chrom}.bed"
     shell:
-        "awk '(($1 == "{wildcards.chrom}"))' {input} > {output}"
+        """
+        awk '(($1 == "{wildcards.chrom}"))' {input} > {output}
+        """
