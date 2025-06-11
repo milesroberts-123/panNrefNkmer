@@ -5,6 +5,7 @@ import sys
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 import itertools
+import math
 
 def load_matrix(filename):
     print("Loading k-mer count matrix...")
