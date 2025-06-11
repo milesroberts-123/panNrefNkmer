@@ -13,8 +13,8 @@ def load_matrix(filename):
     df = pd.read_table(filename,header=None,sep=" ")
     return df
 
-def bray_curtis(df1, df2):
-    return 1 - 2*np.add(df1, df2)/sum(np.minimum(df1, df2))
+def bray_curtis(x, y):
+    return 1 - 2*sum(2*np.minimum(x, y))/sum(np.add(x, y))
 
 #def jaccard(df1, df2):
 
