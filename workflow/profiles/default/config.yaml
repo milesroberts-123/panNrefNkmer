@@ -17,8 +17,11 @@ default-resources:
 set-resources:
     bwa_mem:
         cpus_per_task: 2
+    sra:
+        cpus_per_task: 2
 
 # parallelization with threads needs to be defined separately:
 # threads and cpus_per_task are supposed to be synonymous for this plugin, but for some reason I need to specify them separately
 set-threads:
     bwa_mem: 2
+    sra: 2

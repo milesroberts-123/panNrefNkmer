@@ -12,7 +12,7 @@ rule sra:
         fi
 
         # download data
-        fasterq-dump --gzip --split-files --skip-technical --clip {wildcards.ID} 
+        fasterq-dump --threads {threads} --split-files --skip-technical {wildcards.ID} 
         
         # move data to folder
         mv {wildcards.ID}_1.fastq.gz raw_reads/
