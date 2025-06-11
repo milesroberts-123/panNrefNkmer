@@ -9,7 +9,8 @@ import math
 
 def load_matrix(filename):
     print("Loading k-mer count matrix...")
-    df = pd.read_csv(filename,sep="\t",header=None)
+    df = pd.read_csv(filename,sep="\t",header=None,index_col=False)
+    df = df.reset_index()
     return df
 
 def bray_curtis(df1, df2):
