@@ -16,7 +16,8 @@ default-resources:
 # here only rules, which require different (more) resources:
 set-resources:
     bwa_mem:
-        cpus_per_task: 4
+        cpus_per_task: 8
+        mem_mb_per_cpu: 2000
     sra:
         cpus_per_task: 2
     fastp:
