@@ -16,7 +16,7 @@ default-resources:
 # here only rules, which require different (more) resources:
 set-resources:
     bwa_mem:
-        cpus_per_task: 8
+        cpus_per_task: 16
         mem_mb_per_cpu: 2000
     sra:
         cpus_per_task: 2
@@ -33,7 +33,7 @@ set-resources:
 # parallelization with threads needs to be defined separately:
 # threads and cpus_per_task are supposed to be synonymous for this plugin, but for some reason I need to specify them separately
 set-threads:
-    bwa_mem: 8
+    bwa_mem: 16
     sra: 2
     kmc_contam_db: 2
     fastp: 2
