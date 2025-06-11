@@ -19,7 +19,9 @@ def counting_bloom_filter(filename,num_hash,array_size):
     
     with open(filename) as f:
         for line in f:
-            count = int(line.split()[1])
+            split_line = line.split()
+            kmer = split_line[0]
+            count = int(split_line[1])
             for k in range(0, num_hash):
                 index = mmh3.hash(kmer,k,signed=False)%array_size
                 final_array[index] += count
