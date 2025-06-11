@@ -17,11 +17,18 @@ def counting_bloom_filter(filename,num_hash,array_size):
     # initialize final array
     final_array = np.zeros(array_size,dtype=np.uint64)
     
+    lines_read = 0
     with open(filename) as f:
         for line in f:
+            lines_read += 1
+
+            if lines_read % 10000 == 0:
+                print(f"Processed {lines_read} lines...")
+                   
             split_line = line.split()
             kmer = split_line[0]
             count = int(split_line[1])
+            
             for k in range(0, num_hash):
                 index = mmh3.hash(kmer,k,signed=False)%array_size
                 final_array[index] += count
