@@ -45,6 +45,8 @@ A snakemake workflow to analyze short reads with a either a pangenome reference,
 
 - [x] add profiles
 
+- [ ] for counting bloom filter, just read input file one line at a time
+
 - [ ] split fastp into two steps to avoid storing extra temporary files
 
 - [ ] check if salmon quantmerge is fixed to allow custom column merge and gene level quantification

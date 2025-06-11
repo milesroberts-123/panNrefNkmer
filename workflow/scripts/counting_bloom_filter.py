@@ -15,7 +15,7 @@ def counting_bloom_filter(df,num_hash,array_size):
     print("Calculating counting bloom filter...")
 
     # initialize final array
-    final_array = np.zeros(array_size,dtype=np.int16)
+    final_array = np.zeros(array_size,dtype=np.uint64)
 
     kmers = df.kmer # vector of k-mer sequences
     counts = df.counts # vector of k-mer counts
