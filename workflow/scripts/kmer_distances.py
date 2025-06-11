@@ -42,7 +42,7 @@ def main(input, output):
 
         cos_total += 1 - cosine_similarity(x,y)
 
-    # calculate average across all pairsimport math
+    # calculate average across all pairs
     final_result = [bc_total/num_pairs, cos_total/num_pairs]
 
     # write to file
