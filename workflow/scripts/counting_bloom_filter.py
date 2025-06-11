@@ -5,29 +5,32 @@ import sys
 import numpy as np
 import mmh3
 
-def load_kmers(filename):
-    print("Loading k-mer counts...")
-    df = pd.read_csv(filename,sep="\t",header=None,names=["kmer","counts"])
+#def load_kmers(filename):
+#    print("Loading k-mer counts...")
+#    df = pd.read_csv(filename,sep="\t",header=None,names=["kmer","counts"])
+#
+#    return df
 
-    return df
-
-def counting_bloom_filter(df,num_hash,array_size):
+def counting_bloom_filter(filename,num_hash,array_size):
     print("Calculating counting bloom filter...")
 
     # initialize final array
     final_array = np.zeros(array_size,dtype=np.uint64)
-
-    kmers = df.kmer # vector of k-mer sequences
-    counts = df.counts # vector of k-mer counts
-    total = df.shape[0] # number of k-mers
+    
+    with open(filename) as f:
+        for line in f:
+		        count = int(line.split()[1])
+            for k in range(0, num_hash):
+                index = mmh3.hash(kmer,k,signed=False)%array_size
+                final_array[index] += count
 
     # iterate over k-mers and calculate hashes for each
-    for i in range(0,total):
-        kmer = kmers[i]
-        count = counts[i]
-        for k in range(0, num_hash):
-            index = mmh3.hash(kmer,k,signed=False)%array_size
-            final_array[index] += count
+#    for i in range(0,total):
+#        kmer = kmers[i]
+#        count = counts[i]
+#        for k in range(0, num_hash):
+#            index = mmh3.hash(kmer,k,signed=False)%array_size
+#            final_array[index] += count
 
     return final_array
 
@@ -46,10 +49,10 @@ def counting_bloom_filter(df,num_hash,array_size):
 
 def main(input, output, num_hash, array_size):
     # load k-mers
-    df = load_kmers(input)
+    #df = load_kmers(input)
 
     # calculating counting bloom filter
-    cbf = counting_bloom_filter(df,num_hash,array_size)
+    cbf = counting_bloom_filter(input,num_hash,array_size)
 
     # write counting bloom filter to disk
     print("Writing CBF to disk...")
