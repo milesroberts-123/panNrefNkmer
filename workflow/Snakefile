@@ -35,7 +35,7 @@ rule all_per_id:
         "cbf_results/{ID}.txt",
         #"bcftools_panref_results/{ID}_{panref}_{linref}.vcf",
         "mk_test_{linref}/mk.tsv",
-        "{linref}_salmon_quant.txt",
+        "salmon_quantmerge_results/{linref}.txt",
         "bcftools_concat_results/{linref}.vcf",
         expand("pixy_results/{{linref}}_{chrom}.txt", chrom = config["chroms"])
     output:
