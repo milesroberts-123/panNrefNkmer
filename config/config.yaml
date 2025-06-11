@@ -60,10 +60,10 @@ rna:
 ## contaminants to download from ncbi
 ncbi_contams:
  - "human"
- - "eubacteria"
- - "fungi"
- - "archaea"
  - "viruses"
+# - "eubacteria"
+# - "fungi"
+# - "archaea"
 
 ## custom contaminants, user provides fasta file
 custom_contams:
