@@ -8,6 +8,8 @@ rule salmon_quant:
     params:
         prefix = "qaunts/{ID}_{ref}_quant",
         index = "salmon_index_{ref}"
+    conda:
+        "../envs/salmon.yaml"
     shell:
         """
         salmon quant -i {params.index} \

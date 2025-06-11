@@ -9,6 +9,8 @@ rule salmon_index:
     params:
         prefix = "salmon_index_{ref}",
         k = config["k"]
+    conda:
+        "../envs/salmon.yaml"
     shell:
         """
         # create decoy transcriptome file
