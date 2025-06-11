@@ -45,11 +45,11 @@ def main(input, output):
         x = df[col1].values
         y = df[col2].values
 
-        print(x)
-        print(y)
+        #print(x)
+        #print(y)
         bc_total += bray_curtis(x,y)
 
-        cos_total += 1 - cosine_similarity([x],[y])
+        #cos_total += 1 - cosine_similarity([x],[y])
         
         pairs_done += 1
         
@@ -57,7 +57,7 @@ def main(input, output):
             print(f"Processed {pairs_done} k-mers...")
 
     # calculate average across all pairs
-    final_result = [str(bc_total/num_pairs), str(cos_total/num_pairs)]
+    final_result = [str(bc_total/num_pairs)]
 
     # write to file
     print(f"Write result to {output}...")
