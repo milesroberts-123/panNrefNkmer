@@ -27,9 +27,9 @@ def counting_bloom_filter(df,num_hash,array_size):
         count = counts[i]
         for k in range(0, num_hash):
             index = mmh3.hash(kmer,k,signed=False)%array_size
-            array[index] += count
+            final_array[index] += count
 
-    return array
+    return final_array
 
 #def bray_curtis(df1, df2):
 
