@@ -8,7 +8,7 @@ rule bcftools_linref_call:
     conda:
         "../envs/samtools.yaml"
     shell:
-        "samtools sort -O SAM {input.bam} | bcftools mpileup -f {input.ref} -R {input.sites} -Ou - | bcftools call -mv > {output}"
+        "bcftools mpileup -f {input.ref} -R {input.sites} -Ou {input.bam} | bcftools call -mv > {output}"
 
 rule bcftools_panref_call:
     input:
