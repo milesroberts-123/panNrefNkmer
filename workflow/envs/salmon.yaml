@@ -34,6 +34,7 @@ dependencies:
   - ncurses=6.5=h2d0b736_3
   - openssl=3.5.0=h7b32b05_1
   - salmon=1.10.3=h45fbf2d_5
+  - seqkit=2.10.0=h9ee0642_0
   - staden_io_lib=1.15.0=hfc9290b_4
   - tbb=2022.1.0=h4ce085d_0
   - xz=5.8.1=hbcc6ac9_2
