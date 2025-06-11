@@ -5,7 +5,7 @@ rule salmon_index:
     output:
         decoy_list = "seqkit_results/{ref}_decoys.txt",
         decoy = "{ref}_decoys.fa",
-        idx = "salmon_index_{ref}"
+        done = touch("salmon_index_{ref}.done")
     params:
         prefix = "salmon_index_{ref}",
         k = config["k"]
@@ -20,5 +20,5 @@ rule salmon_index:
         seqkit seq --name {input.genome} > {output.decoy_list}
 
         # make salmon index
-        salmon index -t {output.decoy} -i {params.prefix} --decoys {output.decoy_list} -k {params.k}
+        salmon index --threads {threads} -t {output.decoy} -i {params.prefix} --decoys {output.decoy_list} -k {params.k}
         """

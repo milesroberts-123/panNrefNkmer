@@ -1,13 +1,14 @@
 rule salmon_quantmerge:
     input:
-        expand("qaunts/{ID}_{{ref}}_quant.sf", ID = config["rna"])
+        expand("salmon_quant_results/{{ref}}_{ID}/quant.sf", ID = config["rna"])
     output:
-        "{ref}_salmon_quant.txt"
+        "salmon_quantmerge_results/{ref}.txt"
     params:
-        prefix = expand("qaunts/{ID}_{{ref}}_quant", ID = config["rna"]),
+        prefix = expand("salmon_quant_results/{{ref}}_{ID}", ID = config["rna"]),
+        samnames = config["rna"]
     conda:
         "../envs/salmon.yaml"
     shell:
         """
-        salmon quantmerge --quants {params.prefix} -c tpm -o {output}
+        salmon quantmerge --quants {params.prefix} --names {params.samnames} -o {output}
         """
