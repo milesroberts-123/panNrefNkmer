@@ -1,4 +1,5 @@
 # counting bloom filter function from: https://github.com/williarj/kmers2024/blob/main/diversity_metrics/measure_diversity.py
+print("Importing packages...")
 import click
 import pandas as pd
 import sys
@@ -9,8 +10,7 @@ import math
 
 def load_matrix(filename):
     print("Loading k-mer count matrix...")
-    df = pd.read_csv(filename,sep="\t",header=None,index_col=False)
-    df = df.reset_index()
+    df = pd.read_table(filename,header=None,sep=" ")
     return df
 
 def bray_curtis(df1, df2):

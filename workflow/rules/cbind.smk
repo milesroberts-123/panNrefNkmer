@@ -6,4 +6,4 @@ rule cbind:
     output:
         "cbf_table.txt"
     shell:
-        "paste {input} | column -s $'\t' -t > {output}"
+        "paste -d" " {input} > {output}"
