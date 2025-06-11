@@ -23,7 +23,7 @@ rule kmc:
         mkdir tmp_kmc_{wildcards.ID}
 
         # count k-mers
-        kmc -t{threads} -ci{params.mincount} -cs{params.maxcount} -k{params.k} {input} kmc_db_{wildcards.ID} tmp_kmc_{wildcards.ID} &>> {log}
+        kmc -m7 -t{threads} -ci{params.mincount} -cs{params.maxcount} -k{params.k} {input} kmc_db_{wildcards.ID} tmp_kmc_{wildcards.ID} &>> {log}
 
         # dump all k-mers to text file
         kmc_tools transform kmc_db_{wildcards.ID} dump {output.counts} &>> {log}
