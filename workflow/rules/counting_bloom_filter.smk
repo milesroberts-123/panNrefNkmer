@@ -9,5 +9,11 @@ rule counting_bloom_filter:
     conda:
         "../envs/cbf.yaml"
     shell:
-        "python scripts/counting_bloom_filter.py --input {input} --output {output} --array-size {params.array_size} --num-hash {params.num_hash}"
+        """
+        if [ ! -d "cbf_results" ]; then
+            mkdir cbf_results
+        fi
+        
+        python scripts/counting_bloom_filter.py --input {input} --output {output} --array-size {params.array_size} --num-hash {params.num_hash}
+        """
 

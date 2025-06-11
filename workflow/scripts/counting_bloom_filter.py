@@ -22,7 +22,7 @@ def counting_bloom_filter(filename,num_hash,array_size):
         for line in f:
             lines_read += 1
 
-            if lines_read % 100000 == 0:
+            if lines_read % 1000000 == 0:
                 print(f"Processed {lines_read} lines...")
                    
             split_line = line.split()
