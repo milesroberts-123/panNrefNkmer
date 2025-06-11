@@ -34,7 +34,12 @@ def main(input, output):
 
     bc_total = 0
     cos_total = 0
-
+    
+    print(f"Number of columns: {n}")
+    print(f"Number of column pairs: {num_pairs}")
+    
+    print("Looping over pairs...")
+    pairs_done = 0
     for col1, col2 in itertools.combinations(df.columns, 2):
         x = df[col1].values
         y = df[col2].values
@@ -42,11 +47,17 @@ def main(input, output):
         bc_total += bray_curtis(x,y)
 
         cos_total += 1 - cosine_similarity(x,y)
+        
+        pairs_done += 1
+        
+        if pairs_done % 1000 == 0:
+            print(f"Processed {pairs_done} k-mers...")
 
     # calculate average across all pairs
     final_result = [bc_total/num_pairs, cos_total/num_pairs]
 
     # write to file
+    print(f"Write result to {output}...")
     with open(output, 'w') as file:
         file.write(','.join(final_result))
 
