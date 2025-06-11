@@ -16,7 +16,7 @@ rule datasets:
         # download genomes based on metadata
         datasets rehydrate --directory contam_genomes/
 
-        # search directory for all genomes and copy them
+        # search directory for all genomes and copy them into one file
         find contam_genomes/ncbi_dataset/data/ -type f -name '*.fna' -exec cat {{}} \; > {output}
 
         # clean up

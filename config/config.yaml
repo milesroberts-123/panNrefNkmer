@@ -46,14 +46,13 @@ samples:
 
 ## arabidopsis lyrata: https://doi.org/10.1093/molbev/msx193
 outgroup:
- - "SRR5124999"
- - "SRR5124997"
+ - "SRR5124991"
+ - "SRR5124985"
 
 ## arabiodpsis thaliana:
 rna:
  - "ERR1589014"
  - "ERR1589013"
- - "ERR1589012"
 
 # contaminants to include in read QC =================================
 
@@ -80,7 +79,7 @@ custom_contams:
 linrefs:
  - "ah7"
  - "arb0"
- - "belmonte494"
+# - "belmonte494"
 # - "bor1"
 # - "cdm0"
 # - "col"
