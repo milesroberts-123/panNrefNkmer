@@ -1,5 +1,8 @@
 # vg-kmer-ref-snakes
 
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+
 A snakemake workflow to analyze short reads with a either a pangenome reference, linear reference, or no reference
 
 # To-do
@@ -40,7 +43,11 @@ A snakemake workflow to analyze short reads with a either a pangenome reference,
 
 - [x] watterson's theta
 
-- [ ] add profiles
+- [x] add profiles
+
+- [ ] split fastp into two steps to avoid storing extra temporary files
+
+- [ ] check if salmon quantmerge is fixed to allow custom column merge and gene level quantification
 
 - [ ] add localrules
 

@@ -1,4 +1,5 @@
 # List of chromosome names, for parallelization =========================
+
 chroms:
  - "Chr1"
  - "Chr2"
@@ -6,7 +7,7 @@ chroms:
  - "Chr4"
  - "Chr5"
 
-# kmc parameters ====================================================
+# kmc parameters =======================================================
 
 ## k-mer length
 k: 31
@@ -23,6 +24,8 @@ array_size: 100000
 ## number of hash functions
 num_hash: 4
 
+## number of k-mer hits that a read needs to have to determine contamination
+
 # fastp parameters ===================================================
 
 ## unqualified_percent_limit for fastp: how many percents of bases are allowed to be unqualified in terms of quality score
@@ -35,17 +38,18 @@ qualThresh: 30
 windowLength: 1
 
 # samples to download from SRA =======================================
-# arabiodpsis thaliana: 
-samples:
- - "SRR1946569"
- - "SRR1946568"
 
-# arabidopsis lyrata: https://doi.org/10.1093/molbev/msx193
+## arabiodpsis thaliana: 
+samples:
+ - "SRR1946554"
+ - "SRR1946551"
+
+## arabidopsis lyrata: https://doi.org/10.1093/molbev/msx193
 outgroup:
  - "SRR5124999"
  - "SRR5124997"
 
-# arabiodpsis thaliana:
+## arabiodpsis thaliana:
 rna:
  - "ERR1589014"
  - "ERR1589013"

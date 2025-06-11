@@ -5,7 +5,7 @@ rule salmon_index:
     output:
         decoy_list = "seqkit_results/{ref}_decoys.txt",
         decoy = "{ref}_decoys.fa",
-        done = touch("salmon_index_{ref}.done")
+        done = temp(touch("salmon_index_{ref}.done"))
     params:
         prefix = "salmon_index_{ref}",
         k = config["k"]

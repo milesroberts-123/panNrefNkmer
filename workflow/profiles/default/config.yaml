@@ -19,6 +19,8 @@ set-resources:
         cpus_per_task: 2
     sra:
         cpus_per_task: 2
+    fastp:
+        cpus_per_task: 2
     degenotate:
         mem_mb_per_cpu: 16000
     kmc_contam_db:
@@ -33,3 +35,4 @@ set-threads:
     bwa_mem: 2
     sra: 2
     kmc_contam_db: 2
+    fastp: 2
