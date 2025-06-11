@@ -4,7 +4,6 @@ import pandas as pd
 import sys
 import numpy as np
 import mmh3
-#from sklearn.metrics.pairwise import cosine_similarity
 
 def load_kmers(filename):
     print("Loading k-mer counts...")
@@ -47,14 +46,14 @@ def counting_bloom_filter(df,num_hash,array_size):
 
 def main(input, output, num_hash, array_size):
     # load k-mers
-    df = load_kmers(filename)
+    df = load_kmers(input)
 
     # calculating counting bloom filter
     cbf = counting_bloom_filter(df,num_hash,array_size)
 
     # write counting bloom filter to disk
     print("Writing CBF to disk...")
-    np.savetxt(outfile, cbf, delimiter=',', fmt='%d')
+    np.savetxt(output, cbf, delimiter=',', fmt='%d')
     print("Done! :D")
 
 if __name__ == '__main__':
