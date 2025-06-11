@@ -14,7 +14,7 @@ def load_matrix(filename):
     return df
 
 def bray_curtis(df1, df2):
-    return 1 - 2*np.sum(df1, df2)/sum(np.minimum(df1, df2))
+    return 1 - 2*np.add(df1, df2)/sum(np.minimum(df1, df2))
 
 #def jaccard(df1, df2):
 
@@ -28,7 +28,7 @@ def bray_curtis(df1, df2):
 def main(input, output):
     # load matrix
     df = load_matrix(input)
-
+    print(df)
     # loop over pairs of columns and calcualte distances
     n = len(df.columns)
     num_pairs = math.comb(n, 2)
@@ -45,9 +45,11 @@ def main(input, output):
         x = df[col1].values
         y = df[col2].values
 
+        print(x)
+        print(y)
         bc_total += bray_curtis(x,y)
 
-        cos_total += 1 - cosine_similarity(x,y)
+        cos_total += 1 - cosine_similarity([x],[y])
         
         pairs_done += 1
         
@@ -55,7 +57,7 @@ def main(input, output):
             print(f"Processed {pairs_done} k-mers...")
 
     # calculate average across all pairs
-    final_result = [bc_total/num_pairs, cos_total/num_pairs]
+    final_result = [str(bc_total/num_pairs), str(cos_total/num_pairs)]
 
     # write to file
     print(f"Write result to {output}...")
