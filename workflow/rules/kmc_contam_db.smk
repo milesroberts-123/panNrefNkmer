@@ -20,7 +20,7 @@ rule kmc_contam_db:
         echo {input} | tr ' ' '\n' > {output.list}
 
         # build kmc db
-        kmc -k{params.k} -m7 -t{threads} -fm @{output.list} contam kmc_tmp_dir/
+        kmc -k{params.k} -m15 -t{threads} -fm @{output.list} contam kmc_tmp_dir/
 
         # clean up
         rm -r kmc_tmp_dir/

@@ -21,9 +21,15 @@ set-resources:
         cpus_per_task: 2
     degenotate:
         mem_mb_per_cpu: 16000
+    kmc_contam_db:
+        mem_mb_per_cpu: 16000
+        cpus_per_task: 2
+    kmc:
+        mem_mb_per_cpu: 16000
 
 # parallelization with threads needs to be defined separately:
 # threads and cpus_per_task are supposed to be synonymous for this plugin, but for some reason I need to specify them separately
 set-threads:
     bwa_mem: 2
     sra: 2
+    kmc_contam_db: 2
