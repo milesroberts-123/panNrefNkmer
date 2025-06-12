@@ -37,7 +37,7 @@ rule all_per_id:
         "mk_test_{linref}/mk.tsv",
         "salmon_quantmerge_results/{linref}.txt",
         "bcftools_concat_results/{linref}.vcf.gz",
-        "pixy_results/{linref}.txt"
+        expand("pixy_results/{{linref}}_{stat}.txt",stat = ["pi", "watterson_theta", "tajima_d", "dxy", "fst"])
     output:
         touch("{ID}_{linref}_{panref}.done")
 
