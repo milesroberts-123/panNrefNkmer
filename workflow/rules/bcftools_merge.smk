@@ -13,11 +13,15 @@ rule bcftools_concat:
     input:
         expand("bcftools_linref_merge_results/{{ref}}_{split}.vcf.gz", split = range(10, 10 + config["splits"]))
     output:
-        "bcftools_concat_results/{ref}.vcf.gz"
+        gz="bcftools_concat_results/{ref}.vcf.gz"
+        tbi="bcftools_concat_results/{ref}.vcf.gz.tbi"
     conda:
         "../envs/samtools.yaml"
     shell:
-        "bcftools concat {input} > {output}"
+        """
+        bcftools concat -Oz -o {output.gz} {input}
+        tabix {output.gz}
+        """
 
 rule bcftools_panref_merge:
     input:
