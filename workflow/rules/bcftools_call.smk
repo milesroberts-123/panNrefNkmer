@@ -1,6 +1,7 @@
 rule bcftools_linref_call:
     input:
         bam = "mark_dup_results/{ID}_{ref}.bam",
+        bai = "mark_dup_results/{ID}_{ref}.bam.bai",
         ref = "../config/linear_genomes/sequence/{ref}.fa",
         sites = "split_sites_{ref}_{split}"
     output:
@@ -9,6 +10,16 @@ rule bcftools_linref_call:
         "../envs/samtools.yaml"
     shell:
         "bcftools mpileup -f {input.ref} -R {input.sites} {input.bam} | bcftools call -f GQ -m -Oz -o {output}"
+
+rule bam_index:
+    input:
+        "mark_dup_results/{ID}_{ref}.bam",
+    output:
+        "mark_dup_results/{ID}_{ref}.bam.bai",
+    conda:
+        "../envs/samtools.yaml"
+    shell:
+        "samtools index {input}"
 
 rule bcftools_panref_call:
     input:
