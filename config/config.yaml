@@ -1,6 +1,6 @@
 # List of chromosome names, for parallelization =========================
 
-splits: 20
+splits: 40
 
 chroms:
  - "Chr1"
