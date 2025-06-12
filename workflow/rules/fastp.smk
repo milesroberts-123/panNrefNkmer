@@ -7,13 +7,13 @@ rule fastp:
         dpread2=temp("fastp_results/dedup_paired_R2_{ID}.fastq.gz"),
         duread1=temp("fastp_results/dedup_unpaired_R1_{ID}.fastq.gz"),
         duread2=temp("fastp_results/dedup_unpaired_R2_{ID}.fastq.gz"),
-        pread1="fastp_results/trimmed_paired_R1_{ID}.fastq.gz",
-        pread2="fastp_results/trimmed_paired_R2_{ID}.fastq.gz",
-        uread1="fastp_results/trimmed_unpaired_R1_{ID}.fastq.gz",
-        uread2="fastp_results/trimmed_unpaired_R2_{ID}.fastq.gz",
-        jsonR1R2="fastp_results/{ID}_R1R2.json",
-        jsonU1="fastp_results/{ID}_U1.json",
-        jsonU2="fastp_results/{ID}_U2.json",
+        pread1=temp("fastp_results/trimmed_paired_R1_{ID}.fastq.gz"),
+        pread2=temp("fastp_results/trimmed_paired_R2_{ID}.fastq.gz"),
+        uread1=temp("fastp_results/trimmed_unpaired_R1_{ID}.fastq.gz"),
+        uread2=temp("fastp_results/trimmed_unpaired_R2_{ID}.fastq.gz"),
+        jsonR1R2=temp("fastp_results/{ID}_R1R2.json"),
+        jsonU1=temp("fastp_results/{ID}_U1.json"),
+        jsonU2=temp("fastp_results/{ID}_U2.json"),
     conda:
         "../envs/fastp.yaml"
     log:

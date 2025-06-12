@@ -4,7 +4,7 @@ rule salmon_quant:
         read1 = "fastp_results/trimmed_paired_R1_{ID}.fastq.gz",
         read2 = "fastp_results/trimmed_paired_R2_{ID}.fastq.gz"
     output:
-        "salmon_quant_results/{ref}_{ID}/quant.sf"
+        temp("salmon_quant_results/{ref}_{ID}/quant.sf")
     params:
         prefix = "salmon_quant_results/{ref}_{ID}",
         index = "salmon_index_{ref}"

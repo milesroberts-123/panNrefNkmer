@@ -4,8 +4,8 @@ rule pixy:
         tbi = "bcftools_concat_results/{ref}_sorted.vcf.gz.tbi",
         gff = "../config/linear_genomes/annotation/{ref}.gff",
     output:
-        bed = "pixy_results/{ref}_genes.bed",
-        populations = "populations_{ref}.txt",
+        bed = temp("pixy_results/{ref}_genes.bed"),
+        populations = temp("populations_{ref}.txt"),
         pixy = expand("pixy_results/{{ref}}_{stat}.txt",stat = ["pi", "watterson_theta", "tajima_d", "dxy", "fst"])
     params:
         ingroup = config["samples"],

@@ -34,6 +34,8 @@ rule all_per_id:
     input:
         "cbf_results/{ID}.txt",
         #"bcftools_panref_results/{ID}_{panref}_{linref}.vcf",
+        "samtools_stats/{ID}_{linref}.txt",
+        "bcftools_stats_results/{linref}.txt",
         "mk_test_{linref}/mk.tsv",
         "salmon_quantmerge_results/{linref}.txt",
         "bcftools_concat_results/{linref}.vcf.gz",

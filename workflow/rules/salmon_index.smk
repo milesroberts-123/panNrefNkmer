@@ -3,8 +3,8 @@ rule salmon_index:
         cds = "degenotate_results/{ref}/cds-nt-longest.fa",
         genome = "../config/linear_genomes/sequence/{ref}.fa",
     output:
-        decoy_list = "seqkit_results/{ref}_decoys.txt",
-        decoy = "{ref}_decoys.fa",
+        decoy_list = temp("seqkit_results/{ref}_decoys.txt"),
+        decoy = temp("{ref}_decoys.fa"),
         done = temp(touch("salmon_index_{ref}.done"))
     params:
         prefix = "salmon_index_{ref}",

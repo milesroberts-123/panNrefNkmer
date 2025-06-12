@@ -49,9 +49,9 @@ A snakemake workflow to analyze short reads with a either a pangenome reference,
 
 - [x] include outgroup in bcftools merge
 
-- [ ] bcftools stats for ingroup and outgroup, variant and invariant sites
+- [x] samtools stats for read alignment, bam files
 
-- [ ] samtools stats for read alignment, bam files
+- [x] bcftools stats for ingroup and outgroup, variant and invariant sites
 
 - [ ] benchmarks for various steps
 

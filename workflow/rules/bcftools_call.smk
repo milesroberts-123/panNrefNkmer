@@ -5,8 +5,8 @@ rule bcftools_linref_call:
         ref = "../config/linear_genomes/sequence/{ref}.fa",
         sites = "split_sites_{ref}_{split}"
     output:
-        gz="bcftools_linref_results/{ID}_{ref}_{split}.vcf.gz",
-        tbi="bcftools_linref_results/{ID}_{ref}_{split}.vcf.gz.tbi"
+        gz=temp("bcftools_linref_results/{ID}_{ref}_{split}.vcf.gz"),
+        tbi=temp("bcftools_linref_results/{ID}_{ref}_{split}.vcf.gz.tbi")
     conda:
         "../envs/samtools.yaml"
     shell:
@@ -20,7 +20,7 @@ rule bam_index:
     input:
         "mark_dup_results/{ID}_{ref}.bam",
     output:
-        "mark_dup_results/{ID}_{ref}.bam.bai",
+        temp("mark_dup_results/{ID}_{ref}.bam.bai"),
     conda:
         "../envs/samtools.yaml"
     shell:

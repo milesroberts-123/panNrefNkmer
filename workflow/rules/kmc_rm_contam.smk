@@ -7,8 +7,8 @@ rule kmc_rm_contam:
         pre="contam.kmc_pre",
         suf="contam.kmc_suf"
     output:
-        filt="no_contam_reads/{ID}.fastq",
-        list="input_{ID}.txt"
+        filt=temp("no_contam_reads/{ID}.fastq"),
+        list=temp("input_{ID}.txt")
     conda:
         "../envs/kmc.yaml"
     shell:
