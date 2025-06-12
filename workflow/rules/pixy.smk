@@ -6,7 +6,7 @@ rule pixy:
     output:
         bed = "pixy_results/{ref}_genes.bed",
         populations = "populations_{ref}.txt",
-        pixy = "pixy_results/{ref}.txt"
+        pixy = expand("pixy_results/{{ref}}_{stat}.txt",stat = ["pi", "watterson_theta", "tajima_d", "dxy", "fst"])
     params:
         ingroup = config["samples"],
         outgroup = config["outgroup"]
@@ -21,5 +21,5 @@ rule pixy:
         echo {params.outgroup} | sed 's: :\n:g' | sed 's:$:\toutgroup:g' >> {output.populations}
 
         # calculate statistics by gene
-        pixy --populations {output.populations} --vcf {input.vcf} --bed_file {output.bed} --stats pi fst dxy watterson_theta tajima_d --output_folder pixy_results --output_prefix {wildcards.ref}_
+        pixy --populations {output.populations} --vcf {input.vcf} --bed_file {output.bed} --stats pi fst dxy watterson_theta tajima_d --output_folder pixy_results --output_prefix {wildcards.ref}
         """
