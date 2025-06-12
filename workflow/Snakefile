@@ -37,7 +37,7 @@ rule all_per_id:
         "mk_test_{linref}/mk.tsv",
         "salmon_quantmerge_results/{linref}.txt",
         "bcftools_concat_results/{linref}.vcf",
-        expand("pixy_results/{{linref}}_{chrom}.txt", chrom = config["chroms"])
+        "pixy_results/{linref}.txt"
     output:
         touch("{ID}_{linref}_{panref}.done")
 
