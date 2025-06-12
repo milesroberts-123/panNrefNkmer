@@ -1,7 +1,7 @@
 rule pixy:
     input:
-        vcf = "bcftools_concat_results/{ref}.vcf.gz",
-        tbi = "bcftools_concat_results/{ref}.vcf.gz.tbi",
+        vcf = "bcftools_concat_results/{ref}_sorted.vcf.gz",
+        tbi = "bcftools_concat_results/{ref}_sorted.vcf.gz.tbi",
         gff = "../config/linear_genomes/annotation/{ref}.gff",
     output:
         bed = temp("pixy_results/{ref}_genes.bed"),
