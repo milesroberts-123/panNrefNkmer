@@ -1,7 +1,7 @@
 rule bcftools_linref_merge:
     input:
         gz=expand("bcftools_linref_results/{ID}_{{ref}}_{{split}}.vcf.gz", ID=config["samples"]),
-        tbi=expand("bcftools_linref_results/{ID}_{{ref}}_{{split}}.vcf.tbi", ID=config["samples"])
+        tbi=expand("bcftools_linref_results/{ID}_{{ref}}_{{split}}.vcf.gz.tbi", ID=config["samples"])
     output:
         "bcftools_linref_merge_results/{ref}_{split}.vcf.gz"
     conda:
