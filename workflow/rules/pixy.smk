@@ -9,6 +9,7 @@ rule pixy:
         pixy = "pixy_results/{ref}.txt"
     params:
         ingroup = config["samples"],
+        outgroup = config["outgroup"]
     conda:
         "../envs/pixy.yaml"
     shell:
@@ -17,6 +18,7 @@ rule pixy:
         awk '(($3 == "gene"))' {input.gff} | cut -f1,4,5 > {output.bed}
         
         echo {params.ingroup} | sed 's: :\n:g' | sed 's:$:\tingroup:g' > {output.populations}
+        echo {params.outgroup} | sed 's: :\n:g' | sed 's:$:\toutgroup:g' >> {output.populations}
 
         # calculate statistics by gene
         pixy --populations {output.populations} --vcf {input.vcf} --bed_file {output.bed} --stats pi fst dxy watterson_theta tajima_d --output_folder pixy_results --output_prefix {wildcards.ref}_

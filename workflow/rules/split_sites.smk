@@ -9,7 +9,7 @@ rule split_sites:
         splits = config["splits"]
     shell:
         """
-        awk '(($5 == 4))' {input} > {output.tmp}
+        awk '(($5 == 4 || $5 == 0))' {input} > {output.tmp}
 
         split -n l/{params.splits} --numeric-suffixes=10 {output.tmp} {params.prefix}
         """
