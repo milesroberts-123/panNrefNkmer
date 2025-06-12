@@ -15,7 +15,7 @@ rule bcftools_concat:
     output:
         gz="bcftools_concat_results/{ref}.vcf.gz",
         sorted="bcftools_concat_results/{ref}_sorted.vcf.gz",
-        tbi="bcftools_concat_results/{ref}.vcf.gz.tbi"
+        tbi="bcftools_concat_results/{ref}_sorted.vcf.gz.tbi"
     conda:
         "../envs/samtools.yaml"
     shell:
