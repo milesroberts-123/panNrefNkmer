@@ -1,6 +1,6 @@
 rule pixy:
     input:
-        vcf = "bcftools_concat_results/{ref}.vcf",
+        vcf = "bcftools_concat_results/{ref}.vcf.gz",
         gff = "../config/linear_genomes/annotation/{ref}.gff",
     output:
         bed = temp("pixy_results/{ref}_genes.bed"),
