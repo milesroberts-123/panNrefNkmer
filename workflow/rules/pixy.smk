@@ -15,7 +15,7 @@ rule pixy:
     conda:
         "../envs/pixy.yaml"
     shell:
-        """
+        r"""
         # get bed intervals by gene
         awk '(($3 == "gene"))' {input.gff} > {output.bed}
         
