@@ -7,7 +7,7 @@ rule pixy:
         bed = temp("pixy_results/{ref}_genes.bed"),
         ingroup = "ingroup_{ref}.txt",
         outgroup = "outgroup_{ref}.txt",
-        populations = "populations_{ref}.txt"
+        populations = "populations_{ref}.txt",
         pixy = "pixy_results/{ref}.txt"
     params:
         ingroup = config["samples"],
