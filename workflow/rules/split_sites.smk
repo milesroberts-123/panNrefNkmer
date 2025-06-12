@@ -2,8 +2,14 @@ rule split_sites:
     input:
         "degenotate_results/{ref}/degeneracy-all-sites.bed"
     output:
-        "split_sites_results/{ref}_{chrom}.bed"
+        tmp=temp("{ref}_4.bed"),
+        expand("split_sites_{{ref}}_{split}", split = range(10, 10 + config["splits"]))
+    params:
+        prefix = "split_sites_{ref}_",
+        splits = config["splits"]
     shell:
         """
-        awk '(($1 == "{wildcards.chrom}"))' {input} > {output}
+        awk '(($5 == 4))' {input} > {output.tmp}
+
+        split -n -l/{params.splits} --numeric-suffixes=10 {input} {params.prefix}
         """

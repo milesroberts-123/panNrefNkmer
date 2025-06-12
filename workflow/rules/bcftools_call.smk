@@ -2,13 +2,13 @@ rule bcftools_linref_call:
     input:
         bam = "mark_dup_results/{ID}_{ref}.bam",
         ref = "../config/linear_genomes/sequence/{ref}.fa",
-        sites = "split_sites_results/{ref}_{chrom}.bed"
+        sites = "split_sites_{ref}_{split}"
     output:
-        "bcftools_linref_results/{ID}_{ref}_{chrom}.vcf"
+        "bcftools_linref_results/{ID}_{ref}_{split}.vcf"
     conda:
         "../envs/samtools.yaml"
     shell:
-        "bcftools mpileup -f {input.ref} -R {input.sites} -Ou {input.bam} | bcftools call -mv > {output}"
+        "bcftools mpileup -f {input.ref} -R {input.sites} {input.bam} | bcftools call -f GQ -m -Oz -o {output}"
 
 rule bcftools_panref_call:
     input:
