@@ -45,7 +45,9 @@ A snakemake workflow to analyze short reads with a either a pangenome reference,
 
 - [x] add profiles
 
-- [ ] for counting bloom filter, just read input file one line at a time
+- [x] for counting bloom filter, just read input file one line at a time
+
+- [ ] include outgroup in bcftools merge
 
 - [ ] split fastp into two steps to avoid storing extra temporary files
 
