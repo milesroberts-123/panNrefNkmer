@@ -5,7 +5,7 @@ rule bcftools_linref_call:
         ref = "../config/linear_genomes/sequence/{ref}.fa",
         sites = "split_sites_{ref}_{split}"
     output:
-        gz="bcftools_linref_results/{ID}_{ref}_{split}.vcf.gz"
+        gz="bcftools_linref_results/{ID}_{ref}_{split}.vcf.gz",
         tbi="bcftools_linref_results/{ID}_{ref}_{split}.vcf.gz.tbi"
     conda:
         "../envs/samtools.yaml"
@@ -14,7 +14,7 @@ rule bcftools_linref_call:
         bcftools mpileup -f {input.ref} -R {input.sites} {input.bam} | bcftools call -f GQ -m -Oz -o {output.gz}
         
         tabix {output.gz}
-        "
+        """
 
 rule bam_index:
     input:
