@@ -11,5 +11,5 @@ rule split_sites:
         """
         awk '(($5 == 4))' {input} > {output.tmp}
 
-        split -n -l/{params.splits} --numeric-suffixes=10 {input} {params.prefix}
+        split -n l/{params.splits} --numeric-suffixes=10 {input} {params.prefix}
         """
