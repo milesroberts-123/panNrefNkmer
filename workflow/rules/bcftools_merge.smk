@@ -10,7 +10,7 @@ rule bcftools_linref_merge:
 
 rule bcftools_concat:
     input:
-        expand("bcftools_linref_merge_results/{{ref}}_{split}.vcf", split = config["splits"])
+        expand("bcftools_linref_merge_results/{{ref}}_{split}.vcf", split = range(10, 10 + config["splits"]))
     output:
         "bcftools_concat_results/{ref}.vcf"
     conda:
