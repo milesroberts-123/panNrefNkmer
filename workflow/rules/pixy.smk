@@ -25,5 +25,5 @@ rule pixy:
         cat {output.ingroup} {output.outgroup} > {output.populations}
 
         # calculate statistics by gene
-        pixy --populations {output.populations} --vcf {input.vcf} --windows {output.bed} --stats pi fst dxy watterson_theta tajima_d --output_folder pixy_results --output_prefix {wildcards.ref}_
+        pixy --populations {output.populations} --vcf {input.vcf} --bed_file {output.bed} --stats pi fst dxy watterson_theta tajima_d --output_folder pixy_results --output_prefix {wildcards.ref}_
         """
