@@ -49,6 +49,12 @@ A snakemake workflow to analyze short reads with a either a pangenome reference,
 
 - [x] include outgroup in bcftools merge
 
+- [ ] bcftools stats for ingroup and outgroup, variant and invariant sites
+
+- [ ] samtools stats for read alignment, bam files
+
+- [ ] benchmarks for various steps
+
 - [ ] split fastp into two steps to avoid storing extra temporary files
 
 - [ ] check if salmon quantmerge is fixed to allow custom column merge and gene level quantification
