@@ -5,7 +5,7 @@ rule mark_dup:
     input:
         "bwa_results/{ID}_{ref}.bam"
     output:
-        temp("mark_dup_results/{ID}_{ref}.bam")
+        "mark_dup_results/{ID}_{ref}.bam"
     conda:
         "../envs/samtools.yaml"
     shell:

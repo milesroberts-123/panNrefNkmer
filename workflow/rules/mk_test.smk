@@ -10,4 +10,4 @@ rule mk_test:
     conda:
         "../envs/degenotate.yaml"
     shell:
-        "degenotate.py -a {input.gff} -g {input.fa} -v {input.vcf} -u {params.outgroup} -o mk_test_{wildcards.ref} -sfs"
+        "degenotate.py -a {input.gff} -g {input.fa} -v {input.vcf} -u $(echo {params.outgroup} | sed 's: :,:g' ) -o mk_test_{wildcards.ref} -sfs"

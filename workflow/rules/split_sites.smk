@@ -2,7 +2,7 @@ rule split_sites:
     input:
         "degenotate_results/{ref}/degeneracy-all-sites.bed"
     output:
-        tmp=temp("{ref}_4.bed"),
+        tmp="{ref}_04.bed",
         split_files = expand("split_sites_{{ref}}_{split}", split = range(10, 10 + config["splits"]))
     params:
         prefix = "split_sites_{ref}_",

@@ -1,7 +1,7 @@
 rule sra:
     output:
-        r1=temp("raw_reads/{ID}_1.fastq"),
-        r2=temp("raw_reads/{ID}_2.fastq")
+        r1="raw_reads/{ID}_1.fastq",
+        r2="raw_reads/{ID}_2.fastq"
     conda:
         "../envs/sra.yaml"
     shell:

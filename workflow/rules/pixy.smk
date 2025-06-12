@@ -4,7 +4,7 @@ rule pixy:
         tbi = "bcftools_concat_results/{ref}_sorted.vcf.gz.tbi",
         gff = "../config/linear_genomes/annotation/{ref}.gff",
     output:
-        bed = temp("pixy_results/{ref}_genes.bed"),
+        bed = "pixy_results/{ref}_genes.bed",
         populations = "populations_{ref}.txt",
         pixy = "pixy_results/{ref}.txt"
     params:
