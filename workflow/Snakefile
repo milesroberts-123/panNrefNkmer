@@ -36,7 +36,7 @@ rule all_per_id:
         #"bcftools_panref_results/{ID}_{panref}_{linref}.vcf",
         "mk_test_{linref}/mk.tsv",
         "salmon_quantmerge_results/{linref}.txt",
-        "bcftools_concat_results/{linref}.vcf",
+        "bcftools_concat_results/{linref}.vcf.gz",
         "pixy_results/{linref}.txt"
     output:
         touch("{ID}_{linref}_{panref}.done")
