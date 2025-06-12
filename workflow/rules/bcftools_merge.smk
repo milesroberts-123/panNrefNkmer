@@ -1,8 +1,8 @@
 rule bcftools_linref_merge:
     input:
-        expand("bcftools_linref_results/{ID}_{{ref}}_{{chrom}}.vcf", ID=config["samples"])
+        expand("bcftools_linref_results/{ID}_{{ref}}_{{split}}.vcf", ID=config["samples"])
     output:
-        "bcftools_linref_merge_results/{ref}_{chrom}.vcf"
+        "bcftools_linref_merge_results/{ref}_{split}.vcf"
     conda:
         "../envs/samtools.yaml"
     shell:
@@ -10,7 +10,7 @@ rule bcftools_linref_merge:
 
 rule bcftools_concat:
     input:
-        expand("bcftools_linref_merge_results/{{ref}}_{chrom}.vcf", chrom = config["chroms"])
+        expand("bcftools_linref_merge_results/{{ref}}_{split}.vcf", split = config["splits"])
     output:
         "bcftools_concat_results/{ref}.vcf"
     conda:
