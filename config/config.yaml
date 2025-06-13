@@ -20,7 +20,7 @@ array_size: 100000
 num_hash: 4
 
 ## number of k-mer hits that a read needs to have to determine contamination
-contam_match_limit: 9
+contam_match_limit: 14
 
 # fastp parameters ==========================================================================
 
@@ -41,8 +41,12 @@ nBaseLimit: 5
 ## dna-seq samples for ingroup
 ## arabiodpsis thaliana: 
 samples:
- - "SRR1946554"
  - "SRR1946551"
+ - "SRR1946552"
+ - "SRR1946553"
+ - "SRR1946554"
+ - "SRR1946545"
+ - "SRR1946546"
  - "SRR1946547"
 
 ## dna-seq samples for outgroup
