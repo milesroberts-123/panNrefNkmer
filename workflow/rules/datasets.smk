@@ -20,5 +20,5 @@ rule datasets:
         find contam_genomes/ncbi_dataset/data/ -type f -name '*.fna' -exec cat {{}} \; > {output}
 
         # clean up
-        #rm -r contam_genomes/
+        rm -r contam_genomes/
         """

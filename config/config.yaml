@@ -43,7 +43,7 @@ nBaseLimit: 5
 samples:
  - "SRR1946554"
  - "SRR1946551"
- - "SRR1946546"
+ - "SRR1946547"
 
 ## dna-seq samples for outgroup
 ## arabidopsis lyrata: https://doi.org/10.1093/molbev/msx193
