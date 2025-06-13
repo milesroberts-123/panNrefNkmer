@@ -53,7 +53,17 @@ A snakemake workflow to analyze short reads with a either a pangenome reference,
 
 - [x] bcftools stats for ingroup and outgroup, variant and invariant sites
 
+- [x] split vcfs into variant and invariant sites
+
+- [x] variant filtering
+
 - [ ] benchmarks for various steps
+
+- [ ] use smudgeplot to calculate lower and upper coverage bounds
+
+- [ ] add orthofinder
+
+- [ ] add fastqc after removing contamination step
 
 - [ ] split fastp into two steps to avoid storing extra temporary files
 
@@ -62,10 +72,6 @@ A snakemake workflow to analyze short reads with a either a pangenome reference,
 - [ ] add localrules
 
 - [ ] add schema
-
-- [ ] split vcfs into variant and invariant sites
-
-- [ ] variant filtering
 
 - [ ] dn/ds between references?
 

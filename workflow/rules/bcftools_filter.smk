@@ -27,7 +27,7 @@ rule bcftools_filter:
 
         # recombine filtered sites
         echo Recombining sites after filtering...
-        bcftools concat -Oz -o {output.unsorted} {output.var_after} {output.invar_after}
+        bcftools concat --allow-overlaps -Oz -o {output.unsorted} {output.var_after} {output.invar_after}
         bcftools sort -Oz -o {output.sorted} {output.unsorted}
         tabix {output.sorted}
         """

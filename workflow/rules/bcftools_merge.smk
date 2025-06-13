@@ -20,7 +20,7 @@ rule bcftools_concat:
         "../envs/samtools.yaml"
     shell:
         """
-        bcftools concat -Oz -o {output.gz} {input}
+        bcftools concat --allow-overlaps -Oz -o {output.gz} {input}
 
         bcftools sort -Oz -o {output.sorted} {output.gz}
 
