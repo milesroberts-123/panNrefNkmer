@@ -6,4 +6,6 @@ rule cbind:
     output:
         "cbf_table.txt"
     shell:
-        "paste {input} | column -s $'\t' -t > {output}"
+        r"""
+        paste -d' ' {input} > {output}
+        """

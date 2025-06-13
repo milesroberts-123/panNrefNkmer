@@ -3,8 +3,13 @@ rule degenotate:
         fasta = "../config/linear_genomes/sequence/{ref}.fa",
         gff = "../config/linear_genomes/annotation/{ref}.gff",
     output:
-        "degenotate_results/{ref}/degeneracy-all-sites.bed"
+        temp("degenotate_results/{ref}/degeneracy-all-sites.bed"),
+        "degenotate_results/{ref}/cds-nt-longest.fa"
     conda:
         "../envs/degenotate.yaml"
     shell:
-        "degenotate.py -a {input.gff} -g {input.fasta} -l -o degenotate_results/{wildcards.ref}"
+        """
+        degenotate.py --overwrite -a {input.gff} -g {input.fasta} -o degenotate_results/{wildcards.ref}
+
+        degenotate.py --overwrite -a {input.gff} -g {input.fasta} -l -o degenotate_results/{wildcards.ref}
+        """

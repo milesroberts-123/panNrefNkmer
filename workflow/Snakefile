@@ -28,13 +28,18 @@ rule all:
     input:
         expand("{ID}_{linref}_{panref}.done", ID = config["samples"], linref = config["linrefs"], panref = config["panrefs"]),
         "kmer_distances.txt",
+        "multiqc_report.html"
 
 rule all_per_id:
     input:
         "cbf_results/{ID}.txt",
-        "bcftools_linref_results/{ID}_{linref}.vcf",
-        "bcftools_panref_results/{ID}_{panref}_{linref}.vcf",
+        #"bcftools_panref_results/{ID}_{panref}_{linref}.vcf",
+        "samtools_stats/{ID}_{linref}.txt",
+        "bcftools_stats_results/{linref}.txt",
         "mk_test_{linref}/mk.tsv",
+        "salmon_quantmerge_results/{linref}.txt",
+        "bcftools_concat_results/{linref}.vcf.gz",
+        expand("pixy_results/{{linref}}_{stat}.txt",stat = ["pi", "watterson_theta", "tajima_d", "dxy", "fst"])
     output:
         touch("{ID}_{linref}_{panref}.done")
 
@@ -42,14 +47,17 @@ rule all_per_id:
 include: "rules/datasets.smk"
 include: "rules/sra.smk"
 include: "rules/fastp.smk"
+include: "rules/multiqc.smk"
 
 ## linear alignment rules
 include: "rules/bwa_index.smk"
 include: "rules/bwa_mem.smk"
+include: "rules/mark_dup.smk"
 
 ## genotype calling rules
 include: "rules/bcftools_call.smk"
 include: "rules/bcftools_merge.smk"
+include: "rules/bcftools_filter.smk"
 
 ## k-mer counting rules
 include: "rules/datasets.smk"
@@ -67,6 +75,13 @@ include: "rules/vg_filter.smk"
 include: "rules/vg_surject.smk"
 include: "rules/vg_paths.smk"
 
+## gene expression quantification
+include: "rules/salmon_index.smk"
+include: "rules/salmon_quantmerge.smk"
+include: "rules/salmon_quant.smk"
+
 ## population genetics summary rules
 include: "rules/mk_test.smk"
 include: "rules/degenotate.smk"
+include: "rules/split_sites.smk"
+include: "rules/pixy.smk"

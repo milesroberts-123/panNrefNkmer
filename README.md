@@ -1,5 +1,8 @@
 # vg-kmer-ref-snakes
 
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+
 A snakemake workflow to analyze short reads with a either a pangenome reference, linear reference, or no reference
 
 # To-do
@@ -22,23 +25,55 @@ A snakemake workflow to analyze short reads with a either a pangenome reference,
 
 - [x] k-mer distances
 
-- [ ] gene expression for different references
+- [x] gene expression for different references
 
-- [ ] add chromosomes.tsv: two column file with assembly prefix in one column and chromosome names in the other column, useful to split workflow by chromosome 
+- [x] add chromosomes.tsv: two column file with assembly prefix in one column and chromosome names in the other column, useful to split workflow by chromosome 
+
+- [x] split genotype calling by chromosome?
+
+- [x] add bcftools concat to concat genotype calls split by chromosome
+
+- [x] find read duplicates with samtools
+
+- [x] multiqc
+
+- [x] tajimas d
+
+- [x] pi
+
+- [x] watterson's theta
+
+- [x] add profiles
+
+- [x] for counting bloom filter, just read input file one line at a time
+
+- [x] include outgroup in bcftools merge
+
+- [x] samtools stats for read alignment, bam files
+
+- [x] bcftools stats for ingroup and outgroup, variant and invariant sites
+
+- [x] split vcfs into variant and invariant sites
+
+- [x] variant filtering
+
+- [ ] benchmarks for various steps
+
+- [ ] use smudgeplot to calculate lower and upper coverage bounds
+
+- [ ] add orthofinder
+
+- [ ] add fastqc after removing contamination step
+
+- [ ] split fastp into two steps to avoid storing extra temporary files
+
+- [ ] check if salmon quantmerge is fixed to allow custom column merge and gene level quantification
+
+- [ ] add localrules
+
+- [ ] add schema
 
 - [ ] dn/ds between references?
-
-- [ ] tajima's D by gene
-
-- [ ] synonymous diversity by gene
-
-- [ ] nonsynonymous diversity by gene
-
-- [ ] split genotype calling by chromosome?
-
-- [ ] add bcftools concat to concat genotype calls split by chromosome
-
-- [ ] find read duplicates with samtools
 
 - [ ] remove k-mers from cds sequences?
 

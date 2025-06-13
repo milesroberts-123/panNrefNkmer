@@ -1,0 +1,43 @@
+executor: slurm
+jobs: 975
+cores: 975
+
+# rules to execute locally, because they're too fast to bother with cluster submission
+# localrules: all_one_pops, all_two_pops, all
+
+# use sensible defaults for your cluster
+default-resources:
+    slurm_account: "josephsnodes"
+    slurm_partition: "josephsnodes"
+    mem_mb_per_cpu: 8000
+    cpus_per_task: 1
+    runtime: "239m"
+
+# here only rules, which require different (more) resources:
+set-resources:
+    bwa_mem:
+        cpus_per_task: 32
+        mem_mb_per_cpu: 1000
+    sra:
+        cpus_per_task: 6
+        mem_mb_per_cpu: 1000
+    fastp:
+        cpus_per_task: 6
+        mem_mb_per_cpu: 1000
+    degenotate:
+        mem_mb_per_cpu: 16000
+    kmc_contam_db:
+        mem_mb_per_cpu: 8000
+        cpus_per_task: 2
+    kmc:
+        mem_mb_per_cpu: 16000
+    mk_test:
+        mem_mb_per_cpu: 16000
+
+# parallelization with threads needs to be defined separately:
+# threads and cpus_per_task are supposed to be synonymous for this plugin, but for some reason I need to specify them separately
+set-threads:
+    bwa_mem: 16
+    sra: 6
+    kmc_contam_db: 2
+    fastp: 2

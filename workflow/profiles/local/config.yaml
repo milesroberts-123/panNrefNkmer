@@ -1,0 +1,3 @@
+executor: local
+jobs: 20
+cores: 20

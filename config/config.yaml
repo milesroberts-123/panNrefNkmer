@@ -1,4 +1,15 @@
-# kmc parameters ====================================================
+# List of chromosome names, for parallelization =========================
+
+splits: 40
+
+chroms:
+ - "Chr1"
+ - "Chr2"
+ - "Chr3"
+ - "Chr4"
+ - "Chr5"
+
+# kmc parameters =======================================================
 
 ## k-mer length
 k: 31
@@ -10,10 +21,12 @@ mincount: 1
 maxcount: 100000
 
 ## size of counting bloom filter array
-array_size: 10000
+array_size: 100000
 
 ## number of hash functions
 num_hash: 4
+
+## number of k-mer hits that a read needs to have to determine contamination
 
 # fastp parameters ===================================================
 
@@ -27,35 +40,81 @@ qualThresh: 30
 windowLength: 1
 
 # samples to download from SRA =======================================
-samples:
- - "SR1234567"
- - "SR7676756"
- - "SR9812379"
- - "SR1892370"
 
+## arabiodpsis thaliana: 
+samples:
+ - "SRR1946554"
+ - "SRR1946551"
+
+## arabidopsis lyrata: https://doi.org/10.1093/molbev/msx193
 outgroup:
- - "SR1892370"
- - "SR7676756"
+ - "SRR5124991"
+ - "SRR5124985"
+
+## arabiodpsis thaliana:
+rna:
+ - "ERR1589014"
+ - "ERR1589013"
 
 # contaminants to include in read QC =================================
 
 ## contaminants to download from ncbi
 ncbi_contams:
  - "human"
- - "eubacteria"
- - "fungi"
+ - "viruses"
+# - "eubacteria"
+# - "fungi"
+# - "archaea"
 
-## custom contaminants
+## custom contaminants, user provides fasta file
 custom_contams:
  - "arabiodpsis_thaliana_chrc_chrm"
 
 # references =========================================================
 
 ## linear reference genome to align samples to
+
+#linrefs:
+# - "x"
+# - "y"
+
 linrefs:
- - "x"
- - "y"
+ - "ah7"
+ - "arb0"
+# - "belmonte494"
+# - "bor1"
+# - "cdm0"
+# - "col"
+# - "dra2"
+# - "elk1"
+# - "etna2"
+# - "got22"
+# - "hs0"
+# - "kelsterbach2"
+# - "ket10"
+# - "kondara"
+# - "kz9"
+# - "liof095"
+# - "ll0"
+# - "mammo1"
+# - "meh0"
+# - "ms0"
+# - "nz1"
+# - "per1"
+# - "pra6"
+# - "pu223"
+# - "sha"
+# - "sij1"
+# - "sij2"
+# - "sorbo"
+# - "st0"
+# - "tibet"
+# - "tusb303"
+# - "yilong"
 
 ## pangenomes to align samples to
+#panrefs:
+# - "z"
+ 
 panrefs:
- - "z"
+ - "panFS"
