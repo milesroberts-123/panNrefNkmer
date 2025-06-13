@@ -40,5 +40,7 @@ rule qc_post_rm_contam:
         "no_contam_reads/{ID}.fastq"    
     output:
         temp("fastp_results/no_contam_{ID}.json")
+    conda:
+        "../envs/fastp.yaml"
     shell:
         "fastp -A -Q -L -G -i {input} --json {output}"
