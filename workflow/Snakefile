@@ -57,6 +57,7 @@ include: "rules/mark_dup.smk"
 ## genotype calling rules
 include: "rules/bcftools_call.smk"
 include: "rules/bcftools_merge.smk"
+include: "rules/bcftools_filter.smk"
 
 ## k-mer counting rules
 include: "rules/datasets.smk"
