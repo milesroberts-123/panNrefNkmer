@@ -6,6 +6,8 @@ rule bcftools_filter:
         var_before = temp("bcftools_filter_results/{ref}_{split}_var.vcf.gz"),
         invar_after = temp("bcftools_filter_results/{ref}_{split}_invar_filt.vcf.gz"),
         var_after = temp("bcftools_filter_results/{ref}_{split}_var_filt.vcf.gz"),
+        invar_after_tbi = temp("bcftools_filter_results/{ref}_{split}_invar_filt.vcf.gz.tbi"),
+        var_after_tbi = temp("bcftools_filter_results/{ref}_{split}_var_filt.vcf.gz.tbi"),
         unsorted = temp("bcftools_filter_results/{ref}_{split}_unsorted.vcf.gz"),
         sorted = temp("bcftools_filter_results/{ref}_{split}_sorted.vcf.gz")
     conda:
@@ -24,6 +26,11 @@ rule bcftools_filter:
         # filter invariant sites
         echo Filtering invariant sites...
         bcftools filter -i 'FMT/AD>=5' -Oz -o {output.invar_after} {output.invar_before}
+
+        # index filtered sites
+        echo Indexing filtered sites...
+        tabix {output.invar_after}
+        tabix {output.var_after}
 
         # recombine filtered sites
         echo Recombining sites after filtering...
