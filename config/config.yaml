@@ -1,21 +1,14 @@
-# List of chromosome names, for parallelization =========================
+# Split sites for genotype calling into N lists for parallelization =========================
 
 splits: 40
 
-chroms:
- - "Chr1"
- - "Chr2"
- - "Chr3"
- - "Chr4"
- - "Chr5"
-
-# kmc parameters =======================================================
+# kmc parameters ============================================================================
 
 ## k-mer length
 k: 31
 
 ## minimum k-mer count for kmc3
-mincount: 1
+mincount: 5
 
 ## maximum k-mer count for kmc3
 maxcount: 100000
@@ -27,8 +20,9 @@ array_size: 100000
 num_hash: 4
 
 ## number of k-mer hits that a read needs to have to determine contamination
+contam_match_limit: 9
 
-# fastp parameters ===================================================
+# fastp parameters ==========================================================================
 
 ## unqualified_percent_limit for fastp: how many percents of bases are allowed to be unqualified in terms of quality score
 unqualLimit: 40
@@ -39,7 +33,10 @@ qualThresh: 30
 ## window length for read trimming
 windowLength: 1
 
-# samples to download from SRA =======================================
+## maximum number of N bases allowed per read
+nBaseLimit: 5
+
+# samples to download from SRA ==============================================================
 
 ## arabiodpsis thaliana: 
 samples:
@@ -56,7 +53,7 @@ rna:
  - "ERR1589014"
  - "ERR1589013"
 
-# contaminants to include in read QC =================================
+# contaminants to include in read QC ========================================================
 
 ## contaminants to download from ncbi
 ncbi_contams:
@@ -115,6 +112,6 @@ linrefs:
 ## pangenomes to align samples to
 #panrefs:
 # - "z"
- 
+
 panrefs:
  - "panFS"

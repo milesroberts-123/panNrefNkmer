@@ -2,7 +2,6 @@
 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-
 A snakemake workflow to analyze short reads with a either a pangenome reference, linear reference, or no reference
 
 # To-do
@@ -57,21 +56,27 @@ A snakemake workflow to analyze short reads with a either a pangenome reference,
 
 - [x] variant filtering
 
+- [x] add fastqc after removing contamination step
+
+- [x] add localrules
+
+- [x] add schema
+
+- [ ] figure out batching
+
+- [ ] increase priority for jobs that eliminate temporary files
+
+- [ ] use fastk k-mer map to determine regions covered by k-mers
+
 - [ ] benchmarks for various steps
 
 - [ ] use smudgeplot to calculate lower and upper coverage bounds
 
 - [ ] add orthofinder
 
-- [ ] add fastqc after removing contamination step
-
 - [ ] split fastp into two steps to avoid storing extra temporary files
 
 - [ ] check if salmon quantmerge is fixed to allow custom column merge and gene level quantification
-
-- [ ] add localrules
-
-- [ ] add schema
 
 - [ ] dn/ds between references?
 

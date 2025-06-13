@@ -10,7 +10,7 @@ min_version("9.5.1")
 # configuration
 configfile: "../config/config.yaml"
 
-#validate(config, "../config/config.schema.yaml")
+validate(config, "../config/config.schema.yaml")
 
 
 # container version of workflow
@@ -23,6 +23,9 @@ configfile: "../config/config.yaml"
 #).set_index(["ID"], drop=False)
 
 #validate(parameters, "../config/parameters.schema.yaml")
+
+# Define rules too fast to bother with cluster submission
+localrules: all, all_per_id
 
 rule all:
     input:

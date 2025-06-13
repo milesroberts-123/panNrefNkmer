@@ -37,7 +37,7 @@ set-resources:
 # parallelization with threads needs to be defined separately:
 # threads and cpus_per_task are supposed to be synonymous for this plugin, but for some reason I need to specify them separately
 set-threads:
-    bwa_mem: 16
+    bwa_mem: 32
     sra: 6
     kmc_contam_db: 2
-    fastp: 2
+    fastp: 6
