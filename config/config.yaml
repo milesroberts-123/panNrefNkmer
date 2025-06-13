@@ -38,20 +38,26 @@ nBaseLimit: 5
 
 # samples to download from SRA ==============================================================
 
+## dna-seq samples for ingroup
 ## arabiodpsis thaliana: 
 samples:
  - "SRR1946554"
  - "SRR1946551"
+ - "SRR1946546"
 
+## dna-seq samples for outgroup
 ## arabidopsis lyrata: https://doi.org/10.1093/molbev/msx193
 outgroup:
  - "SRR5124991"
  - "SRR5124985"
+ - "SRR5124992"
 
+## rna-seq samples for ingroup
 ## arabiodpsis thaliana:
 rna:
  - "ERR1589014"
  - "ERR1589013"
+ - "ERR1589006"
 
 # contaminants to include in read QC ========================================================
 
@@ -59,9 +65,9 @@ rna:
 ncbi_contams:
  - "human"
  - "viruses"
-# - "eubacteria"
-# - "fungi"
-# - "archaea"
+ - "eubacteria"
+ - "fungi"
+ - "archaea"
 
 ## custom contaminants, user provides fasta file
 custom_contams:
@@ -78,7 +84,7 @@ custom_contams:
 linrefs:
  - "ah7"
  - "arb0"
-# - "belmonte494"
+ - "belmonte494"
 # - "bor1"
 # - "cdm0"
 # - "col"
