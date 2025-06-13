@@ -31,7 +31,7 @@ set-resources:
         mem_mb_per_cpu: 2000
     kmc_rm_contam:
         cpus_per_task: 12
-        mem_mb_per_cpu: 2000
+        mem_mb_per_cpu: 4000
     kmc:
         cpus_per_task: 12
         mem_mb_per_cpu: 2000
