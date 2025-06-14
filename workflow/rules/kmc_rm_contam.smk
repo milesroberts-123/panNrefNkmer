@@ -23,7 +23,7 @@ rule kmc_rm_contam:
         echo {input.pread1} {input.pread2} {input.uread1} {input.uread2} | tr ' ' '\n' > {output.list}
 
         # filter reads for contamination
-        kmc_tools -t{threads} filter contam @{output.list} -ci0 -cx{params.contamMatchLimit} {output.filt}
+        kmc_tools -t{threads} filter contam @{output.list} -ci0.0 -cx{params.contamMatchLimit} {output.filt}
 
         # compress reads
         # gzip no_contam_reads/{wildcards.ID}.fastq
