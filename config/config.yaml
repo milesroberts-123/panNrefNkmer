@@ -20,7 +20,7 @@ array_size: 100000
 num_hash: 4
 
 ## number of k-mer hits that a read needs to have to determine contamination
-contam_match_limit: 14
+contam_match_limit: 0.8
 
 # fastp parameters ==========================================================================
 
