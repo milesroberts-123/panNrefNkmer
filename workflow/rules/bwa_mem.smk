@@ -36,7 +36,7 @@ rule bwa_mem:
 
         # merge alignments
         echo Merging paired and unpaired alignments...
-        samtools merge {output.paired} {output.unpaired} > {output.final}
+        samtools merge -o {output.final} {output.paired} {output.unpaired}
 
         # index final output
         echo Indexing final output...
