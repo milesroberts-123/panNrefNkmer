@@ -13,8 +13,8 @@ rule change_headers:
         cat=temp("change_headers_results/unpaired_{ID}.fastq.gz")
     shell:
         """
-        if [ ! -d "change_header_results" ]; then
-            mkdir change_header_results
+        if [ ! -d "change_headers_results" ]; then
+            mkdir change_headers_results
         fi
 
         # change headers
