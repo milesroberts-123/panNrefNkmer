@@ -47,6 +47,7 @@ include: "rules/datasets.smk"
 include: "rules/sra.smk"
 include: "rules/fastp.smk"
 include: "rules/multiqc.smk"
+include: "rules/change_headers.smk"
 
 ## linear alignment rules
 include: "rules/bwa_index.smk"

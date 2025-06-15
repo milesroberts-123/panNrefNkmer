@@ -6,10 +6,14 @@ rule bwa_mem:
         pac="../config/linear_genomes/sequence/{ref}.fa.pac",
         sa="../config/linear_genomes/sequence/{ref}.fa.sa",
         ref="../config/linear_genomes/sequence/{ref}.fa",
-        read1="fastp_results/trimmed_paired_R1_{ID}.fastq.gz",
-        read2="fastp_results/trimmed_paired_R2_{ID}.fastq.gz"
+        read1="change_headers_results/paired_R1_{ID}.fastq.gz",
+        read2="change_headers_results/paired_R2_{ID}.fastq.gz",
+        readu="change_headers_results/unpaired_{ID}.fastq.gz"
     output:
-        temp("bwa_results/{ID}_{ref}.bam")
+        paired=temp("bwa_results/paired_{ID}_{ref}.bam"),
+        unpaired=temp("bwa_results/unpaired_{ID}_{ref}.bam"),
+        final=temp("bwa_results/{ID}_{ref}.bam"),
+        bai=temp("bwa_results/{ID}_{ref}.bam.bai")
     conda:
         "../envs/bwa.yaml"
     log:
@@ -19,5 +23,15 @@ rule bwa_mem:
     shell:
         """
         # align reads to reference
-        bwa mem -R '@RG\\tID:{wildcards.ID}\\tSM:{wildcards.ID}' -t {threads} {input.ref} {input.read1} {input.read2} | samtools sort -O bam > {output}
+        bwa mem -R '@RG\\tID:{wildcards.ID}\\tSM:{wildcards.ID}' -t {threads} {input.ref} {input.read1} {input.read2} | samtools sort -O bam > {output.paired}
+
+        bwa mem -R '@RG\\tID:{wildcards.ID}\\tSM:{wildcards.ID}' -t {threads} {input.ref} {input.readu} | samtools sort -O bam > {output.unpaired}
+
+        # index reads
+        samtools index {output.paired}
+        samtools index {output.unpaired}
+
+        # merge alignments
+        samtools merge {output.paired} {output.unpaired} > {output.final}
+        samtools index {output.final}
         """

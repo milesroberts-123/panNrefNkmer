@@ -37,7 +37,7 @@ rule fastp:
 
 rule qc_post_rm_contam:
     input:
-        "no_contam_reads/{ID}.fastq"    
+        "no_contam_reads/{ID}_stage2.fastq"    
     output:
         temp("fastp_results/no_contam_{ID}.json")
     conda:

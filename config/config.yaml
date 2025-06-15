@@ -20,7 +20,8 @@ array_size: 100000
 num_hash: 4
 
 ## number of k-mer hits that a read needs to have to determine contamination
-contam_match_limit: 0.8
+contam_match_limit_count: 20
+contam_match_limit_percent: 0.5
 
 # fastp parameters ==========================================================================
 
@@ -43,35 +44,35 @@ nBaseLimit: 5
 samples:
  - "SRR1946551"
  - "SRR1946552"
- - "SRR1946553"
- - "SRR1946554"
- - "SRR1946545"
- - "SRR1946546"
- - "SRR1946547"
+# - "SRR1946553"
+# - "SRR1946554"
+# - "SRR1946545"
+# - "SRR1946546"
+# - "SRR1946547"
 
 ## dna-seq samples for outgroup
 ## arabidopsis lyrata: https://doi.org/10.1093/molbev/msx193
 outgroup:
  - "SRR5124991"
  - "SRR5124985"
- - "SRR5124992"
+# - "SRR5124992"
 
 ## rna-seq samples for ingroup
 ## arabiodpsis thaliana:
 rna:
  - "ERR1589014"
  - "ERR1589013"
- - "ERR1589006"
+# - "ERR1589006"
 
 # contaminants to include in read QC ========================================================
 
 ## contaminants to download from ncbi
 ncbi_contams:
  - "human"
- - "viruses"
- - "eubacteria"
- - "fungi"
- - "archaea"
+# - "viruses"
+# - "eubacteria"
+# - "fungi"
+# - "archaea"
 
 ## custom contaminants, user provides fasta file
 custom_contams:
@@ -88,7 +89,7 @@ custom_contams:
 linrefs:
  - "ah7"
  - "arb0"
- - "belmonte494"
+# - "belmonte494"
 # - "bor1"
 # - "cdm0"
 # - "col"
