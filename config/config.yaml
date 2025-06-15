@@ -25,6 +25,9 @@ contam_match_limit_percent: 0.5
 
 # fastp parameters ==========================================================================
 
+## minimum read length
+minReadLength: 32
+
 ## unqualified_percent_limit for fastp: how many percents of bases are allowed to be unqualified in terms of quality score
 unqualLimit: 40
 
@@ -64,7 +67,7 @@ rna:
  - "ERR1589013"
 # - "ERR1589006"
 
-# contaminants to include in read QC ========================================================
+# contaminants to include in read QC =========================================================
 
 ## contaminants to download from ncbi
 ncbi_contams:
@@ -78,7 +81,7 @@ ncbi_contams:
 custom_contams:
  - "arabiodpsis_thaliana_chrc_chrm"
 
-# references =========================================================
+# references =================================================================================
 
 ## linear reference genome to align samples to
 

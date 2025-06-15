@@ -20,7 +20,7 @@ rule fastp:
         "logs/fastp/{ID}.log",
     params:
         unqualLimit=config["unqualLimit"],
-        k=config["k"],
+        minReadLength=config["minReadLength"],
         qualThresh=config["qualThresh"],
         windowLength=config["windowLength"],
         nBaseLimit=config["nBaseLimit"]
@@ -30,9 +30,9 @@ rule fastp:
         fastp --thread {threads} --n_base_limit {params.nBaseLimit} -u {params.unqualLimit} -q {params.qualThresh} --dedup --correction -i {input.read1} -I {input.read2} -o {output.dpread1} -O {output.dpread2} --unpaired1 {output.duread1} --unpaired2 {output.duread2} &>> {log}
 
         # trim low quality bases from remaining reads
-        fastp --thread {threads} -Q -l {params.k} --cut_tail --cut_tail_window_size {params.windowLength} --cut_tail_mean_quality {params.qualThresh} --json {output.jsonR1R2} -i {output.dpread1} -I {output.dpread2} -o {output.pread1} -O {output.pread2} &>> {log}
-        fastp --thread {threads} -Q -l {params.k} --cut_tail --cut_tail_window_size {params.windowLength} --cut_tail_mean_quality {params.qualThresh} --json {output.jsonU1} -i {output.duread1} -o {output.uread1} &>> {log}
-        fastp --thread {threads} -Q -l {params.k} --cut_tail --cut_tail_window_size {params.windowLength} --cut_tail_mean_quality {params.qualThresh} --json {output.jsonU2} -i {output.duread2} -o {output.uread2} &>> {log}
+        fastp --thread {threads} -Q -l {params.minReadLength} --cut_tail --cut_tail_window_size {params.windowLength} --cut_tail_mean_quality {params.qualThresh} --json {output.jsonR1R2} -i {output.dpread1} -I {output.dpread2} -o {output.pread1} -O {output.pread2} &>> {log}
+        fastp --thread {threads} -Q -l {params.minReadLength} --cut_tail --cut_tail_window_size {params.windowLength} --cut_tail_mean_quality {params.qualThresh} --json {output.jsonU1} -i {output.duread1} -o {output.uread1} &>> {log}
+        fastp --thread {threads} -Q -l {params.minReadLength} --cut_tail --cut_tail_window_size {params.windowLength} --cut_tail_mean_quality {params.qualThresh} --json {output.jsonU2} -i {output.duread2} -o {output.uread2} &>> {log}
         """
 
 rule qc_post_rm_contam:
