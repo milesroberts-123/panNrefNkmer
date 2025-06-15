@@ -65,16 +65,9 @@ A snakemake workflow to analyze short reads with a either a pangenome reference,
 
 - [x] add schema
 
-- [ ] estimate DFE with fastDFE
+- [x] before bwa mem, check if paired end files need to have names rewritten so that read names match
 
-- [ ] before bwa mem, check if paired end files need to have names rewritten so that read names match
-
-```
-# https://www.biostars.org/p/68477/
-gunzip -c file.fastq.gz |  awk '{if(NR%4==1) $0=sprintf("@1_%d",(1+i++)); print;}' | gzip -c > another.fastq.gz
-```
-
-- [ ] add fastq-pair to make sure reads are properly paired
+- [x] estimate DFE with fastDFE
 
 - [ ] figure out batching
 
