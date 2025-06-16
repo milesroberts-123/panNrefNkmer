@@ -3,6 +3,7 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 A snakemake workflow to analyze short reads with a either a pangenome reference, linear reference, or no reference
+
 # Notes
 
 * Screening for more contaminants requires more memory because you have to load the whole database of contaminating k-mers into memory
@@ -69,7 +70,11 @@ A snakemake workflow to analyze short reads with a either a pangenome reference,
 
 - [x] estimate DFE with fastDFE
 
-- [ ] figure out batching
+- [ ] rWCVP
+
+- [ ] add target rules to only process dna-seq or only rna-seq
+
+- [ ] figure out batching, or maybe job grouping?
 
 - [ ] increase priority for jobs that eliminate temporary files
 

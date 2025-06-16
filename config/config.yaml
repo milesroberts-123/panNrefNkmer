@@ -25,9 +25,6 @@ contam_match_limit_percent: 0.5
 
 # fastp parameters ==========================================================================
 
-## minimum read length
-minReadLength: 32
-
 ## unqualified_percent_limit for fastp: how many percents of bases are allowed to be unqualified in terms of quality score
 unqualLimit: 40
 
