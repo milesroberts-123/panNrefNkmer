@@ -44,18 +44,18 @@ nBaseLimit: 5
 samples:
  - "SRR1946551"
  - "SRR1946552"
-# - "SRR1946553"
-# - "SRR1946554"
-# - "SRR1946545"
-# - "SRR1946546"
-# - "SRR1946547"
+ - "SRR1946553"
+ - "SRR1946554"
+ - "SRR1946545"
 
 ## dna-seq samples for outgroup
 ## arabidopsis lyrata: https://doi.org/10.1093/molbev/msx193
 outgroup:
+ - "SRR5124990"
  - "SRR5124991"
- - "SRR5124985"
-# - "SRR5124992"
+ - "SRR5124992"
+ - "SRR5124993"
+ - "SRR5124994"
 
 ## rna-seq samples for ingroup
 ## arabiodpsis thaliana:
