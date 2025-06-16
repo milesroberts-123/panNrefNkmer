@@ -16,16 +16,16 @@ rule bcftools_filter:
         """
         # separate invariant vs variant (bi-allelic snp) sites
         echo Separating invariant and variant sites
-        bcftools view --min-ac 0 -Oz -o {output.invar_before} {input}
+        bcftools view --max-af 0 -Oz -o {output.invar_before} {input}
         bcftools view --types snps -m 2 -M 2 -Oz -o {output.var_before} {input}
 
         # filter variant sites
         echo Filtering variant sites...
-        bcftools filter -i 'FMT/AD>=5 & FMT/GQ>=20' -Oz -o {output.var_after} {output.var_before}
+        bcftools filter -i 'FMT/AD>=5 & FMT/GQ>=20 & F_MISSING<=0.8' -Oz -o {output.var_after} {output.var_before}
 
         # filter invariant sites
         echo Filtering invariant sites...
-        bcftools filter -i 'FMT/AD>=5' -Oz -o {output.invar_after} {output.invar_before}
+        bcftools filter -i 'FMT/AD>=5 & F_MISSING<=0.8' -Oz -o {output.invar_after} {output.invar_before}
 
         # index filtered sites
         echo Indexing filtered sites...
