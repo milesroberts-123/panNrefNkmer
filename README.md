@@ -72,6 +72,8 @@ A snakemake workflow to analyze short reads with a either a pangenome reference,
 
 - [ ] rWCVP
 
+- [ ] add rules to use pggb
+
 - [ ] add target rules to only process dna-seq or only rna-seq
 
 - [ ] figure out batching, or maybe job grouping?
