@@ -70,11 +70,15 @@ A snakemake workflow to analyze short reads with a either a pangenome reference,
 
 - [x] estimate DFE with fastDFE
 
-- [ ] rWCVP
-
-- [ ] add rules to use pggb
+- [x] add rules to use pggb
 
 - [ ] add target rules to only process dna-seq or only rna-seq
+
+- [ ] add dN/dS calculation by comparing 1:1 orthologs with arabidopsis lyrata reference: download outgroup, get protein sequences, apply orthofinder, get single copies, use pal2nal to get codon alignments, calculate dN/dS
+
+- [ ] add single-cell analysis with salmon-alevin
+
+- [ ] rWCVP
 
 - [ ] figure out batching, or maybe job grouping?
 
