@@ -10,8 +10,7 @@ min_version("9.5.1")
 # configuration
 configfile: "../config/config.yaml"
 
-#validate(config, "../config/config.schema.yaml")
-
+validate(config, "../config/config.schema.yaml")
 
 # container version of workflow
 #containerized: "docker://milesroberts/poolseq-kmers"
@@ -24,30 +23,31 @@ configfile: "../config/config.yaml"
 
 #validate(parameters, "../config/parameters.schema.yaml")
 
+# Define rules too fast to bother with cluster submission
+localrules: all, batch_per_sample
+
 rule all:
     input:
-        expand("{ID}_{linref}_{panref}.done", ID = config["samples"], linref = config["linrefs"], panref = config["panrefs"]),
+        expand("samtools_stats/{ID}_{linref}.txt", ID = config["samples"], linref = config["linrefs"]),
+        expand("bcftools_stats_results/{linref}.txt", linref = config["linrefs"]),
+        expand("mk_test_{linref}/mk.tsv", linref = config["linrefs"]),
+        expand("salmon_quantmerge_results/{linref}.txt", linref = config["linrefs"]),
+        expand("pixy_results/{linref}_{stat}.txt", linref = config["linrefs"], stat = ["pi", "watterson_theta", "tajima_d", "dxy", "fst"]),
         "kmer_distances.txt",
         "multiqc_report.html"
 
-rule all_per_id:
+rule batch_per_sample:
     input:
-        "cbf_results/{ID}.txt",
-        #"bcftools_panref_results/{ID}_{panref}_{linref}.vcf",
-        "samtools_stats/{ID}_{linref}.txt",
-        "bcftools_stats_results/{linref}.txt",
-        "mk_test_{linref}/mk.tsv",
-        "salmon_quantmerge_results/{linref}.txt",
-        "bcftools_concat_results/{linref}.vcf.gz",
-        expand("pixy_results/{{linref}}_{stat}.txt",stat = ["pi", "watterson_theta", "tajima_d", "dxy", "fst"])
-    output:
-        touch("{ID}_{linref}_{panref}.done")
+        expand("bcftools_linref_results/{ID}_{ref}_{split}.vcf.gz", ID = config["samples"], ref = config["linrefs"], split = range(10, 10 + config["splits"])),
+        expand("cbf_results/{ID}.txt", ID = config["samples"]),
+        expand("salmon_quant_results/{ref}_{rna}/quant.sf", ref = config["linrefs"], rna = config["rna"])
 
 ## data download and QC rules
 include: "rules/datasets.smk"
 include: "rules/sra.smk"
 include: "rules/fastp.smk"
 include: "rules/multiqc.smk"
+include: "rules/change_headers.smk"
 
 ## linear alignment rules
 include: "rules/bwa_index.smk"

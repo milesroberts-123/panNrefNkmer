@@ -1,0 +1,76 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+description: universal parameters applied to all samples
+properties:
+  splits:
+    type: integer
+    default: 32
+    maximum: 90
+    minimum: 1
+  k:
+    type: integer
+    description: k-mer length/minimum read trim length
+    default: 31
+  array_size:
+    type: integer
+    description: size of bloom filter array
+    default: 100000
+    minimum: 1000
+  num_hash:
+    type: integer
+    description: number of hash functions
+    default: 4
+    minimum: 1
+  contam_match_limit:
+    type: number
+    description: number of k-mer hits that a read needs to have to determine contamination
+    default: 0.8
+    minimum: 0.01
+    maximum: 1
+  mincount:
+    type: integer
+    default: 5
+    description: minimum k-mer count threshold and minimum read depth
+  maxcount:
+    type: integer
+    default: 10000
+    description: maximum k-mer count
+  unqualLimit:
+    type: integer
+    description: unqualified_percent_limit for fastp, how many percents of bases are allowed to be unqualified in terms of quality score
+    default: 40
+  windowLength:
+    type: integer
+    default: 1
+    description: window length for read trimming
+  nBaseLimit:
+    type: integer
+    default: 5
+    description: max number of N bases allowed in fastq read
+  samples:
+    type: array
+    items:
+      type: string
+  outgroup:
+    type: array
+    items:
+      type: string
+  rna:
+    type: array
+    items:
+      type: string
+  ncbi_contams:
+    type: array
+    items:
+      type: string
+  custom_contams:
+    type: array
+    items:
+      type: string
+  linrefs:
+    type: array
+    items:
+      type: string
+  panrefs:
+    type: array
+    items:
+      type: string

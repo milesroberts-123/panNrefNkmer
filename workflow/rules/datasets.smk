@@ -7,6 +7,10 @@ rule datasets:
         "../envs/datasets.yaml"
     shell:
         r"""
+        if [ -d "contam_genomes" ]; then
+            rm -r contam_genomes/
+        fi
+
         # get all contaminating genomes
         datasets download genome taxon {params.contams} --reference --dehydrated --filename contam.zip
 
@@ -20,5 +24,5 @@ rule datasets:
         find contam_genomes/ncbi_dataset/data/ -type f -name '*.fna' -exec cat {{}} \; > {output}
 
         # clean up
-        #rm -r contam_genomes/
+        # rm -r contam_genomes/
         """

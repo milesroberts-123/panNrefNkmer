@@ -2,8 +2,11 @@
 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-
 A snakemake workflow to analyze short reads with a either a pangenome reference, linear reference, or no reference
+
+# Notes
+
+* Screening for more contaminants requires more memory because you have to load the whole database of contaminating k-mers into memory
 
 # To-do
 
@@ -57,21 +60,41 @@ A snakemake workflow to analyze short reads with a either a pangenome reference,
 
 - [x] variant filtering
 
+- [x] add fastqc after removing contamination step
+
+- [x] add localrules
+
+- [x] add schema
+
+- [x] before bwa mem, check if paired end files need to have names rewritten so that read names match
+
+- [x] estimate DFE with fastDFE
+
+- [x] add rules to use pggb
+
+- [ ] add target rules to only process dna-seq or only rna-seq
+
+- [ ] add dN/dS calculation by comparing 1:1 orthologs with arabidopsis lyrata reference: download outgroup, get protein sequences, apply orthofinder, get single copies, use pal2nal to get codon alignments, calculate dN/dS
+
+- [ ] add single-cell analysis with salmon-alevin
+
+- [ ] rWCVP
+
+- [ ] figure out batching, or maybe job grouping?
+
+- [ ] increase priority for jobs that eliminate temporary files
+
+- [ ] use fastk k-mer map to determine regions covered by k-mers
+
 - [ ] benchmarks for various steps
 
 - [ ] use smudgeplot to calculate lower and upper coverage bounds
 
 - [ ] add orthofinder
 
-- [ ] add fastqc after removing contamination step
-
 - [ ] split fastp into two steps to avoid storing extra temporary files
 
 - [ ] check if salmon quantmerge is fixed to allow custom column merge and gene level quantification
-
-- [ ] add localrules
-
-- [ ] add schema
 
 - [ ] dn/ds between references?
 
