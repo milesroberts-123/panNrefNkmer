@@ -19,10 +19,10 @@ mamba env create --name snakemake --file setup.yaml
 3. Grab repository from github
 
 ```
-git clone https://github.com/milesroberts-123/slim-sweep-cnn.git
+git clone https://github.com/milesroberts-123/panNrefNkmer.git
 ```
 
-4. Check the snakemake profile for the proper executer. The default profile runs snakemake on a slurm cluster (`workflow/profiles/default/config.yaml`), but you should still change the slurm account, slurm partition, and default resources to match your system.
+4. Modify snakemake profile. The default profile runs snakemake on a slurm cluster (`workflow/profiles/default/config.yaml`), but you should still change the slurm account, slurm partition, and default resources to match your system.
 
 # Inputs
 
