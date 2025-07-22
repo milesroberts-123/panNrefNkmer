@@ -124,5 +124,5 @@ linrefs:
 #panrefs:
 # - "z"
 
-panrefs:
- - "panFS"
+#panrefs:
+# - "panFS"
