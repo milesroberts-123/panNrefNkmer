@@ -1,105 +1,64 @@
-# vg-kmer-ref-snakes
+# panNrefNkmer
 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
+# Overview
+
 A snakemake workflow to analyze short reads with a either a pangenome reference, linear reference, or no reference
 
-# Notes
+# Setup
 
-* Screening for more contaminants requires more memory because you have to load the whole database of contaminating k-mers into memory
+1. Make sure you have [mamba](https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html) installed. 
 
-# To-do
+2. Install snakemake and slurm executer using the provided yaml file
 
-- [x] add mitochondrial and chloroplast genomes as contaminants
+```
+mamba env create --name snakemake --file setup.yaml
+```
 
-- [x] figure out vg surject
+3. Grab repository from github
 
-- [x] add kmer counts
+```
+git clone https://github.com/milesroberts-123/panNrefNkmer.git
+```
 
-- [x] add genotype calling for linear references
+4. Modify snakemake profile. The default profile runs snakemake on a slurm cluster (`workflow/profiles/default/config.yaml`), but you should still change the slurm account, slurm partition, and default resources to match your system.
 
-- [x] sort bam files
+# Inputs
 
-- [x] add MK test in degenotate?
+## 1. Configuration
 
-- [x] create linear references for pangenome snp calling depending on path: Use `vg paths -F` to get fasta sequences for paths, then use that as the linear reference for genotype calling
+All variables are collected in `config/config.yaml`. Variable defintions are given in more detial in `config/config.schema.yaml`.
 
-- [x] counting bloom filter
+## 2. Reference genome sequences and annotations
 
-- [x] k-mer distances
+For every genome specified in `config/config.yaml`, add a fasta file to `config/linear_genomes/sequence/` and a gff file to `config/linear_genomes/annotation/`.
 
-- [x] gene expression for different references
+For example, if the `linrefs` variable in your config file looks like this:
 
-- [x] add chromosomes.tsv: two column file with assembly prefix in one column and chromosome names in the other column, useful to split workflow by chromosome 
+```
+linrefs:
+ - "ah7"
+ - "arb0"
+ - "belmonte494"
+```
 
-- [x] split genotype calling by chromosome?
+Then your file paths should look like this:
 
-- [x] add bcftools concat to concat genotype calls split by chromosome
+```
+config/linear_genomes/
+├── annotation
+│   ├── ah7.gff
+│   ├── arb0.gff
+│   ├── belmonte494.gff
+└── sequence
+    ├── ah7.fa
+    ├── arb0.fa
+    ├── belmonte494.fa
+```
 
-- [x] find read duplicates with samtools
+# Usage
 
-- [x] multiqc
+## Run whole workflow with conda envs on slurm cluster
 
-- [x] tajimas d
-
-- [x] pi
-
-- [x] watterson's theta
-
-- [x] add profiles
-
-- [x] for counting bloom filter, just read input file one line at a time
-
-- [x] include outgroup in bcftools merge
-
-- [x] samtools stats for read alignment, bam files
-
-- [x] bcftools stats for ingroup and outgroup, variant and invariant sites
-
-- [x] split vcfs into variant and invariant sites
-
-- [x] variant filtering
-
-- [x] add fastqc after removing contamination step
-
-- [x] add localrules
-
-- [x] add schema
-
-- [x] before bwa mem, check if paired end files need to have names rewritten so that read names match
-
-- [x] estimate DFE with fastDFE
-
-- [x] add rules to use pggb
-
-- [ ] add target rules to only process dna-seq or only rna-seq
-
-- [ ] add dN/dS calculation by comparing 1:1 orthologs with arabidopsis lyrata reference: download outgroup, get protein sequences, apply orthofinder, get single copies, use pal2nal to get codon alignments, calculate dN/dS
-
-- [ ] add single-cell analysis with salmon-alevin
-
-- [ ] rWCVP
-
-- [ ] figure out batching, or maybe job grouping?
-
-- [ ] increase priority for jobs that eliminate temporary files
-
-- [ ] use fastk k-mer map to determine regions covered by k-mers
-
-- [ ] benchmarks for various steps
-
-- [ ] use smudgeplot to calculate lower and upper coverage bounds
-
-- [ ] add orthofinder
-
-- [ ] split fastp into two steps to avoid storing extra temporary files
-
-- [ ] check if salmon quantmerge is fixed to allow custom column merge and gene level quantification
-
-- [ ] dn/ds between references?
-
-- [ ] remove k-mers from cds sequences?
-
-- [ ] add graph aligner as alternative to vg giraffe?
-
-- [ ] add vg map as alternative to vg giraffe?
+`snakemake --sdm conda --rerun-incomplete --rerun-triggers mtime --scheduler greedy --retries 1 --keep-going`
