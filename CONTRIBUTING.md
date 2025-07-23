@@ -66,6 +66,8 @@
 
 - [x] add rules to use pggb
 
+- [ ] estimate substitution rate in a manner that's robust to repeat sequences
+
 - [ ] add target rules to only process dna-seq or only rna-seq
 
 - [ ] add dN/dS calculation by comparing 1:1 orthologs with arabidopsis lyrata reference: download outgroup, get protein sequences, apply orthofinder, get single copies, use pal2nal to get codon alignments, calculate dN/dS
@@ -84,13 +86,9 @@
 
 - [ ] use smudgeplot to calculate lower and upper coverage bounds
 
-- [ ] add orthofinder
-
 - [ ] split fastp into two steps to avoid storing extra temporary files
 
 - [ ] check if salmon quantmerge is fixed to allow custom column merge and gene level quantification
-
-- [ ] dn/ds between references?
 
 - [ ] remove k-mers from cds sequences?
 
