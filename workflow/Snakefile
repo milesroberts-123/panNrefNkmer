@@ -10,16 +10,16 @@ min_version("9.5.1")
 # configuration
 configfile: "../config/config.yaml"
 
-validate(config, "../config/config.schema.yaml")
+#validate(config, "../config/config.schema.yaml")
 
 # container version of workflow
 #containerized: "docker://milesroberts/poolseq-kmers"
 
 
 # load samples
-#parameters = pd.read_table(
-#    "../config/parameters.tsv", sep="\t", dtype={"ID": str}
-#).set_index(["ID"], drop=False)
+reads = pd.read_table(
+    "../config/samples.tsv", sep="\t", dtype={"Run": str}
+).set_index(["Run"], drop=False)
 
 #validate(parameters, "../config/parameters.schema.yaml")
 
@@ -28,7 +28,7 @@ localrules: all, batch_per_sample
 
 rule all:
     input:
-        expand("samtools_stats/{ID}_{linref}.txt", ID = config["samples"], linref = config["linrefs"]),
+        expand("samtools_stats/{ID}_{linref}.txt", ID = reads["BioSample"], linref = config["linrefs"]),
         expand("bcftools_stats_results/{linref}.txt", linref = config["linrefs"]),
         expand("mk_test_{linref}/mk.tsv", linref = config["linrefs"]),
         expand("salmon_quantmerge_results/{linref}.txt", linref = config["linrefs"]),
@@ -36,10 +36,14 @@ rule all:
         "kmer_distances.txt",
         "multiqc_report.html"
 
+rule kmers_only:
+    input:
+     expand("kmer_distances_{species}.txt", species = reads["Species"].unique())
+
 rule batch_per_sample:
     input:
-        expand("bcftools_linref_results/{ID}_{ref}_{split}.vcf.gz", ID = config["samples"], ref = config["linrefs"], split = range(10, 10 + config["splits"])),
-        expand("cbf_results/{ID}.txt", ID = config["samples"]),
+        expand("bcftools_linref_results/{ID}_{ref}_{split}.vcf.gz", ID = reads["BioSample"], ref = config["linrefs"], split = range(10, 10 + config["splits"])),
+        expand("cbf_results/{ID}.txt", ID = reads["BioSample"]),
         expand("salmon_quant_results/{ref}_{rna}/quant.sf", ref = config["linrefs"], rna = config["rna"])
 
 ## data download and QC rules
@@ -48,6 +52,7 @@ include: "rules/sra.smk"
 include: "rules/fastp.smk"
 include: "rules/multiqc.smk"
 include: "rules/change_headers.smk"
+include: "rules/biosample.smk"
 
 ## linear alignment rules
 include: "rules/bwa_index.smk"
@@ -60,7 +65,6 @@ include: "rules/bcftools_merge.smk"
 include: "rules/bcftools_filter.smk"
 
 ## k-mer counting rules
-include: "rules/datasets.smk"
 include: "rules/kmc_contam_db.smk"
 include: "rules/kmc_rm_contam.smk"
 include: "rules/kmc.smk"

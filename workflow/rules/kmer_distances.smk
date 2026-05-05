@@ -1,8 +1,8 @@
 rule kmer_distances:
     input:
-        "cbf_table.txt"
+        "cbf_table_{species}.txt"
     output:
-        "kmer_distances.txt"
+        "kmer_distances_{species}.txt"
     conda:
         "../envs/cbf.yaml"
     shell:

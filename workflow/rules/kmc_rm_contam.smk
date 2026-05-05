@@ -1,9 +1,9 @@
 rule kmc_rm_contam:
     input:
-        pread1="fastp_results/trimmed_paired_R1_{ID}.fastq.gz",
-        pread2="fastp_results/trimmed_paired_R2_{ID}.fastq.gz",
-        uread1="fastp_results/trimmed_unpaired_R1_{ID}.fastq.gz",
-        uread2="fastp_results/trimmed_unpaired_R2_{ID}.fastq.gz",
+        pread1="biosample_results/{ID}_paired_R1.fastq.gz",
+        pread2="biosample_results/{ID}_paired_R2.fastq.gz",
+        uread1="biosample_results/{ID}_unpaired_R1.fastq.gz",
+        uread2="biosample_results/{ID}_unpaired_R2.fastq.gz",
         pre="contam.kmc_pre",
         suf="contam.kmc_suf"
     output:

@@ -2,9 +2,9 @@
 
 rule cbind:
     input:
-        expand("cbf_results/{ID}.txt", ID=config["samples"])
+        expand("cbf_results/{ID}.txt", ID=lookup(query="Species == '{species}'", within = reads, cols="BioSample"))
     output:
-        "cbf_table.txt"
+        "cbf_table_{species}.txt"
     shell:
         r"""
         paste -d' ' {input} > {output}
