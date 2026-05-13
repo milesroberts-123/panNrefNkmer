@@ -6,6 +6,14 @@
 **.fastq
 **.fastq.gz
 **.txt
+**.kmc_pre
+**.kmc_suf
+**.zip
+**.list
+**.html
+**.json
+**/contam_genomes
+**/logs
 **/.snakemake
 **/results
 **/pangenomes

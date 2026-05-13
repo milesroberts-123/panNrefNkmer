@@ -17,19 +17,25 @@ default-resources:
 
 # here only rules, which require different (more) resources:
 set-resources:
+    sra:
+        runtime: "1440m"
+    biosample:
+        runtime: "1440m"
     fastp:
-        cpus_per_task: 2
+        runtime: "180m"
+        cpus_per_task: 4
     kmc_contam_db:
+        runtime: "180m"
         cpus_per_task: 4
     kmc_rm_contam:
         cpus_per_task: 4
     kmc: 
-        cpus_per_task: 2
+        cpus_per_task: 4
 
 # parallelization with threads needs to be defined separately:
 # threads and cpus_per_task are supposed to be synonymous for this plugin, but for some reason I need to specify them separately
 set-threads:
-    fastp: 2
-    kmc: 2
+    fastp: 4
+    kmc: 4
     kmc_contam_db: 4
     kmc_rm_contam: 4

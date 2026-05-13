@@ -9,10 +9,19 @@ rule biosample:
         pread2="biosample_results/{bio}_paired_R2.fastq.gz",
         uread1="biosample_results/{bio}_unpaired_R1.fastq.gz",
         uread2="biosample_results/{bio}_unpaired_R2.fastq.gz",
+    params:
+        no_inputs=lambda wildcards, input: len(input)
     shell:
         """
-        zcat {input.pread1} | gzip > {output.pread1}
-        zcat {input.pread2} | gzip > {output.pread2}
-        zcat {input.uread1} | gzip > {output.uread1}
-        zcat {input.uread2} | gzip > {output.uread2}
+        if [ {params.no_inputs} -gt 4 ]; then
+            zcat {input.pread1} | gzip > {output.pread1}
+            zcat {input.pread2} | gzip > {output.pread2}
+            zcat {input.uread1} | gzip > {output.uread1}
+            zcat {input.uread2} | gzip > {output.uread2}
+        else
+            mv {input.pread1} {output.pread1}
+            mv {input.pread2} {output.pread2}
+            mv {input.uread1} {output.uread1}
+            mv {input.uread2} {output.uread2}
+        fi
         """

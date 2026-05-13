@@ -76,7 +76,7 @@ ncbi_contams:
 
 ## custom contaminants, user provides fasta file
 custom_contams:
- - "arabiodpsis_thaliana_chrc_chrm"
+        # - "arabiodpsis_thaliana_chrc_chrm"
 
 # references =================================================================================
 
