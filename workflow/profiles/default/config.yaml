@@ -28,9 +28,14 @@ set-resources:
         runtime: "180m"
         cpus_per_task: 4
     kmc_rm_contam:
+        runtime: "180m"
         cpus_per_task: 4
     kmc: 
+        runtime: "180m"
         cpus_per_task: 4
+    counting_bloom_filter:
+        runtime: "180m"
+        cpus_per_task: 1
 
 # parallelization with threads needs to be defined separately:
 # threads and cpus_per_task are supposed to be synonymous for this plugin, but for some reason I need to specify them separately

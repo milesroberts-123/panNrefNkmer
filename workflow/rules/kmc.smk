@@ -1,6 +1,6 @@
 rule kmc:
     input:
-        "no_contam_reads/{ID}_stage2.fastq"
+        "no_contam_reads/{ID}_stage1.fastq"
     output:
         counts=temp("kmc_results/{ID}.txt"),
         tmp_pre=temp("kmc_db_{ID}.kmc_pre"),

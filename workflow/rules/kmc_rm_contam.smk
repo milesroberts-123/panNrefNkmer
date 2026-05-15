@@ -8,11 +8,10 @@ rule kmc_rm_contam:
         suf="contam.kmc_suf"
     output:
         filt1=temp("no_contam_reads/{ID}_stage1.fastq"),
-        filt2=temp("no_contam_reads/{ID}_stage2.fastq"),
         list=temp("input_{ID}.txt")
     params:
         contamMatchLimitCount = config["contam_match_limit_count"],
-        contamMatchLimitPercent = config["contam_match_limit_percent"]
+        #contamMatchLimitPercent = config["contam_match_limit_percent"]
     conda:
         "../envs/kmc.yaml"
     shell:
@@ -26,8 +25,4 @@ rule kmc_rm_contam:
 
         # filter reads for contamination
         kmc_tools -t{threads} filter contam @{output.list} -ci0 -cx{params.contamMatchLimitCount} {output.filt1}
-        kmc_tools -t{threads} filter contam {output.filt1} -ci0.0 -cx{params.contamMatchLimitPercent} {output.filt2}
-
-        # compress reads
-        # gzip no_contam_reads/{wildcards.ID}.fastq
         """
