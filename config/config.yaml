@@ -1,3 +1,14 @@
+#
+adapter_path: "../config/trimmomatic_adapters.fa"
+
+q: 20
+
+Q: 20
+
+G: 30
+
+AFdflt: 0.4
+
 # Split sites for genotype calling into N lists for parallelization =========================
 
 splits: 40

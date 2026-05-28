@@ -1,4 +1,4 @@
-rule bwa_index:
+rule jules_bwa_index:
     input:
         "../config/linear_genomes/sequence/{ref}.fa",
     output:
@@ -14,7 +14,7 @@ rule bwa_index:
         bwa index {input}
         """
 
-rule samtools_faidx:
+rule jules_samtools_faidx:
     input:
         "../config/linear_genomes/sequence/{ref}.fa"    
     output:
@@ -26,7 +26,7 @@ rule samtools_faidx:
         samtools faidx {ref}
         """
 
-rule trimmomatic:
+rule jules_trimmomatic:
     input:
         r1="raw_reads/{srr}_1.fastq.gz",
         r2="raw_reads/{srr}_2.fastq.gz",
@@ -43,22 +43,23 @@ rule trimmomatic:
         trimmomatic PE -threads {threads} {input.r1} {input.r2} {output.r1} {output.u1} {output.r2} {output.u2} ILLUMINACLIP:{input.adapters}:2:30:10:2:True LEADING:3 TRAILING:3 MINLEN:36
         """
 
-rule bwa_mem:
+rule jules_bwa_mem:
     input:
         r1="trim_reads/{srr}_r1.fastq.gz",
         r2="trim_reads/{srr}_r2.fastq.gz",
+        ref=lookup(query = "Run == '{srr}'", within = reads, cols = "Species")
     output:
         temp("align_reads/{srr}.bam")
     conda:
         "../envs/bwa.yaml"
     shell:
         """
-        bwa mem -t {threads} -M -R '@RG\\tID:\${wildcards.srr}\\tSM:\${wildcards.srr}\\tPL:ILLUMINA\\tLB:lib1' {input.ref} {input.r1} {input.r2} | samtools sort -@ {threads} -o {output}
+        bwa mem -t {threads} -M -R '@RG\\tID:{wildcards.srr}\\tSM:{wildcards.srr}\\tPL:ILLUMINA\\tLB:lib1' {input.ref} {input.r1} {input.r2} | samtools sort -@ {threads} -o {output}
         """
 
-rule picard_mark_dup:
+rule jules_picard_mark_dup:
     input:
-        "align_reads/{srr}.bam"
+        "align_reads/{srr}.bam",
     output:
         bam="mark_reads/{srr}.bam",
         metrics=temp("picard_metrics/{srr}.txt"),
@@ -70,7 +71,7 @@ rule picard_mark_dup:
         picard MarkDuplicates I={input} O={output.bam} M={output.metrics} VALIDATION_STRINGENCY=SILENT CREATE_INDEX=true TMP_DIR={output.tmp_dir} 
         """
 
-rule samtools_index:
+rule jules_samtools_index:
     input:
         "mark_reads/{srr}.bam"
     output:
@@ -82,7 +83,7 @@ rule samtools_index:
         samtools index -@ {threads} {input}
         """
 
-rule sample_coverage:
+rule jules_sample_coverage:
     input:
         "mark_reads/{srr}.bam"
     output:
@@ -91,12 +92,12 @@ rule sample_coverage:
         "../envs/bcftools.yaml"
     shell:
         """
-        samtools depth -a {input} | awk '{sum+=\$3} END {print "Average =", sum/NR}' > {output}
+        samtools depth -a {input} | awk '{sum+=$3} END {print "Average =", sum/NR}' > {output}
         """
 
-rule bcftools_mpileup:
+rule jules_bcftools_mpileup:
     input:
-        ref="../config/linear_genomes/sequence/{ref}.fa
+        ref=lookup(query = "Run == '{srr}'", within = reads, cols = "Species"),
         bam="mark_reads/{srr}.bam"
     output:
         vcf="bcfvcfs/{srr}_raw.vcf.gz",
@@ -113,7 +114,7 @@ rule bcftools_mpileup:
         bcftools index {output.vcf}
         """
 
-rule bcftools_filter:
+rule jules_bcftools_filter:
     input:
         "bcfvcfs/{srr}_raw.vcf.gz"
     output:
@@ -125,7 +126,7 @@ rule bcftools_filter:
         bcftools filter -i 'QUAL>20 && FORMAT/DP>=4 && INFO/DP>=4 && INFO/MQ>30' {input} | bcftools view -Oz -o {output}
         """
 
-rule bcftools_roh:
+rule jules_bcftools_roh:
     input:
         "bcfvcfs/{srr}_filtered.vcf.gz"
     output:
@@ -134,10 +135,10 @@ rule bcftools_roh:
         "../envs/bcftools.yaml"
     params:
         G=config["G"],
-        AF-dflt=config["AF-dflt"]
+        AFdflt=config["AFdflt"]
     shell:
         """
-        bcftools roh -G{params.G} --AF-dflt {params.AF-dflt} -o {output} {input}
+        bcftools roh -G{params.G} --AF-dflt {params.AFdflt} -o {output} {input}
         """
 
  
