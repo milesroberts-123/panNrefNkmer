@@ -1,0 +1,112 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# set-up
+
+```{r}
+rm(list = ls())
+gc()
+.rs.restartR()
+```
+
+# packages
+
+```{r}
+library(tidyverse)
+library(data.table)
+```
+
+# compile jules' lists
+
+```{r}
+# load 
+pt1 <- fread("../../data/fastq_master_mapped_pt1.csv")
+pt2 <- fread("../../data/fastq_species_master_mapped_part2_filtered.csv")
+all_sam <- rbind(pt1, pt2)
+
+# list of species where runs collapsed to biosamples
+collapsed_sam_species <- unique(all_sam[grepl("SAMN", all_sam$SRR), "Species"])
+
+# runs for species without collapsed samples
+non_collapsed_sam <- all_sam[!(all_sam$Species %in% collapsed_sam_species$Species),]
+```
+
+## output biosamples to be processed with entrez
+
+```{r}
+# output SAMN
+write.table(all_sam[grepl("SAMN|SAME|SAMD", all_sam$SRR), "SRR"], "../../resources/biosample_ids.txt", quote = F, row.names = F, col.names = F)
+```
+
+## now grab run ids associated with biosamples
+
+## get SRR associated with SAMN 
+
+remove any SRR that are not matching jules' filters
+
+awk -F, 'NR==1 || ($13 == "WGS" && $15 == "GENOMIC" && $16 == "PAIRED" && $19 == "ILLUMINA")' SraRunInfo.csv > filtered_SraRunInfo.csv
+
+```{r}
+runinfo <- fread("/global/scratch/users/milesroberts/moi_lab_projects/panNrefNkmer/resources/runinfo.csv")
+
+runinfo_filt <- runinfo %>% filter(LibraryStrategy == "WGS" & LibrarySource == "GENOMIC" & LibraryLayout == "PAIRED" & Platform == "ILLUMINA")
+
+all_sam_run_only <- merge(all_sam, runinfo_filt[,c("Run", "BioSample")], by.x = "SRR", by.y = "BioSample", all.x = T)
+
+# if run starts with SAMN, replace with real Run number
+samn_bool <- grepl("SAMN|SAME|SAMD", all_sam_run_only$SRR)
+all_sam_run_only$SRR[samn_bool] <- all_sam_run_only$Run[samn_bool]
+
+# expect TRUE
+if(!all(all_sam_run_only$SRR == all_sam_run_only$Run, na.rm = T)){
+  stop("SRR does not match Run")
+}
+
+```
+
+## now output the runs and grab all of their biosample ids
+
+My hope is to standardize the info, so it's intuitive, rather than having my grouping variable sometimes be the run id and sometimes be the biosample id
+
+```{r}
+write.table(all_sam_run_only[,1], "../../resources/runs_srr_only.txt", quote = F, row.names = F, col.names = F)
+```
+
+## now grab all run info for every run
+
+```{bash, engine.opts='-l'}
+
+cd /global/scratch/users/milesroberts/moi_lab_projects/panNrefNkmer/resources
+pwd
+
+ENV_BIN="/global/home/users/milesroberts/.local/share/mamba/envs/entrez/bin"
+
+readarray -t runs < "runs_srr_only.txt"
+
+# Clear out the old file if it exists so you don't keep appending duplicates
+> runinfo_all_runs.csv
+
+for run in "${runs[@]}"; do
+    echo "$run"
+    $ENV_BIN/esearch -db sra -query $run | $ENV_BIN/efetch -format runinfo >> runinfo_all_runs.csv
+    sleep 1
+done
+```
+
+```{r}
+runinfo <- read.csv("/global/scratch/users/milesroberts/moi_lab_projects/panNrefNkmer/resources/runinfo_all_runs_unique.csv", fill = T, header = F)
+
+run_list <- read.csv("/global/scratch/users/milesroberts/moi_lab_projects/panNrefNkmer/resources/runs_srr_only.txt", fill = T, header = F)
+
+sum(run_list$V1 %in% runinfo$V1)
+
+runinfo_sorted <- runinfo %>% 
+  filter(!V29 %in% c("Homo sapiens", "human metagenome", "human lung metagenome", "human gut metagenome", "human oral metagenome")) %>%
+  dplyr::select(V1, V26, V29) %>% 
+  arrange(V26, V1, V29) 
+
+runinfo_sorted <- runinfo_sorted[-1:-2,]
+```
+
