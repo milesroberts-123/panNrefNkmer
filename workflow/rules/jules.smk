@@ -140,3 +140,74 @@ rule jules_bcftools_roh:
         """
         bcftools roh -G{params.G} --AF-dflt {params.AFdflt} -o {output} {input}
         """
+rule jules_psmc_50k_bed:
+    input: 
+        "../config/linear_genomes/sequence/{ref}.fa.fai"
+    output:
+        "{ref}.50k.bed"
+    conda:
+        "../envs/bcftools.yaml"
+    shell:
+        """
+        zless {input} | awk '$2>50000 {print $1, "0", $2}' > {output}
+        """
+
+rule jules_psmc_subset_bam:
+    input: 
+        bam="mark_reads/{srr}.bam",
+        bed=lambda wc: lookup(query="Run == '{}'".format(wc.srr), within=reads, cols="Species") + ".50k.bed"
+    output:
+        "psmc/{srr}.50k.bam"
+    conda:
+        "../envs/samtools.yaml"
+    threads: config["view_threads"]
+    shell:
+        """
+        samtools view -@ {threads} -bh -L {input.bed} \
+        -o {output} {input.bam}
+        """
+
+rule jules_psmc_gen_consensus: 
+    input:
+        ref=lookup(query = "Run == '{srr}'", within = reads, cols = "Species"),
+        bam="psmc/{srr}.50k.bam"
+    output: 
+        "psmc/{srr}.con.fq.gz"
+    conda:  
+        "../envs/psmc_legacy.yaml"
+    params:
+        mincov=lambda wc: int(open("coverages/{}.50k.coverage.txt".format(wc.srr)).read().split()[2]) // 3,
+        maxcov=lambda wc: int(open("coverages/{}.50k.coverage.txt".format(wc.srr)).read().split()[2]) * 2
+    shell:
+        """
+        samtools mpileup -C50 -uf {input.ref} {input.bam} | \
+            bcftools call -c - | \
+            vcfutils.pl vcf2fq -d {params.mincov} -D {params.maxcov} | \
+            gzip > {output}
+    
+        """
+rule jules_psmc_gen_input:
+    input: 
+        "psmc/{srr}.con.fq.gz"
+    output:
+        "psmc/{srr}.psmcfa"
+    conda: 
+        "../envs/psmc_legacy.yaml"
+    shell:
+        """
+        {config[psmc_path]}/fq2psmcfa -q20 {input} \
+        > {output}
+        """
+
+rule jules_psmc_run_psmc: 
+    input: 
+         "psmc/{srr}.psmcfa"
+    output: 
+         "psmc/{srr}.psmc"
+    conda:
+         "../envs/psmc_legacy.yaml"
+    shell: 
+        """
+        {config[psmc_path]}/psmc -N25 -t15 -r5 -p "1+1+1+1+25*2+4+6" \
+        -o {output} {input}
+        """
