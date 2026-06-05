@@ -1,12 +1,12 @@
 rule jules_bwa_index:
     input:
-        config["reference_genome_path"] + "{ref}/{ref}.fa",
+        config["reference_genome_path"] + "{ref}/{ref}.fasta",
     output:
-        amb=temp(config["reference_genome_path"] + "{ref}/{ref}.fa.amb"),
-        ann=temp(config["reference_genome_path"] + "{ref}/{ref}.fa.ann"),
-        bwt=temp(config["reference_genome_path"] + "{ref}/{ref}.fa.bwt"),
-        pac=temp(config["reference_genome_path"] + "{ref}/{ref}.fa.pac"),
-        sa=temp(config["reference_genome_path"] + "{ref}/{ref}.fa.sa"),
+        amb=temp(config["reference_genome_path"] + "{ref}/{ref}.fasta.amb"),
+        ann=temp(config["reference_genome_path"] + "{ref}/{ref}.fasta.ann"),
+        bwt=temp(config["reference_genome_path"] + "{ref}/{ref}.fasta.bwt"),
+        pac=temp(config["reference_genome_path"] + "{ref}/{ref}.fasta.pac"),
+        sa=temp(config["reference_genome_path"] + "{ref}/{ref}.fasta.sa"),
     conda:
         "../envs/bwa.yaml"
     shell:
@@ -16,9 +16,9 @@ rule jules_bwa_index:
 
 rule jules_samtools_faidx:
     input:
-        config["reference_genome_path"] + "{ref}/{ref}.fa"    
+        config["reference_genome_path"] + "{ref}/{ref}.fasta"    
     output:
-        temp(config["reference_genome_path"] + "{ref}/{ref}.fa.fai")
+        temp(config["reference_genome_path"] + "{ref}/{ref}.fasta.fai")
     conda:
         "../envs/bcftools.yaml"
     shell:
@@ -66,7 +66,7 @@ rule jules_bwa_mem:
     input:
         r1="trim_reads/{srr}_r1.fastq.gz",
         r2="trim_reads/{srr}_r2.fastq.gz",
-        ref=lookup(query = "Run == '{srr}'", within = reads, cols = "Species")
+        ref=expand("{path_start}{ref}/{ref}.fasta", path_start = config["reference_genome_path"], ref = lookup(query = "Run == '{srr}'", within = reads, cols = "Species"))
     output:
         temp("align_reads/{srr}.bam")
     conda:
@@ -116,7 +116,7 @@ rule jules_sample_coverage:
 
 rule jules_bcftools_mpileup:
     input:
-        ref=lookup(query = "Run == '{srr}'", within = reads, cols = "Species"),
+        ref=expand("{path_start}{ref}/{ref}.fasta", path_start = config["reference_genome_path"], ref = lookup(query = "Run == '{srr}'", within = reads, cols = "Species")),
         bam="mark_reads/{srr}.bam"
     output:
         vcf="bcfvcfs/{srr}_raw.vcf.gz",
@@ -162,14 +162,14 @@ rule jules_bcftools_roh:
 
 rule jules_psmc_50k_bed:
     input: 
-        "../config/linear_genomes/sequence/{ref}.fa.fai"
+        expand("{path_start}{{ref}}/{{ref}}.fasta.fai", path_start = config["reference_genome_path"])
     output:
         "{ref}.50k.bed"
     conda:
         "../envs/bcftools.yaml"
     shell:
         """
-        zless {input} | awk '$2>50000 {print $1, "0", $2}' > {output}
+        zless {input} | awk '$2>50000 {{print $1, "0", $2}}' > {output}
         """
 
 rule jules_psmc_subset_bam:
@@ -188,7 +188,7 @@ rule jules_psmc_subset_bam:
 
 rule jules_psmc_gen_consensus: 
     input:
-        ref=lookup(query = "Run == '{srr}'", within = reads, cols = "Species"),
+        ref=expand("{path_start}{ref}/{ref}.fasta", path_start = config["reference_genome_path"], ref = lookup(query = "Run == '{srr}'", within = reads, cols = "Species")),
         bam="psmc/{srr}.50k.bam",
         cov="coverages/{srr}.50k.coverage.txt"
     output: 

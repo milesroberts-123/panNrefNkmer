@@ -36,6 +36,11 @@ localrules: all, batch_per_sample
 #        expand("kmer_distances_{species}.txt", species = reads["Species"].unique()),
 #        "multiqc_report.html"
 
+rule jules_only:
+    input:
+        expand("psmc/{srr}.psmc", srr = reads["Run"]),
+        expand("roh/{srr}_ROH.txt", srr = reads["Run"])
+
 rule kmers_only:
     input:
      expand("kmer_distances_{species}.txt", species = reads["Species"].unique())
