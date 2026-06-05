@@ -1,12 +1,12 @@
 rule jules_bwa_index:
     input:
-        "../config/linear_genomes/sequence/{ref}.fa",
+        config["reference_genome_path"] + "{ref}/{ref}.fa",
     output:
-        amb=temp("../config/linear_genomes/sequence/{ref}.fa.amb"),
-        ann=temp("../config/linear_genomes/sequence/{ref}.fa.ann"),
-        bwt=temp("../config/linear_genomes/sequence/{ref}.fa.bwt"),
-        pac=temp("../config/linear_genomes/sequence/{ref}.fa.pac"),
-        sa=temp("../config/linear_genomes/sequence/{ref}.fa.sa"),
+        amb=temp(config["reference_genome_path"] + "{ref}/{ref}.fa.amb"),
+        ann=temp(config["reference_genome_path"] + "{ref}/{ref}.fa.ann"),
+        bwt=temp(config["reference_genome_path"] + "{ref}/{ref}.fa.bwt"),
+        pac=temp(config["reference_genome_path"] + "{ref}/{ref}.fa.pac"),
+        sa=temp(config["reference_genome_path"] + "{ref}/{ref}.fa.sa"),
     conda:
         "../envs/bwa.yaml"
     shell:
@@ -16,9 +16,9 @@ rule jules_bwa_index:
 
 rule jules_samtools_faidx:
     input:
-        "../config/linear_genomes/sequence/{ref}.fa"    
+        config["reference_genome_path"] + "{ref}/{ref}.fa"    
     output:
-        temp("../config/linear_genomes/sequence/{ref}.fa.fai")
+        temp(config["reference_genome_path"] + "{ref}/{ref}.fa.fai")
     conda:
         "../envs/bcftools.yaml"
     shell:
@@ -140,5 +140,3 @@ rule jules_bcftools_roh:
         """
         bcftools roh -G{params.G} --AF-dflt {params.AFdflt} -o {output} {input}
         """
-
- 

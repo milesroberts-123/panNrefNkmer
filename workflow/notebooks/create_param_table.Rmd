@@ -107,6 +107,12 @@ runinfo_sorted <- runinfo %>%
   dplyr::select(V1, V26, V29) %>% 
   arrange(V26, V1, V29) 
 
-runinfo_sorted <- runinfo_sorted[-1:-2,]
+runinfo_sorted <- runinfo_sorted[-1:-5,]
+
+# replace space with _
+runinfo_sorted$V29 <- gsub(" ", "_", runinfo_sorted$V29)
+names(runinfo_sorted) = c("Run", "BioSample", "Species")
+
+write.table(runinfo_sorted, "../../config/samples.tsv", quote = F, row.names = F, col.names = T, sep = "\t")
 ```
 

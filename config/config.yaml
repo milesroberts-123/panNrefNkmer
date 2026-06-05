@@ -9,6 +9,9 @@ G: 30
 
 AFdflt: 0.4
 
+#
+reference_genome_path: "../config/jules_ref_genomes/"
+
 # Split sites for genotype calling into N lists for parallelization =========================
 
 splits: 40
