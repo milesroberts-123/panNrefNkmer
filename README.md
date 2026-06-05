@@ -59,6 +59,18 @@ config/linear_genomes/
 
 # Usage
 
+## Jules branch
+
+create reads.tsv, then collect the reference genomes into one folder at the path specified in the "ref_genome_path" config variable
+
+```
+num_batch=50
+for i in {1..$num_batch};
+do
+ snakemake --sdm conda --rerun-triggers mtime --scheduler greedy --rerun-incomplete --batch jules_only=$i/$num_batch jules_only
+done
+```
+
 ## Run whole workflow with conda envs on slurm cluster
 
 `snakemake --sdm conda --rerun-incomplete --rerun-triggers mtime --scheduler greedy --retries 1 --keep-going`
