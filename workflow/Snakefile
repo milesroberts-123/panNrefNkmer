@@ -49,46 +49,35 @@ rule batch_per_sample:
 ## Jules branch
 include: "rules/jules.smk"
 
-## data download and QC rules
-include: "rules/datasets.smk"
-include: "rules/sra.smk"
+## Data download and QC rules
+include: "rules/data_download.smk"
 include: "rules/fastp.smk"
 include: "rules/multiqc.smk"
 include: "rules/change_headers.smk"
-include: "rules/biosample.smk"
 
-## linear alignment rules
-include: "rules/bwa_index.smk"
-include: "rules/bwa_mem.smk"
-include: "rules/mark_dup.smk"
+## Linear alignment rules
+include: "rules/bwa.smk"
 
-## genotype calling rules
-include: "rules/bcftools_call.smk"
-include: "rules/bcftools_merge.smk"
-include: "rules/bcftools_filter.smk"
+## SAM tools rules
+include: "rules/samtools.smk"
 
-## k-mer counting rules
-include: "rules/kmc_contam_db.smk"
-include: "rules/kmc_rm_contam.smk"
+## K-mer counting rules
 include: "rules/kmc.smk"
-include: "rules/counting_bloom_filter.smk"
-include: "rules/cbind.smk"
-include: "rules/kmer_distances.smk"
+include: "rules/cbf.smk"
 
-## pangenome alignment rules
-include: "rules/vg_index.smk"
-include: "rules/vg_giraffe.smk"
-include: "rules/vg_filter.smk"
-include: "rules/vg_surject.smk"
-include: "rules/vg_paths.smk"
+## Pangenome graph building and alignment rules
+include: "rules/pggb.smk"
+include: "rules/vg.smk"
 
-## gene expression quantification
-include: "rules/salmon_index.smk"
-include: "rules/salmon_quantmerge.smk"
-include: "rules/salmon_quant.smk"
+## Gene expression quantification
+include: "rules/salmon.smk"
 
-## population genetics summary rules
-include: "rules/mk_test.smk"
+## Population genetics summary rules
 include: "rules/degenotate.smk"
-include: "rules/split_sites.smk"
 include: "rules/pixy.smk"
+
+## Split sites
+include: "rules/split.smk"
+
+## Mash k-mer distances
+include: "rules/mash.smk"
