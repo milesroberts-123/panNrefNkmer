@@ -1,4 +1,6 @@
 #
+psmc_path: "~/temp/whatever.py"
+
 adapter_path: "../config/trimmomatic_adapters.fa"
 
 q: 20

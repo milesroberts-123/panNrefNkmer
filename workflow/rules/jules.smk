@@ -26,6 +26,25 @@ rule jules_samtools_faidx:
         samtools faidx {ref}
         """
 
+rule jules_fastq_dump:
+    output:
+        r1=temp("raw_reads/{ID}_1.fastq.gz"),
+        r2=temp("raw_reads/{ID}_2.fastq.gz")
+    conda:
+        "../envs/sra.yaml"
+    shell:
+        """
+        # create directory
+        if [ ! -d "raw_reads" ]; then
+            mkdir raw_reads
+        fi
+
+        prefetch {wildcards.ID}
+
+        # download data
+        fastq-dump --progress --temp /tmp --gzip --outdir ./raw_reads --split-files --skip-technical ./{wildcards.ID}
+        """
+
 rule jules_trimmomatic:
     input:
         r1="raw_reads/{srr}_1.fastq.gz",
@@ -92,7 +111,7 @@ rule jules_sample_coverage:
         "../envs/bcftools.yaml"
     shell:
         """
-        samtools depth -a {input} | awk '{sum+=$3} END {print "Average =", sum/NR}' > {output}
+        samtools depth -a {input} | awk '{{sum+=$3}} END {{print "Average =", sum/NR}}' > {output}
         """
 
 rule jules_bcftools_mpileup:
@@ -140,6 +159,7 @@ rule jules_bcftools_roh:
         """
         bcftools roh -G{params.G} --AF-dflt {params.AFdflt} -o {output} {input}
         """
+
 rule jules_psmc_50k_bed:
     input: 
         "../config/linear_genomes/sequence/{ref}.fa.fai"
@@ -155,12 +175,11 @@ rule jules_psmc_50k_bed:
 rule jules_psmc_subset_bam:
     input: 
         bam="mark_reads/{srr}.bam",
-        bed=lambda wc: lookup(query="Run == '{}'".format(wc.srr), within=reads, cols="Species") + ".50k.bed"
+        bed=expand("{species}.50k.bed", species=lookup(query="Run == '{srr}'", within=reads, cols="Species"))
     output:
         "psmc/{srr}.50k.bam"
     conda:
         "../envs/samtools.yaml"
-    threads: config["view_threads"]
     shell:
         """
         samtools view -@ {threads} -bh -L {input.bed} \
@@ -170,7 +189,8 @@ rule jules_psmc_subset_bam:
 rule jules_psmc_gen_consensus: 
     input:
         ref=lookup(query = "Run == '{srr}'", within = reads, cols = "Species"),
-        bam="psmc/{srr}.50k.bam"
+        bam="psmc/{srr}.50k.bam",
+        cov="coverages/{srr}.50k.coverage.txt"
     output: 
         "psmc/{srr}.con.fq.gz"
     conda:  
@@ -184,8 +204,8 @@ rule jules_psmc_gen_consensus:
             bcftools call -c - | \
             vcfutils.pl vcf2fq -d {params.mincov} -D {params.maxcov} | \
             gzip > {output}
-    
         """
+
 rule jules_psmc_gen_input:
     input: 
         "psmc/{srr}.con.fq.gz"
@@ -193,9 +213,11 @@ rule jules_psmc_gen_input:
         "psmc/{srr}.psmcfa"
     conda: 
         "../envs/psmc_legacy.yaml"
+    params:
+        psmc_path=config["psmc_path"]
     shell:
         """
-        {config[psmc_path]}/fq2psmcfa -q20 {input} \
+        {params.psmc_path}/fq2psmcfa -q20 {input} \
         > {output}
         """
 
@@ -206,8 +228,10 @@ rule jules_psmc_run_psmc:
          "psmc/{srr}.psmc"
     conda:
          "../envs/psmc_legacy.yaml"
+    params:
+        psmc_path=config["psmc_path"]
     shell: 
         """
-        {config[psmc_path]}/psmc -N25 -t15 -r5 -p "1+1+1+1+25*2+4+6" \
+        {params.psmc_path}/psmc -N25 -t15 -r5 -p "1+1+1+1+25*2+4+6" \
         -o {output} {input}
         """

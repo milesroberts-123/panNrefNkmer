@@ -36,6 +36,9 @@ set-resources:
     counting_bloom_filter:
         runtime: "180m"
         cpus_per_task: 1
+    jules_psmc_subset_bam:
+        runtime: "180m"
+        cpus_per_task: 8
 
 # parallelization with threads needs to be defined separately:
 # threads and cpus_per_task are supposed to be synonymous for this plugin, but for some reason I need to specify them separately
@@ -44,3 +47,4 @@ set-threads:
     kmc: 4
     kmc_contam_db: 4
     kmc_rm_contam: 4
+    jules_psmc_subset_bam: 8
