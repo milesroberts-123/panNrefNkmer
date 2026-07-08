@@ -26,6 +26,11 @@ pt1 <- fread("../../data/fastq_master_mapped_pt1.csv")
 pt2 <- fread("../../data/fastq_species_master_mapped_part2_filtered.csv")
 all_sam <- rbind(pt1, pt2)
 
+# basic stats
+species_with_many_samples <- all_sam %>%
+  group_by(Species) %>%
+  filter(n() > 1)
+
 # list of species where runs collapsed to biosamples
 collapsed_sam_species <- unique(all_sam[grepl("SAMN", all_sam$SRR), "Species"])
 
@@ -95,15 +100,18 @@ for run in "${runs[@]}"; do
 done
 ```
 
+## Finally, organize runinfo into one table with three columns: run, biosample, species
+
 ```{r}
 runinfo <- read.csv("/global/scratch/users/milesroberts/moi_lab_projects/panNrefNkmer/resources/runinfo_all_runs_unique.csv", fill = T, header = F)
 
-run_list <- read.csv("/global/scratch/users/milesroberts/moi_lab_projects/panNrefNkmer/resources/runs_srr_only.txt", fill = T, header = F)
-
-sum(run_list$V1 %in% runinfo$V1)
+# run_list <- read.csv("/global/scratch/users/milesroberts/moi_lab_projects/panNrefNkmer/resources/runs_srr_only.txt", fill = T, header = F)
+# 
+# sum(run_list$V1 %in% runinfo$V1)
 
 runinfo_sorted <- runinfo %>% 
-  filter(!V29 %in% c("Homo sapiens", "human metagenome", "human lung metagenome", "human gut metagenome", "human oral metagenome")) %>%
+  #filter(!grepl("metagenome|uncultured|unidentified|human|synthetic|prokaryotic|mixed libraries|Mus musculus|Homo sapiens|Saccharomyces cerevisiae|Saccharomonospora azurea|Caenorhabditis elegans|Bos taurus|Gallus gallus|Monodelphis domestica|Drosophila", V29)) %>%
+  #filter(V29 %in% (all_sam$Species)) %>% 
   dplyr::select(V1, V26, V29) %>% 
   arrange(V26, V1, V29) 
 
@@ -113,6 +121,28 @@ runinfo_sorted <- runinfo_sorted[-1:-5,]
 runinfo_sorted$V29 <- gsub(" ", "_", runinfo_sorted$V29)
 names(runinfo_sorted) = c("Run", "BioSample", "Species")
 
-write.table(runinfo_sorted, "../../config/samples.tsv", quote = F, row.names = F, col.names = T, sep = "\t")
+# remove species with only one run
+# cannot calculate k-mer distances for such species
+runinfo_filtered <- runinfo_sorted %>%
+  group_by(Species) %>%
+  filter(n_distinct(BioSample) > 1) %>%
+  ungroup() %>%
+  droplevels() %>%
+  filter(Species %in% (all_sam$Species)) %>% 
+  arrange(Species)
+
+# summary statistics
+cat("Number of Species:", n_distinct(runinfo_filtered$Species), "\n")
+cat("Number of BioSamples:", n_distinct(runinfo_filtered$BioSample), "\n")
+cat("Number of Runs:", n_distinct(runinfo_filtered$Run), "\n")
+
+# check for species not in original Jules list
+# seems like my list excludes some species that are cultivars
+runinfo_filtered$Species[!(runinfo_filtered$Species %in% species_with_many_samples$Species)]
+
+unique(species_with_many_samples$Species[!(species_with_many_samples$Species %in% runinfo_filtered$Species)])
+
+# save list of species
+write.table(runinfo_filtered, "../../config/samples.tsv", quote = F, row.names = F, col.names = T, sep = "\t")
 ```
 

@@ -1,7 +1,8 @@
 rule sra:
     output:
         r1=temp("raw_reads/{ID}_1.fastq"),
-        r2=temp("raw_reads/{ID}_2.fastq")
+        r2=temp("raw_reads/{ID}_2.fastq"),
+        sra=temp("{ID}/{ID}.sra")
     conda:
         "../envs/sra.yaml"
     shell:
@@ -11,7 +12,7 @@ rule sra:
             mkdir raw_reads
         fi
 
-        prefetch {wildcards.ID}
+        prefetch --max-size 500G {wildcards.ID}
 
         # download data
         fasterq-dump --progress --temp /tmp --threads {threads} --outdir ./raw_reads --split-files --skip-technical ./{wildcards.ID} 

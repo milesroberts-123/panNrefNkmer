@@ -28,7 +28,7 @@ set-resources:
         runtime: "180m"
         cpus_per_task: 4
     kmc_rm_contam:
-        runtime: "180m"
+        runtime: "360m"
         cpus_per_task: 4
     kmc: 
         runtime: "180m"
