@@ -24,7 +24,7 @@ set-resources:
     fastp:
         runtime: "180m"
         cpus_per_task: 4
-    kmc_contam_db:
+    kmc_ref_db:
         runtime: "180m"
         cpus_per_task: 4
     kmc_rm_contam:
@@ -45,6 +45,6 @@ set-resources:
 set-threads:
     fastp: 4
     kmc: 4
-    kmc_contam_db: 4
+    kmc_ref_db: 4
     kmc_rm_contam: 4
     jules_psmc_subset_bam: 8

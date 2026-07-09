@@ -2,7 +2,7 @@ rule sra:
     output:
         r1=temp("results/raw_reads/{ID}_1.fastq"),
         r2=temp("results/raw_reads/{ID}_2.fastq"),
-        sra=temp("results/sra/{ID}/{ID}.sra")
+        sra=temp("{ID}/{ID}.sra")
     conda:
         "../envs/sra.yaml"
     shell:

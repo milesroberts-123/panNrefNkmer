@@ -124,6 +124,7 @@ names(runinfo_sorted) = c("Run", "BioSample", "Species")
 
 # remove species with only one run
 # cannot calculate k-mer distances for such species
+# sort species by number of runs (analyze species with less data first)
 runinfo_filtered <- runinfo_sorted %>%
   group_by(Species) %>%
   filter(n_distinct(BioSample) > 1) %>%
@@ -131,6 +132,10 @@ runinfo_filtered <- runinfo_sorted %>%
   droplevels() %>%
   filter(Species %in% (all_sam$Species)) %>% 
   arrange(Species)
+  #group_by(Species) %>%
+  #mutate(n_runs = n()) %>% 
+  #arrange(n_runs, Species)%>%
+  #dplyr::select(Run, BioSample, Species)
 
 # summary statistics
 cat("Number of Species:", n_distinct(runinfo_filtered$Species), "\n")

@@ -7,8 +7,6 @@ rule kmc:
         tmp_suf=temp("results/kmc_db_{ID}.kmc_suf")
     conda:
         "../envs/kmc.yaml"
-    log:
-        "logs/kmc/{ID}.log",
     params:
         mincount=config["mincount"],
         maxcount=config["maxcount"],
@@ -23,10 +21,10 @@ rule kmc:
         mkdir tmp_kmc_{wildcards.ID}
 
         # count k-mers
-        kmc -m15 -t{threads} -ci{params.mincount} -cs{params.maxcount} -k{params.k} {input} results/kmc_db_{wildcards.ID} tmp_kmc_{wildcards.ID} &>> {log}
+        kmc -m15 -t{threads} -ci{params.mincount} -cs{params.maxcount} -k{params.k} {input} results/kmc_db_{wildcards.ID} tmp_kmc_{wildcards.ID}
 
         # dump all k-mers to text file
-        kmc_tools transform results/kmc_db_{wildcards.ID} dump {output.counts} &>> {log}
+        kmc_tools transform results/kmc_db_{wildcards.ID} dump {output.counts}
 
         # delete tmp directories
         rm -r tmp_kmc_{wildcards.ID}
@@ -66,6 +64,7 @@ rule kmc_rm_contam:
         filt1=temp("results/no_contam_reads/{ID}_stage1.fastq"),
         list=temp("results/input_{ID}.txt")
     params:
+        refdb = lambda wildcards, input: os.path.splitext(str(input.refdb[0]))[0],
         contamMatchLimitCount = config["contam_match_limit_count"],
     conda:
         "../envs/kmc.yaml"
@@ -79,5 +78,5 @@ rule kmc_rm_contam:
         echo {input.pread1} {input.pread2} {input.uread1} {input.uread2} | tr ' ' '\n' > {output.list}
 
         # filter reads for contamination
-        kmc_tools -t{threads} filter {input.refdb[0]} @{output.list} -ci{params.contamMatchLimitCount} -cx1000000 {output.filt1}
+        kmc_tools -t{threads} filter {params.refdb} @{output.list} -ci{params.contamMatchLimitCount} -cx1000000 {output.filt1}
         """
