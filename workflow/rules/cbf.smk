@@ -2,9 +2,9 @@
 
 rule cbind:
     input:
-        expand("cbf_results/{ID}.txt", ID=lookup(query="Species == '{species}'", within = reads, cols="BioSample"))
+        expand("results/cbf/{ID}.txt", ID=lookup(query="Species == '{species}'", within = reads, cols="BioSample"))
     output:
-        "cbf_table_{species}.txt"
+        "results/cbf_table_{species}.txt"
     shell:
         r"""
         paste -d' ' {input} > {output}
@@ -12,9 +12,9 @@ rule cbind:
 
 rule counting_bloom_filter:
     input:
-        "kmc_results/{ID}.txt"
+        "results/kmc/{ID}.txt"
     output:
-        temp("cbf_results/{ID}.txt")
+        temp("results/cbf/{ID}.txt")
     params:
         array_size = config["array_size"],
         num_hash = config["num_hash"]
@@ -22,8 +22,8 @@ rule counting_bloom_filter:
         "../envs/cbf.yaml"
     shell:
         """
-        if [ ! -d "cbf_results" ]; then
-            mkdir cbf_results
+        if [ ! -d "results/cbf" ]; then
+            mkdir -p results/cbf
         fi
         
         python scripts/counting_bloom_filter.py --input {input} --output {output} --array-size {params.array_size} --num-hash {params.num_hash}
@@ -31,9 +31,9 @@ rule counting_bloom_filter:
 
 rule kmer_distances:
     input:
-        "cbf_table_{species}.txt"
+        "results/cbf_table_{species}.txt"
     output:
-        "kmer_distances_{species}.txt"
+        "results/kmer_distances_{species}.txt"
     conda:
         "../envs/cbf.yaml"
     shell:

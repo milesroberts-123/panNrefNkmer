@@ -38,18 +38,18 @@ localrules: all, batch_per_sample
 
 rule jules_only:
     input:
-        expand("psmc/{srr}.psmc", srr = reads["Run"]),
-        expand("roh/{srr}_ROH.txt", srr = reads["Run"])
+        expand("results/psmc/{srr}.psmc", srr = reads["Run"]),
+        expand("results/roh/{srr}_ROH.txt", srr = reads["Run"])
 
 rule kmers_only:
     input:
-     expand("kmer_distances_{species}.txt", species = reads["Species"].unique())
+     expand("results/kmer_distances_{species}.txt", species = reads["Species"].unique())
 
 rule batch_per_sample:
     input:
-        expand("bcftools_linref_results/{ID}_{ref}_{split}.vcf.gz", ID = reads["BioSample"], ref = config["linrefs"], split = range(10, 10 + config["splits"])),
-        expand("cbf_results/{ID}.txt", ID = reads["BioSample"]),
-        expand("salmon_quant_results/{ref}_{rna}/quant.sf", ref = config["linrefs"], rna = config["rna"])
+        expand("results/bcftools_linref/{ID}_{ref}_{split}.vcf.gz", ID = reads["BioSample"], ref = config["linrefs"], split = range(10, 10 + config["splits"])),
+        expand("results/cbf/{ID}.txt", ID = reads["BioSample"]),
+        expand("results/salmon_quant/{ref}_{rna}/quant.sf", ref = config["linrefs"], rna = config["rna"])
 
 ## Jules branch
 include: "rules/jules.smk"

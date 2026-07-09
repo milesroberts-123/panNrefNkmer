@@ -1,21 +1,21 @@
 rule sra:
     output:
-        r1=temp("raw_reads/{ID}_1.fastq"),
-        r2=temp("raw_reads/{ID}_2.fastq"),
-        sra=temp("{ID}/{ID}.sra")
+        r1=temp("results/raw_reads/{ID}_1.fastq"),
+        r2=temp("results/raw_reads/{ID}_2.fastq"),
+        sra=temp("results/sra/{ID}/{ID}.sra")
     conda:
         "../envs/sra.yaml"
     shell:
         """
         # create directory
-        if [ ! -d "raw_reads" ]; then
-            mkdir raw_reads
+        if [ ! -d "results/raw_reads" ]; then
+            mkdir -p results/raw_reads
         fi
 
         prefetch --max-size 500G {wildcards.ID}
 
         # download data
-        fasterq-dump --progress --temp /tmp --threads {threads} --outdir ./raw_reads --split-files --skip-technical ./{wildcards.ID} 
+        fasterq-dump --progress --temp /tmp --threads {threads} --outdir ./results/raw_reads --split-files --skip-technical ./{wildcards.ID} 
         
         # move data to folder
         #mv {wildcards.ID}_1.fastq raw_reads/
@@ -24,7 +24,7 @@ rule sra:
 
 rule datasets:
     output:
-        "contam.fa"
+        "results/contam.fa"
     params:
         contams = config["ncbi_contams"]
     conda:
@@ -53,15 +53,15 @@ rule datasets:
 
 rule biosample:
     input:
-        pread1=expand("fastp_results/trimmed_paired_R1_{run}.fastq.gz", run = lookup(query="BioSample == '{bio}'", within=reads, cols="Run")),
-        pread2=expand("fastp_results/trimmed_paired_R2_{run}.fastq.gz", run = lookup(query="BioSample == '{bio}'", within=reads, cols="Run")),
-        uread1=expand("fastp_results/trimmed_unpaired_R1_{run}.fastq.gz", run = lookup(query="BioSample == '{bio}'", within=reads, cols="Run")),
-        uread2=expand("fastp_results/trimmed_unpaired_R2_{run}.fastq.gz", run = lookup(query="BioSample == '{bio}'", within=reads, cols="Run")),
+        pread1=expand("results/fastp/trimmed_paired_R1_{run}.fastq.gz", run = lookup(query="BioSample == '{bio}'", within=reads, cols="Run")),
+        pread2=expand("results/fastp/trimmed_paired_R2_{run}.fastq.gz", run = lookup(query="BioSample == '{bio}'", within=reads, cols="Run")),
+        uread1=expand("results/fastp/trimmed_unpaired_R1_{run}.fastq.gz", run = lookup(query="BioSample == '{bio}'", within=reads, cols="Run")),
+        uread2=expand("results/fastp/trimmed_unpaired_R2_{run}.fastq.gz", run = lookup(query="BioSample == '{bio}'", within=reads, cols="Run")),
     output:
-        pread1="biosample_results/{bio}_paired_R1.fastq.gz",
-        pread2="biosample_results/{bio}_paired_R2.fastq.gz",
-        uread1="biosample_results/{bio}_unpaired_R1.fastq.gz",
-        uread2="biosample_results/{bio}_unpaired_R2.fastq.gz",
+        pread1="results/biosample/{bio}_paired_R1.fastq.gz",
+        pread2="results/biosample/{bio}_paired_R2.fastq.gz",
+        uread1="results/biosample/{bio}_unpaired_R1.fastq.gz",
+        uread2="results/biosample/{bio}_unpaired_R2.fastq.gz",
     params:
         no_inputs=lambda wildcards, input: len(input)
     shell:

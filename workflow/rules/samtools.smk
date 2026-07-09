@@ -2,9 +2,9 @@
 # https://www.htslib.org/algorithms/duplicate.html
 rule mark_dup:
     input:
-        "bwa_results/{ID}_{ref}.bam"
+        "results/bwa/{ID}_{ref}.bam"
     output:
-        temp("mark_dup_results/{ID}_{ref}.bam")
+        temp("results/mark_dup/{ID}_{ref}.bam")
     conda:
         "../envs/samtools.yaml"
     shell:
@@ -12,9 +12,9 @@ rule mark_dup:
 
 rule samtools_stats:
     input:
-        "mark_dup_results/{ID}_{ref}.bam"
+        "results/mark_dup/{ID}_{ref}.bam"
     output:
-        "samtools_stats/{ID}_{ref}.txt"
+        "results/samtools_stats/{ID}_{ref}.txt"
     conda:
         "../envs/samtools.yaml"
     shell:
@@ -22,9 +22,9 @@ rule samtools_stats:
 
 rule bam_index:
     input:
-        "mark_dup_results/{ID}_{ref}.bam",
+        "results/mark_dup/{ID}_{ref}.bam",
     output:
-        temp("mark_dup_results/{ID}_{ref}.bam.bai"),
+        temp("results/mark_dup/{ID}_{ref}.bam.bai"),
     conda:
         "../envs/samtools.yaml"
     shell:
@@ -32,10 +32,10 @@ rule bam_index:
 
 rule bcftools_linref_merge:
     input:
-        gz=expand("bcftools_linref_results/{ID}_{{ref}}_{{split}}.vcf.gz", ID=config["samples"] + config["outgroup"]),
-        tbi=expand("bcftools_linref_results/{ID}_{{ref}}_{{split}}.vcf.gz.tbi", ID=config["samples"] + config["outgroup"])
+        gz=expand("results/bcftools_linref/{ID}_{{ref}}_{{split}}.vcf.gz", ID=config["samples"] + config["outgroup"]),
+        tbi=expand("results/bcftools_linref/{ID}_{{ref}}_{{split}}.vcf.gz.tbi", ID=config["samples"] + config["outgroup"])
     output:
-        temp("bcftools_linref_merge_results/{ref}_{split}.vcf.gz")
+        temp("results/bcftools_linref_merge/{ref}_{split}.vcf.gz")
     conda:
         "../envs/samtools.yaml"
     shell:
@@ -43,11 +43,11 @@ rule bcftools_linref_merge:
 
 rule bcftools_concat:
     input:
-        expand("bcftools_filter_results/{{ref}}_{split}_sorted.vcf.gz", split = range(10, 10 + config["splits"]))
+        expand("results/bcftools_filter/{{ref}}_{split}_sorted.vcf.gz", split = range(10, 10 + config["splits"]))
     output:
-        gz="bcftools_concat_results/{ref}.vcf.gz",
-        sorted="bcftools_concat_results/{ref}_sorted.vcf.gz",
-        tbi="bcftools_concat_results/{ref}_sorted.vcf.gz.tbi"
+        gz="results/bcftools_concat/{ref}.vcf.gz",
+        sorted="results/bcftools_concat/{ref}_sorted.vcf.gz",
+        tbi="results/bcftools_concat/{ref}_sorted.vcf.gz.tbi"
     conda:
         "../envs/samtools.yaml"
     shell:
@@ -61,9 +61,9 @@ rule bcftools_concat:
 
 rule bcftools_stats:
     input:
-        "bcftools_concat_results/{ref}_sorted.vcf.gz"
+        "results/bcftools_concat/{ref}_sorted.vcf.gz"
     output:
-        "bcftools_stats_results/{ref}.txt"
+        "results/bcftools_stats/{ref}.txt"
     conda:
         "../envs/samtools.yaml"
     shell:
@@ -71,9 +71,9 @@ rule bcftools_stats:
 
 rule bcftools_panref_merge:
     input:
-        expand("bcftools_panref_results/{ID}_{{panref}}_{{linref}}.vcf", ID=config["samples"])
+        expand("results/bcftools_panref/{ID}_{{panref}}_{{linref}}.vcf", ID=config["samples"])
     output:
-        "bcftools_panref_merge_results/{ID}_{panref}_{linref}.vcf"
+        "results/bcftools_panref_merge/{ID}_{panref}_{linref}.vcf"
     conda:
         "../envs/samtools.yaml"
     shell:
@@ -81,13 +81,13 @@ rule bcftools_panref_merge:
 
 rule bcftools_linref_call:
     input:
-        bam = "mark_dup_results/{ID}_{ref}.bam",
-        bai = "mark_dup_results/{ID}_{ref}.bam.bai",
+        bam = "results/mark_dup/{ID}_{ref}.bam",
+        bai = "results/mark_dup/{ID}_{ref}.bam.bai",
         ref = "../config/linear_genomes/sequence/{ref}.fa",
-        sites = "split_sites_{ref}_{split}"
+        sites = "results/split/split_sites_{ref}_{split}"
     output:
-        gz=temp("bcftools_linref_results/{ID}_{ref}_{split}.vcf.gz"),
-        tbi=temp("bcftools_linref_results/{ID}_{ref}_{split}.vcf.gz.tbi")
+        gz=temp("results/bcftools_linref/{ID}_{ref}_{split}.vcf.gz"),
+        tbi=temp("results/bcftools_linref/{ID}_{ref}_{split}.vcf.gz.tbi")
     conda:
         "../envs/samtools.yaml"
     shell:
@@ -99,10 +99,10 @@ rule bcftools_linref_call:
 
 rule bcftools_panref_call:
     input:
-        bam = "vg_surject_results/{ID}_{panref}_{linref}.bam",
-        ref = "vg_paths_results/{panref}.fa",
+        bam = "results/vg_surject/{ID}_{panref}_{linref}.bam",
+        ref = "results/vg_paths/{panref}.fa",
     output:
-        "bcftools_panref_results/{ID}_{panref}_{linref}.vcf"
+        "results/bcftools_panref/{ID}_{panref}_{linref}.vcf"
     conda:
         "../envs/samtools.yaml"
     shell:
@@ -110,16 +110,16 @@ rule bcftools_panref_call:
 
 rule bcftools_filter:
     input:
-        "bcftools_linref_merge_results/{ref}_{split}.vcf.gz"
+        "results/bcftools_linref_merge/{ref}_{split}.vcf.gz"
     output:
-        invar_before = temp("bcftools_filter_results/{ref}_{split}_invar.vcf.gz"),
-        var_before = temp("bcftools_filter_results/{ref}_{split}_var.vcf.gz"),
-        invar_after = temp("bcftools_filter_results/{ref}_{split}_invar_filt.vcf.gz"),
-        var_after = temp("bcftools_filter_results/{ref}_{split}_var_filt.vcf.gz"),
-        invar_after_tbi = temp("bcftools_filter_results/{ref}_{split}_invar_filt.vcf.gz.tbi"),
-        var_after_tbi = temp("bcftools_filter_results/{ref}_{split}_var_filt.vcf.gz.tbi"),
-        unsorted = temp("bcftools_filter_results/{ref}_{split}_unsorted.vcf.gz"),
-        sorted = temp("bcftools_filter_results/{ref}_{split}_sorted.vcf.gz")
+        invar_before = temp("results/bcftools_filter/{ref}_{split}_invar.vcf.gz"),
+        var_before = temp("results/bcftools_filter/{ref}_{split}_var.vcf.gz"),
+        invar_after = temp("results/bcftools_filter/{ref}_{split}_invar_filt.vcf.gz"),
+        var_after = temp("results/bcftools_filter/{ref}_{split}_var_filt.vcf.gz"),
+        invar_after_tbi = temp("results/bcftools_filter/{ref}_{split}_invar_filt.vcf.gz.tbi"),
+        var_after_tbi = temp("results/bcftools_filter/{ref}_{split}_var_filt.vcf.gz.tbi"),
+        unsorted = temp("results/bcftools_filter/{ref}_{split}_unsorted.vcf.gz"),
+        sorted = temp("results/bcftools_filter/{ref}_{split}_sorted.vcf.gz")
     conda:
         "../envs/samtools.yaml"
     shell:
@@ -153,8 +153,8 @@ rule separate_chrom:
     input:
         expand("../config/linear_genomes/sequence/{ref}.fa", ref = config["linrefs"])
     output:
-        gz="{chr}.fa.gz",
-        tbi="{chr}.fa.gz.tbi"
+        gz="results/separate_chrom/{chr}.fa.gz",
+        tbi="results/separate_chrom/{chr}.fa.gz.tbi"
     conda:
         "../envs/samtools.yaml"
     shell:

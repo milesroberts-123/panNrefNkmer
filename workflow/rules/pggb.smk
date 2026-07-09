@@ -1,12 +1,12 @@
 rule pggb:
     input:
-        gz="{chr}.fa.gz",
-        tbi="{chr}.fa.gz.tbi",
-        triangle="{chr}_triangle.txt"
+        gz="results/separate_chrom/{chr}.fa.gz",
+        tbi="results/separate_chrom/{chr}.fa.gz.tbi",
+        triangle="results/mash/{chr}_triangle.txt"
     output:
-        "{chr}_pggb_results/{chr}.fa.final.gfa"
+        "results/pggb/{chr}/{chr}.fa.final.gfa"
     params:
-        outdir = "{chr}_pggb_results"
+        outdir = "results/pggb/{chr}"
     shell:
         """
         echo Getting max divergence
@@ -16,7 +16,7 @@ rule pggb:
         echo $MAXDIV
         echo $RESULT
         
-        pggb -i {input.fa} \       # input file in FASTA format
+        pggb -i {input.gz} \       # input file in FASTA format
              -o {params.outdir} \      # output directory
              -t {threads} \          # number of threads
              -p $RESULT \          # minimum average nucleotide identity for segments

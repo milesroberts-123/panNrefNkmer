@@ -1,10 +1,10 @@
 rule salmon_quantmerge:
     input:
-        expand("salmon_quant_results/{{ref}}_{ID}/quant.sf", ID = config["rna"])
+        expand("results/salmon_quant/{{ref}}_{ID}/quant.sf", ID = config["rna"])
     output:
-        "salmon_quantmerge_results/{ref}.txt"
+        "results/salmon_quantmerge/{ref}.txt"
     params:
-        prefix = expand("salmon_quant_results/{{ref}}_{ID}", ID = config["rna"]),
+        prefix = expand("results/salmon_quant/{{ref}}_{ID}", ID = config["rna"]),
         samnames = config["rna"]
     conda:
         "../envs/salmon.yaml"
@@ -15,14 +15,14 @@ rule salmon_quantmerge:
 
 rule salmon_quant:
     input:
-        idx = "salmon_index_{ref}.done",
-        read1 = "fastp_results/trimmed_paired_R1_{ID}.fastq.gz",
-        read2 = "fastp_results/trimmed_paired_R2_{ID}.fastq.gz"
+        idx = "results/salmon_index_{ref}.done",
+        read1 = "results/fastp/trimmed_paired_R1_{ID}.fastq.gz",
+        read2 = "results/fastp/trimmed_paired_R2_{ID}.fastq.gz"
     output:
-        temp("salmon_quant_results/{ref}_{ID}/quant.sf")
+        temp("results/salmon_quant/{ref}_{ID}/quant.sf")
     params:
-        prefix = "salmon_quant_results/{ref}_{ID}",
-        index = "salmon_index_{ref}"
+        prefix = "results/salmon_quant/{ref}_{ID}",
+        index = "results/salmon_index_{ref}"
     conda:
         "../envs/salmon.yaml"
     shell:
@@ -38,14 +38,14 @@ rule salmon_quant:
 
 rule salmon_index:
     input:
-        cds = "degenotate_results/{ref}/cds-nt-longest.fa",
+        cds = "results/degenotate/{ref}/cds-nt-longest.fa",
         genome = "../config/linear_genomes/sequence/{ref}.fa",
     output:
-        decoy_list = temp("seqkit_results/{ref}_decoys.txt"),
-        decoy = temp("{ref}_decoys.fa"),
-        done = temp(touch("salmon_index_{ref}.done"))
+        decoy_list = temp("results/seqkit/{ref}_decoys.txt"),
+        decoy = temp("results/{ref}_decoys.fa"),
+        done = temp(touch("results/salmon_index_{ref}.done"))
     params:
-        prefix = "salmon_index_{ref}",
+        prefix = "results/salmon_index_{ref}",
         k = config["k"]
     conda:
         "../envs/salmon.yaml"

@@ -1,9 +1,9 @@
 rule divergence_estimation:
     input:
-        "{chr}.fa.gz",
-        "{chr}.fa.gz.tbi"
+        "results/separate_chrom/{chr}.fa.gz",
+        "results/separate_chrom/{chr}.fa.gz.tbi"
     output:
-        "{chr}_triangle.txt"
+        "results/mash/{chr}_triangle.txt"
     params:
         k = config["k"]
     conda:

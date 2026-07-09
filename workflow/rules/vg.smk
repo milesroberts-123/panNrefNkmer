@@ -16,9 +16,9 @@ rule vg_index:
 rule vg_filter:
     input:
         gbz = "../config/pangenomes/{ref}.giraffe.gbz",
-        gam = "vg_giraffe_results/{ID}_{ref}.gam"
+        gam = "results/vg_giraffe/{ID}_{ref}.gam"
     output:
-        "vg_filter_results/{ID}_{ref}.gam"
+        "results/vg_filter/{ID}_{ref}.gam"
     conda:
         "../envs/vg.yaml"
     shell:
@@ -26,9 +26,9 @@ rule vg_filter:
 
 rule vg_stats:
     input:
-        "vg_filter_results/{ID}_{ref}.gam"
+        "results/vg_filter/{ID}_{ref}.gam"
     output:
-        "vg_stats_results/{ID}_{ref}.txt"
+        "results/vg_stats/{ID}_{ref}.txt"
     conda:
         "../envs/vg.yaml"
     shell:
@@ -38,14 +38,14 @@ rule vg_stats:
 
 rule vg_giraffe:
     input:
-        read1 = "fastp_results/trimmed_paired_R1_{ID}.fastq.gz",
-        read2 = "fastp_results/trimmed_paired_R1_{ID}.fastq.gz",
+        read1 = "results/fastp/trimmed_paired_R1_{ID}.fastq.gz",
+        read2 = "results/fastp/trimmed_paired_R1_{ID}.fastq.gz",
         dist = "../config/pangenomes/{ref}.dist",
         gbz = "../config/pangenomes/{ref}.giraffe.gbz",
         min = "../config/pangenomes/{ref}.shortread.withzip.min",
         zip = "../config/pangenomes/{ref}.shortread.zipcodes"
     output:
-        "vg_giraffe_results/{ID}_{ref}.gam"
+        "results/vg_giraffe/{ID}_{ref}.gam"
     conda:
         "../envs/vg.yaml"
     benchmark:
@@ -58,10 +58,10 @@ rule vg_giraffe:
 rule vg_surject:
     input:
         gbz = "../config/pangenomes/{panref}.giraffe.gbz",
-        gam = "vg_filter_results/{ID}_{panref}.gam",
+        gam = "results/vg_filter/{ID}_{panref}.gam",
         paths = "../config/pangenomes/paths/{linref}.txt"
     output:
-        temp("vg_surject_results/{ID}_{panref}_{linref}.bam")
+        temp("results/vg_surject/{ID}_{panref}_{linref}.bam")
     conda:
         "../envs/vg.yaml"
     shell:
@@ -69,9 +69,9 @@ rule vg_surject:
 
 rule vg_deconstruct:
     input:
-        "{chr}_{ref}.xg"
+        "results/vg_deconstruct/{chr}_{ref}.xg"
     output:
-        "{chr}_{ref}.vcf"
+        "results/vg_deconstruct/{chr}_{ref}.vcf"
     conda:
         "../envs/vg.yaml"
     shell:
@@ -81,7 +81,7 @@ rule vg_paths:
     input:
         "../config/pangenomes/{ref}.giraffe.gbz",
     output:
-        "vg_paths_results/{ref}.fa"
+        "results/vg_paths/{ref}.fa"
     conda:
         "../envs/vg.yaml"
     shell:

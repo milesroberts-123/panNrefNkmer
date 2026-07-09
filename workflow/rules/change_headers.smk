@@ -3,18 +3,18 @@
 # https://www.biostars.org/p/68477/
 rule change_headers:
     input:
-        pread1="fastp_results/trimmed_paired_R1_{ID}.fastq.gz",
-        pread2="fastp_results/trimmed_paired_R2_{ID}.fastq.gz",
-        uread1="fastp_results/trimmed_unpaired_R1_{ID}.fastq.gz",
-        uread2="fastp_results/trimmed_unpaired_R2_{ID}.fastq.gz",
+        pread1="results/fastp/trimmed_paired_R1_{ID}.fastq.gz",
+        pread2="results/fastp/trimmed_paired_R2_{ID}.fastq.gz",
+        uread1="results/fastp/trimmed_unpaired_R1_{ID}.fastq.gz",
+        uread2="results/fastp/trimmed_unpaired_R2_{ID}.fastq.gz",
     output:
-        pread1=temp("change_headers_results/paired_R1_{ID}.fastq.gz"),
-        pread2=temp("change_headers_results/paired_R2_{ID}.fastq.gz"),
-        cat=temp("change_headers_results/unpaired_{ID}.fastq.gz")
+        pread1=temp("results/change_headers/paired_R1_{ID}.fastq.gz"),
+        pread2=temp("results/change_headers/paired_R2_{ID}.fastq.gz"),
+        cat=temp("results/change_headers/unpaired_{ID}.fastq.gz")
     shell:
         """
-        if [ ! -d "change_headers_results" ]; then
-            mkdir change_headers_results
+        if [ ! -d "results/change_headers" ]; then
+            mkdir -p results/change_headers
         fi
 
         # change headers

@@ -1,11 +1,11 @@
 rule split_sites:
     input:
-        "degenotate_results/{ref}/degeneracy-all-sites.bed"
+        "results/degenotate/{ref}/degeneracy-all-sites.bed"
     output:
-        tmp=temp("{ref}_04.bed"),
-        split_files = temp(expand("split_sites_{{ref}}_{split}", split = range(10, 10 + config["splits"])))
+        tmp=temp("results/split/{ref}_04.bed"),
+        split_files = temp(expand("results/split/split_sites_{{ref}}_{split}", split = range(10, 10 + config["splits"])))
     params:
-        prefix = "split_sites_{ref}_",
+        prefix = "results/split/split_sites_{ref}_",
         splits = config["splits"]
     shell:
         """

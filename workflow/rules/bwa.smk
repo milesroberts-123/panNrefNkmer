@@ -25,16 +25,16 @@ rule bwa_mem:
         pac="../config/linear_genomes/sequence/{ref}.fa.pac",
         sa="../config/linear_genomes/sequence/{ref}.fa.sa",
         ref="../config/linear_genomes/sequence/{ref}.fa",
-        read1="change_headers_results/paired_R1_{ID}.fastq.gz",
-        read2="change_headers_results/paired_R2_{ID}.fastq.gz",
-        readu="change_headers_results/unpaired_{ID}.fastq.gz"
+        read1="results/change_headers/paired_R1_{ID}.fastq.gz",
+        read2="results/change_headers/paired_R2_{ID}.fastq.gz",
+        readu="results/change_headers/unpaired_{ID}.fastq.gz"
     output:
-        paired=temp("bwa_results/paired_{ID}_{ref}.bam"),
-        paired_bai=temp("bwa_results/paired_{ID}_{ref}.bam.bai"),
-        unpaired=temp("bwa_results/unpaired_{ID}_{ref}.bam"),
-        unpaired_bai=temp("bwa_results/unpaired_{ID}_{ref}.bam.bai"),
-        final=temp("bwa_results/{ID}_{ref}.bam"),
-        bai=temp("bwa_results/{ID}_{ref}.bam.bai")
+        paired=temp("results/bwa/paired_{ID}_{ref}.bam"),
+        paired_bai=temp("results/bwa/paired_{ID}_{ref}.bam.bai"),
+        unpaired=temp("results/bwa/unpaired_{ID}_{ref}.bam"),
+        unpaired_bai=temp("results/bwa/unpaired_{ID}_{ref}.bam.bai"),
+        final=temp("results/bwa/{ID}_{ref}.bam"),
+        bai=temp("results/bwa/{ID}_{ref}.bam.bai")
     conda:
         "../envs/bwa.yaml"
     log:

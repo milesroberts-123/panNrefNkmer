@@ -28,33 +28,33 @@ rule jules_samtools_faidx:
 
 rule jules_fastq_dump:
     output:
-        r1=temp("raw_reads/{ID}_1.fastq.gz"),
-        r2=temp("raw_reads/{ID}_2.fastq.gz")
+        r1=temp("results/raw_reads/{ID}_1.fastq.gz"),
+        r2=temp("results/raw_reads/{ID}_2.fastq.gz")
     conda:
         "../envs/sra.yaml"
     shell:
         """
         # create directory
-        if [ ! -d "raw_reads" ]; then
-            mkdir raw_reads
+        if [ ! -d "results/raw_reads" ]; then
+            mkdir -p results/raw_reads
         fi
 
         prefetch {wildcards.ID}
 
         # download data
-        fastq-dump --progress --temp /tmp --gzip --outdir ./raw_reads --split-files --skip-technical ./{wildcards.ID}
+        fastq-dump --progress --temp /tmp --gzip --outdir ./results/raw_reads --split-files --skip-technical ./{wildcards.ID}
         """
 
 rule jules_trimmomatic:
     input:
-        r1="raw_reads/{srr}_1.fastq.gz",
-        r2="raw_reads/{srr}_2.fastq.gz",
+        r1="results/raw_reads/{srr}_1.fastq.gz",
+        r2="results/raw_reads/{srr}_2.fastq.gz",
         adapters=config["adapter_path"]
     output:
-        r1=temp("trim_reads/{srr}_r1.fastq.gz"),
-        r2=temp("trim_reads/{srr}_r2.fastq.gz"),
-        u1=temp("trim_reads/{srr}_u1.fastq.gz"),
-        u2=temp("trim_reads/{srr}_u2.fastq.gz")
+        r1=temp("results/trim_reads/{srr}_r1.fastq.gz"),
+        r2=temp("results/trim_reads/{srr}_r2.fastq.gz"),
+        u1=temp("results/trim_reads/{srr}_u1.fastq.gz"),
+        u2=temp("results/trim_reads/{srr}_u2.fastq.gz")
     conda:
         "../envs/trimmomatic.yaml"
     shell:
@@ -64,11 +64,11 @@ rule jules_trimmomatic:
 
 rule jules_bwa_mem:
     input:
-        r1="trim_reads/{srr}_r1.fastq.gz",
-        r2="trim_reads/{srr}_r2.fastq.gz",
+        r1="results/trim_reads/{srr}_r1.fastq.gz",
+        r2="results/trim_reads/{srr}_r2.fastq.gz",
         ref=expand("{path_start}{ref}/{ref}.fasta", path_start = config["reference_genome_path"], ref = lookup(query = "Run == '{srr}'", within = reads, cols = "Species"))
     output:
-        temp("align_reads/{srr}.bam")
+        temp("results/align_reads/{srr}.bam")
     conda:
         "../envs/bwa.yaml"
     shell:
@@ -78,11 +78,11 @@ rule jules_bwa_mem:
 
 rule jules_picard_mark_dup:
     input:
-        "align_reads/{srr}.bam",
+        "results/align_reads/{srr}.bam",
     output:
-        bam="mark_reads/{srr}.bam",
-        metrics=temp("picard_metrics/{srr}.txt"),
-        tmp_dir=temp(directory("tmp_picard_{srr}"))
+        bam="results/mark_reads/{srr}.bam",
+        metrics=temp("results/picard_metrics/{srr}.txt"),
+        tmp_dir=temp(directory("results/tmp_picard_{srr}"))
     conda:
         "../envs/picard.yaml"
     shell:
@@ -92,9 +92,9 @@ rule jules_picard_mark_dup:
 
 rule jules_samtools_index:
     input:
-        "mark_reads/{srr}.bam"
+        "results/mark_reads/{srr}.bam"
     output:
-        "mark_reads/{srr}.bam.bai"
+        "results/mark_reads/{srr}.bam.bai"
     conda:
         "../envs/bcftools.yaml"
     shell:
@@ -104,9 +104,9 @@ rule jules_samtools_index:
 
 rule jules_sample_coverage:
     input:
-        "mark_reads/{srr}.bam"
+        "results/mark_reads/{srr}.bam"
     output:
-        "coverages/{srr}.50k.coverage.txt"
+        "results/coverages/{srr}.50k.coverage.txt"
     conda:
         "../envs/bcftools.yaml"
     shell:
@@ -117,10 +117,10 @@ rule jules_sample_coverage:
 rule jules_bcftools_mpileup:
     input:
         ref=expand("{path_start}{ref}/{ref}.fasta", path_start = config["reference_genome_path"], ref = lookup(query = "Run == '{srr}'", within = reads, cols = "Species")),
-        bam="mark_reads/{srr}.bam"
+        bam="results/mark_reads/{srr}.bam"
     output:
-        vcf="bcfvcfs/{srr}_raw.vcf.gz",
-        tbi="bcfvcfs/{srr}_raw.vcf.gz.tbi"
+        vcf="results/bcfvcfs/{srr}_raw.vcf.gz",
+        tbi="results/bcfvcfs/{srr}_raw.vcf.gz.tbi"
     conda:
         "../envs/bcftools.yaml"
     params:
@@ -135,9 +135,9 @@ rule jules_bcftools_mpileup:
 
 rule jules_bcftools_filter:
     input:
-        "bcfvcfs/{srr}_raw.vcf.gz"
+        "results/bcfvcfs/{srr}_raw.vcf.gz"
     output:
-        "bcfvcfs/{srr}_filtered.vcf.gz"
+        "results/bcfvcfs/{srr}_filtered.vcf.gz"
     conda:
         "../envs/bcftools.yaml"
     shell:
@@ -147,9 +147,9 @@ rule jules_bcftools_filter:
 
 rule jules_bcftools_roh:
     input:
-        "bcfvcfs/{srr}_filtered.vcf.gz"
+        "results/bcfvcfs/{srr}_filtered.vcf.gz"
     output:
-        "roh/{srr}_ROH.txt"
+        "results/roh/{srr}_ROH.txt"
     conda:
         "../envs/bcftools.yaml"
     params:
@@ -164,7 +164,7 @@ rule jules_psmc_50k_bed:
     input: 
         expand("{path_start}{{ref}}/{{ref}}.fasta.fai", path_start = config["reference_genome_path"])
     output:
-        "{ref}.50k.bed"
+        "results/psmc_bed/{ref}.50k.bed"
     conda:
         "../envs/bcftools.yaml"
     shell:
@@ -174,10 +174,10 @@ rule jules_psmc_50k_bed:
 
 rule jules_psmc_subset_bam:
     input: 
-        bam="mark_reads/{srr}.bam",
-        bed=expand("{species}.50k.bed", species=lookup(query="Run == '{srr}'", within=reads, cols="Species"))
+        bam="results/mark_reads/{srr}.bam",
+        bed=expand("results/psmc_bed/{species}.50k.bed", species=lookup(query="Run == '{srr}'", within=reads, cols="Species"))
     output:
-        "psmc/{srr}.50k.bam"
+        "results/psmc/{srr}.50k.bam"
     conda:
         "../envs/samtools.yaml"
     shell:
@@ -189,15 +189,15 @@ rule jules_psmc_subset_bam:
 rule jules_psmc_gen_consensus: 
     input:
         ref=expand("{path_start}{ref}/{ref}.fasta", path_start = config["reference_genome_path"], ref = lookup(query = "Run == '{srr}'", within = reads, cols = "Species")),
-        bam="psmc/{srr}.50k.bam",
-        cov="coverages/{srr}.50k.coverage.txt"
+        bam="results/psmc/{srr}.50k.bam",
+        cov="results/coverages/{srr}.50k.coverage.txt"
     output: 
-        "psmc/{srr}.con.fq.gz"
+        "results/psmc/{srr}.con.fq.gz"
     conda:  
         "../envs/psmc_legacy.yaml"
     params:
-        mincov=lambda wc: int(open("coverages/{}.50k.coverage.txt".format(wc.srr)).read().split()[2]) // 3,
-        maxcov=lambda wc: int(open("coverages/{}.50k.coverage.txt".format(wc.srr)).read().split()[2]) * 2
+        mincov=lambda wc: int(open("results/coverages/{}.50k.coverage.txt".format(wc.srr)).read().split()[2]) // 3,
+        maxcov=lambda wc: int(open("results/coverages/{}.50k.coverage.txt".format(wc.srr)).read().split()[2]) * 2
     shell:
         """
         samtools mpileup -C50 -uf {input.ref} {input.bam} | \
@@ -208,9 +208,9 @@ rule jules_psmc_gen_consensus:
 
 rule jules_psmc_gen_input:
     input: 
-        "psmc/{srr}.con.fq.gz"
+        "results/psmc/{srr}.con.fq.gz"
     output:
-        "psmc/{srr}.psmcfa"
+        "results/psmc/{srr}.psmcfa"
     conda: 
         "../envs/psmc_legacy.yaml"
     params:
@@ -223,9 +223,9 @@ rule jules_psmc_gen_input:
 
 rule jules_psmc_run_psmc: 
     input: 
-         "psmc/{srr}.psmcfa"
+         "results/psmc/{srr}.psmcfa"
     output: 
-         "psmc/{srr}.psmc"
+         "results/psmc/{srr}.psmc"
     conda:
          "../envs/psmc_legacy.yaml"
     params:
