@@ -50,4 +50,3 @@ dependencies:
   - wheel=0.45.1=pyhd8ed1ab_1
   - zstd=1.5.7=hb8e6e7a_2
 
-prefix: "/mnt/ffs24/home/robe1195/.local/share/mamba/envs/degenotate"

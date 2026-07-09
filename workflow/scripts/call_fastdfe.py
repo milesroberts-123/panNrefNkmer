@@ -1,16 +1,14 @@
 import fastdfe as fd
 import click
 
-# define click options
 @click.command(context_settings={'show_default': True})
 @click.option("-i", "--input", default=None, help="Path to k-mer count file", multiple=False)
-@click.option("-n","--num-hash", default=None, help="Number of hash functions", type = click.INT)
-@click.option("-s","--array-size", default=None, help="Number of elements in array", type = click.INT)
+@click.option("-n", "--num-hash", default=None, help="Number of hash functions", type=click.INT)
+@click.option("-s", "--array-size", default=None, help="Number of elements in array", type=click.INT)
 @click.option("-o", "--output", default=None, help="Path to output file")
+@click.option("-u", "--url", default="", help="Base URL for genome resources")
 
-def main(input, output, num_hash, array_size):
-
-    # instantiate parser
+def main(input, output, num_hash, array_size, url):
     p = fd.Parser(
         n=8,
         vcf=url + "resources/genome/betula/biallelic.polarized.subset.50000.vcf.gz?raw=true",
@@ -26,25 +24,18 @@ def main(input, output, num_hash, array_size):
         stratifications=[fd.DegeneracyStratification()]
     )
 
-    # parse SFS
     spectra: fd.Spectra = p.parse()
+    spectra.plot()
 
-    # visualize SFS
-    spectra.plot();
+    inf = fd.BaseInference(
+        sfs_neut=spectra[['neutral.*']].merge_groups(1),
+        sfs_sel=spectra[['selected.*']].merge_groups(1),
+        do_bootstrap=True,
+    )
 
-# create inference object
-inf = fd.BaseInference(
-    sfs_neut=spectra[['neutral.*']].merge_groups(1),
-    sfs_sel=spectra[['selected.*']].merge_groups(1),
-    do_bootstrap=True,
-)
-
-# run inference
-inf.run();
-
-inf.plot_discretized();
-
-inf.plot_sfs_comparison();
+    inf.run()
+    inf.plot_discretized()
+    inf.plot_sfs_comparison()
 
 if __name__ == '__main__':
     main()

@@ -16,9 +16,9 @@ rule pggb:
         echo $MAXDIV
         echo $RESULT
         
-        pggb -i {input.gz} \       # input file in FASTA format
-             -o {params.outdir} \      # output directory
-             -t {threads} \          # number of threads
-             -p $RESULT \          # minimum average nucleotide identity for segments
-             -s 5k \          # segment length for scaffolding the graph
+        pggb -i {input.gz} \
+             -o {params.outdir} \
+             -t {threads} \
+             -p $RESULT \
+             -s 5k
         """

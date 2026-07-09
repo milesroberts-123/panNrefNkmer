@@ -32,34 +32,6 @@ rule kmc:
         rm -r tmp_kmc_{wildcards.ID}
         """
 
-#rule kmc_contam_db:
-#    input:
-#        expand("../config/contaminants/{contam}.fa" , contam = config["custom_contams"]),
-#        "contam.fa"
-#    output:
-#        list="contam.list",
-#        pre="contam.kmc_pre",
-#        suf="contam.kmc_suf"
-#    conda:
-#        "../envs/kmc.yaml"
-#    params:
-#        k = config["k"]
-#    shell:
-#        """
-#        if [ ! -d "kmc_tmp_dir" ]; then
-#            mkdir kmc_tmp_dir/
-#        fi
-#
-#        # create file list
-#        echo {input} | tr ' ' '\n' > {output.list}
-#
-#        # build kmc db
-#        kmc -k{params.k} -m23 -t{threads} -ci1 -cs2 -fm @{output.list} contam kmc_tmp_dir/
-#
-#        # clean up
-#        rm -r kmc_tmp_dir/
-#        """
-
 rule kmc_ref_db:
     input:
         "../config/reference_genomes/{species}/{species}.fasta"
@@ -107,5 +79,5 @@ rule kmc_rm_contam:
         echo {input.pread1} {input.pread2} {input.uread1} {input.uread2} | tr ' ' '\n' > {output.list}
 
         # filter reads for contamination
-        kmc_tools -t{threads} filter $(basename {input.refdb[0]} .kmc_pre) @{output.list} -ci{params.contamMatchLimitCount} -cx1000000 {output.filt1}
+        kmc_tools -t{threads} filter {input.refdb[0]} @{output.list} -ci{params.contamMatchLimitCount} -cx1000000 {output.filt1}
         """

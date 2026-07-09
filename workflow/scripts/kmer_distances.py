@@ -1,10 +1,6 @@
-# counting bloom filter function from: https://github.com/williarj/kmers2024/blob/main/diversity_metrics/measure_diversity.py
-print("Importing packages...")
 import click
 import pandas as pd
-import sys
 import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
 import itertools
 import math
 
@@ -14,11 +10,17 @@ def load_matrix(filename):
     return df
 
 def bray_curtis(x, y):
-    return 1 - (2*sum(np.minimum(x, y)))/sum(np.add(x, y))
+    x_norm = x / x.sum()
+    y_norm = y / y.sum()
+    return 1 - (2*sum(np.minimum(x_norm, y_norm)))/sum(np.add(x_norm, y_norm))
 
-#def jaccard(df1, df2):
-
-#def cosine(df1, df2):
+def cosine_distance(x, y):
+    dot = np.dot(x, y)
+    norm_x = np.linalg.norm(x)
+    norm_y = np.linalg.norm(y)
+    if norm_x == 0 or norm_y == 0:
+        return 1.0
+    return 1 - dot / (norm_x * norm_y)
 
 # define click options
 @click.command(context_settings={'show_default': True})
@@ -45,11 +47,8 @@ def main(input, output):
         x = df[col1].values
         y = df[col2].values
 
-        #print(x)
-        #print(y)
         bc_total += bray_curtis(x,y)
-
-        #cos_total += 1 - cosine_similarity([x],[y])
+        cos_total += cosine_distance(x,y)
         
         pairs_done += 1
         
@@ -57,7 +56,7 @@ def main(input, output):
             print(f"Processed {pairs_done} k-mers...")
 
     # calculate average across all pairs
-    final_result = [str(bc_total/num_pairs)]
+    final_result = [str(bc_total/num_pairs), str(cos_total/num_pairs)]
 
     # write to file
     print(f"Write result to {output}...")

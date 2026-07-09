@@ -20,7 +20,7 @@ rule change_headers:
         # change headers
         zcat {input.pread1} |  awk '{{if(NR%4==1) $0=sprintf("@1_%d",(1+i++)); print;}}' | gzip -c > {output.pread1}
 
-        zcat {input.pread2} |  awk '{{if(NR%4==1) $0=sprintf("@1_%d",(1+i++)); print;}}' | gzip -c > {output.pread2}
+        zcat {input.pread2} |  awk '{{if(NR%4==1) $0=sprintf("@2_%d",(1+i++)); print;}}' | gzip -c > {output.pread2}
 
         # combine unpaired reads into one file
         zcat {input.uread1} {input.uread2} | gzip -c > {output.cat}

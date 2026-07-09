@@ -16,10 +16,6 @@ rule sra:
 
         # download data
         fasterq-dump --progress --temp /tmp --threads {threads} --outdir ./results/raw_reads --split-files --skip-technical ./{wildcards.ID} 
-        
-        # move data to folder
-        #mv {wildcards.ID}_1.fastq raw_reads/
-        #mv {wildcards.ID}_2.fastq raw_reads/
         """
 
 rule datasets:
@@ -46,9 +42,6 @@ rule datasets:
 
         # search directory for all genomes and copy them into one file
         find contam_genomes/ncbi_dataset/data/ -type f -name '*.fna' -exec cat {{}} \; > {output}
-
-        # clean up
-        # rm -r contam_genomes/
         """
 
 rule biosample:

@@ -29,4 +29,3 @@ dependencies:
   - samtools=1.22=h96c455f_0
   - zstd=1.5.7=hb8e6e7a_2
 
-prefix: "/mnt/ffs24/home/robe1195/.local/share/mamba/envs/bwa"

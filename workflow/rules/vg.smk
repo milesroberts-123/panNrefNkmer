@@ -39,7 +39,7 @@ rule vg_stats:
 rule vg_giraffe:
     input:
         read1 = "results/fastp/trimmed_paired_R1_{ID}.fastq.gz",
-        read2 = "results/fastp/trimmed_paired_R1_{ID}.fastq.gz",
+        read2 = "results/fastp/trimmed_paired_R2_{ID}.fastq.gz",
         dist = "../config/pangenomes/{ref}.dist",
         gbz = "../config/pangenomes/{ref}.giraffe.gbz",
         min = "../config/pangenomes/{ref}.shortread.withzip.min",

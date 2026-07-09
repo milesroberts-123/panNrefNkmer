@@ -4,13 +4,12 @@ rule salmon_quantmerge:
     output:
         "results/salmon_quantmerge/{ref}.txt"
     params:
-        prefix = expand("results/salmon_quant/{{ref}}_{ID}", ID = config["rna"]),
         samnames = config["rna"]
     conda:
         "../envs/salmon.yaml"
     shell:
         """
-        salmon quantmerge --quants {params.prefix} --names {params.samnames} -o {output}
+        salmon quantmerge --quants {input} --names {params.samnames} -o {output}
         """
 
 rule salmon_quant:
@@ -60,19 +59,3 @@ rule salmon_index:
         # make salmon index
         salmon index --threads {threads} -t {output.decoy} -i {params.prefix} --decoys {output.decoy_list} -k {params.k}
         """
-
-#rule alevin:
-#    input:
-#        cb =,
-#        reads =,
-#        tgmap =,
-#        index =
-#    output:
-#
-#    params:
-#        index = "",
-#        outdir = ""
-#    conda:
-#        "../envs/salmon.yaml"
-#    shell:
-#        "salmon alevin -l ISR -1 cb.fastq.gz -2 reads.fastq.gz --chromium  -i salmon_index_directory -p {threads} -o alevin_output --tgMap txp2gene.tsv"

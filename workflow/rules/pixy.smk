@@ -8,8 +8,8 @@ rule pixy:
         populations = temp("results/populations_{ref}.txt"),
         pixy = expand("results/pixy/{{ref}}_{stat}.txt",stat = ["pi", "watterson_theta", "tajima_d", "dxy", "fst"])
     params:
-        ingroup = config["samples"],
-        outgroup = config["outgroup"]
+        ingroup = reads[reads["Species"] == reads["Species"].iloc[0]]["BioSample"].unique().tolist(),
+        outgroup = reads[reads["Species"] != reads["Species"].iloc[0]]["BioSample"].unique().tolist()
     conda:
         "../envs/pixy.yaml"
     shell:

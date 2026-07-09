@@ -1,8 +1,4 @@
-# counting bloom filter function from: https://github.com/williarj/kmers2024/blob/main/diversity_metrics/measure_diversity.py
-print("Importing packages...")
 import click
-import pandas as pd
-import sys
 import numpy as np
 import mmh3
 

@@ -32,8 +32,8 @@ rule bam_index:
 
 rule bcftools_linref_merge:
     input:
-        gz=expand("results/bcftools_linref/{ID}_{{ref}}_{{split}}.vcf.gz", ID=config["samples"] + config["outgroup"]),
-        tbi=expand("results/bcftools_linref/{ID}_{{ref}}_{{split}}.vcf.gz.tbi", ID=config["samples"] + config["outgroup"])
+        gz=expand("results/bcftools_linref/{ID}_{{ref}}_{{split}}.vcf.gz", ID=reads["BioSample"].unique()),
+        tbi=expand("results/bcftools_linref/{ID}_{{ref}}_{{split}}.vcf.gz.tbi", ID=reads["BioSample"].unique())
     output:
         temp("results/bcftools_linref_merge/{ref}_{split}.vcf.gz")
     conda:
@@ -106,7 +106,7 @@ rule bcftools_panref_call:
     conda:
         "../envs/samtools.yaml"
     shell:
-        "samtools sort -O SAM {input.bam} | bcftools mpileup -f {input.ref} -Ou - | bcftools call -mv > {output}"
+        "samtools sort -O bam {input.bam} | bcftools mpileup -f {input.ref} -Ou - | bcftools call -mv > {output}"
 
 rule bcftools_filter:
     input:
@@ -160,10 +160,10 @@ rule separate_chrom:
     shell:
         """
         echo Grab all instances of {wildcards.chr} 
-        grep "{wildcards.chr}$" {input} > $(basename {output} .gz)
+        grep "{wildcards.chr}$" {input} > $(basename {output.gz} .gz)
 
         echo Compress fasta file
-        bgzip $(basename {output} .gz)
+        bgzip $(basename {output.gz} .gz)
 
         echo Index fasta file
         tabix {output.gz}

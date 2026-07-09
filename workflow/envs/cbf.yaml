@@ -44,4 +44,3 @@ dependencies:
   - tk=8.6.13=noxft_hd72426e_102
   - tzdata=2025b=h78e105d_0
 
-prefix: "/mnt/ffs24/home/robe1195/.local/share/mamba/envs/click"

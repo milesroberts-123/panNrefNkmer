@@ -265,4 +265,3 @@ dependencies:
   - zstandard=0.23.0=py311h9ecbd09_2
   - zstd=1.5.7=hb8e6e7a_2
 
-prefix: "/mnt/ffs24/home/robe1195/.local/share/mamba/envs/pixy"

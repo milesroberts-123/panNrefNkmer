@@ -21,12 +21,11 @@ properties:
     type: integer
     default: 4
     minimum: 1
-  contam_match_limit:
+  contam_match_limit_count:
     description: number of k-mer hits that a read needs to have to determine contamination
-    type: number
-    default: 0.8
-    minimum: 0.01
-    maximum: 1
+    type: integer
+    default: 2
+    minimum: 1
   mincount:
     description: minimum k-mer count threshold and minimum read depth
     type: integer

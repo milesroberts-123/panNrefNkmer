@@ -42,4 +42,3 @@ dependencies:
   - xz-tools=5.8.1=hb9d3cd8_2
   - zstd=1.5.7=hb8e6e7a_2
 
-prefix: "/mnt/ffs24/home/robe1195/.local/share/mamba/envs/salmon"

@@ -9,4 +9,3 @@ dependencies:
   - libgomp=15.1.0=h767d61c_2
   - libstdcxx=15.1.0=h8f9b012_2
 
-prefix: "/mnt/ffs24/home/robe1195/.local/share/mamba/envs/fastp"

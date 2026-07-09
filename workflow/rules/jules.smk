@@ -23,7 +23,7 @@ rule jules_samtools_faidx:
         "../envs/bcftools.yaml"
     shell:
         """
-        samtools faidx {ref}
+        samtools faidx {input}
         """
 
 rule jules_fastq_dump:
@@ -169,7 +169,7 @@ rule jules_psmc_50k_bed:
         "../envs/bcftools.yaml"
     shell:
         """
-        zless {input} | awk '$2>50000 {{print $1, "0", $2}}' > {output}
+        cat {input} | awk '$2>50000 {{print $1, "0", $2}}' > {output}
         """
 
 rule jules_psmc_subset_bam:
