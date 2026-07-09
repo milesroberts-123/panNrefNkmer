@@ -1,10 +1,10 @@
 rule salmon_quantmerge:
     input:
-        expand("results/salmon_quant/{{ref}}_{ID}/quant.sf", ID = config["rna"])
+        expand("results/salmon_quant/{{ref}}_{ID}/quant.sf", ID = reads[reads["LibraryType"] == "rna"]["Run"].tolist())
     output:
         "results/salmon_quantmerge/{ref}.txt"
     params:
-        samnames = config["rna"]
+        samnames = reads[reads["LibraryType"] == "rna"]["Run"].tolist()
     conda:
         "../envs/salmon.yaml"
     shell:

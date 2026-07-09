@@ -1,7 +1,7 @@
 rule multiqc:
     input:
-        expand("results/fastp/{ID}.json", ID = config["samples"] + config["outgroup"] + config["rna"]),
-        expand("results/fastp/no_contam_{ID}.json", ID = config["samples"])
+        expand("results/fastp/{ID}.json", ID = reads["Run"].tolist()),
+        expand("results/fastp/no_contam_{ID}.json", ID = reads[reads["Group"] == "ingroup"]["Run"].tolist())
     output:
         "results/multiqc/multiqc_report.html"
     conda:

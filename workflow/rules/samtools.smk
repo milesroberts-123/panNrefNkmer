@@ -71,7 +71,7 @@ rule bcftools_stats:
 
 rule bcftools_panref_merge:
     input:
-        expand("results/bcftools_panref/{ID}_{{panref}}_{{linref}}.vcf", ID=config["samples"])
+        expand("results/bcftools_panref/{ID}_{{panref}}_{{linref}}.vcf", ID=reads[reads["Group"] == "ingroup"]["Run"].tolist())
     output:
         "results/bcftools_panref_merge/{ID}_{panref}_{linref}.vcf"
     conda:
@@ -151,7 +151,7 @@ rule bcftools_filter:
 
 rule separate_chrom:
     input:
-        expand("../config/linear_genomes/sequence/{ref}.fa", ref = config["linrefs"])
+        expand("../config/linear_genomes/sequence/{ref}.fa", ref = linrefs)
     output:
         gz="results/separate_chrom/{chr}.fa.gz",
         tbi="results/separate_chrom/{chr}.fa.gz.tbi"

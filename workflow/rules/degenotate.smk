@@ -22,7 +22,7 @@ rule mk_test:
     output:
         "results/mk_test_{ref}/mk.tsv"
     params:
-        outgroup = config["outgroup"]
+        outgroup = reads[reads["Group"] == "outgroup"]["Run"].tolist()
     conda:
         "../envs/degenotate.yaml"
     shell:

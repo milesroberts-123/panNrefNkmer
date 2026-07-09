@@ -46,21 +46,6 @@ properties:
     description: max number of N bases allowed in fastq read
     type: integer
     default: 5
-  samples:
-    description: list of SRA accession numbers for DNA-seq within the in-group species
-    type: array
-    items:
-      type: string
-  outgroup:
-    description: list of SRA accession numbers for DNA-seq within an out-group species
-    type: array
-    items:
-      type: string
-  rna:
-    description: list of SRA accession numbers for RNA-seq within an in-group species
-    type: array
-    items:
-      type: string
   ncbi_contams:
     description: list of NCBI taxon ids for species to consider as contaminants
     type: array
@@ -68,11 +53,6 @@ properties:
       type: string
   custom_contams:
     description: list of fasta files to also consider as contaminants, useful if contaminants are not present as ncbi reference genome
-    type: array
-    items:
-      type: string
-  linrefs:
-    description: prefixes of fasta files that are linear reference genomes of the in-group species
     type: array
     items:
       type: string

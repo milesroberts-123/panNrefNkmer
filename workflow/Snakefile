@@ -2,6 +2,7 @@
 
 import pandas as pd
 import os
+import glob
 from snakemake.utils import min_version
 
 min_version("9.5.1")
@@ -15,16 +16,20 @@ reads = pd.read_table(
     "../config/samples.tsv", sep="\t", dtype={"Run": str}
 ).set_index(["Run"], drop=False)
 
+# auto-detect linear references from the genomes provided in config/linear_genomes/sequence/
+linrefs = [os.path.splitext(os.path.basename(f))[0]
+           for f in glob.glob("../config/linear_genomes/sequence/*.fa")]
+
 # Define rules too fast to bother with cluster submission
 localrules: all, batch_per_sample
 
 rule all:
     input:
-        expand("results/samtools_stats/{ID}_{ref}.txt", ID = reads["BioSample"], ref = config["linrefs"]),
-        expand("results/bcftools_stats/{ref}.txt", ref = config["linrefs"]),
-        expand("results/mk_test_{ref}/mk.tsv", ref = config["linrefs"]),
-        expand("results/salmon_quantmerge/{ref}.txt", ref = config["linrefs"]),
-        expand("results/pixy/{ref}_{stat}.txt", ref = config["linrefs"], stat = ["pi", "watterson_theta", "tajima_d", "dxy", "fst"]),
+        expand("results/samtools_stats/{ID}_{ref}.txt", ID = reads["BioSample"].unique(), ref = linrefs),
+        expand("results/bcftools_stats/{ref}.txt", ref = linrefs),
+        expand("results/mk_test_{ref}/mk.tsv", ref = linrefs),
+        expand("results/salmon_quantmerge/{ref}.txt", ref = linrefs),
+        expand("results/pixy/{ref}_{stat}.txt", ref = linrefs, stat = ["pi", "watterson_theta", "tajima_d", "dxy", "fst"]),
         expand("results/kmer_distances_{species}.txt", species = reads["Species"].unique()),
         "results/multiqc/multiqc_report.html"
 
@@ -39,9 +44,9 @@ rule kmers_only:
 
 rule batch_per_sample:
     input:
-        expand("results/bcftools_linref/{ID}_{ref}_{split}.vcf.gz", ID = reads["BioSample"], ref = config["linrefs"], split = range(10, 10 + config["splits"])),
-        expand("results/cbf/{ID}.txt", ID = reads["BioSample"]),
-        expand("results/salmon_quant/{ref}_{rna}/quant.sf", ref = config["linrefs"], rna = config["rna"])
+        expand("results/bcftools_linref/{ID}_{ref}_{split}.vcf.gz", ID = reads["BioSample"].unique(), ref = linrefs, split = range(10, 10 + config["splits"])),
+        expand("results/cbf/{ID}.txt", ID = reads["BioSample"].unique()),
+        expand("results/salmon_quant/{ref}_{rna}/quant.sf", ref = linrefs, rna = reads[reads["LibraryType"] == "rna"]["Run"].tolist())
 
 ## Jules branch
 include: "rules/jules.smk"
