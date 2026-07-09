@@ -32,32 +32,55 @@ rule kmc:
         rm -r tmp_kmc_{wildcards.ID}
         """
 
-rule kmc_contam_db:
+#rule kmc_contam_db:
+#    input:
+#        expand("../config/contaminants/{contam}.fa" , contam = config["custom_contams"]),
+#        "contam.fa"
+#    output:
+#        list="contam.list",
+#        pre="contam.kmc_pre",
+#        suf="contam.kmc_suf"
+#    conda:
+#        "../envs/kmc.yaml"
+#    params:
+#        k = config["k"]
+#    shell:
+#        """
+#        if [ ! -d "kmc_tmp_dir" ]; then
+#            mkdir kmc_tmp_dir/
+#        fi
+#
+#        # create file list
+#        echo {input} | tr ' ' '\n' > {output.list}
+#
+#        # build kmc db
+#        kmc -k{params.k} -m23 -t{threads} -ci1 -cs2 -fm @{output.list} contam kmc_tmp_dir/
+#
+#        # clean up
+#        rm -r kmc_tmp_dir/
+#        """
+
+rule kmc_ref_db:
     input:
-        expand("../config/contaminants/{contam}.fa" , contam = config["custom_contams"]),
-        "contam.fa"
+        "../config/reference_genomes/{species}/{species}.fasta"
     output:
-        list="contam.list",
-        pre="contam.kmc_pre",
-        suf="contam.kmc_suf"
+        pre=temp("kmc_ref_dbs/{species}.kmc_pre"),
+        suf=temp("kmc_ref_dbs/{species}.kmc_suf")
     conda:
         "../envs/kmc.yaml"
     params:
         k = config["k"]
     shell:
         """
-        if [ ! -d "kmc_tmp_dir" ]; then
-            mkdir kmc_tmp_dir/
+        if [ ! -d "kmc_tmp_{wildcards.species}" ]; then
+            mkdir kmc_tmp_{wildcards.species}/
         fi
 
-        # create file list
-        echo {input} | tr ' ' '\n' > {output.list}
-
         # build kmc db
-        kmc -k{params.k} -m23 -t{threads} -ci1 -cs2 -fm @{output.list} contam kmc_tmp_dir/
+        kmc -k{params.k} -m23 -t{threads} -ci1 -cs2 -fm {input} kmc_ref_dbs/{wildcards.species} kmc_tmp_{wildcards.species}/
 
         # clean up
-        rm -r kmc_tmp_dir/
+        rm -r kmc_tmp_{wildcards.species}/
         """
 
 rule kmc_rm_contam:
@@ -66,14 +89,12 @@ rule kmc_rm_contam:
         pread2="biosample_results/{ID}_paired_R2.fastq.gz",
         uread1="biosample_results/{ID}_unpaired_R1.fastq.gz",
         uread2="biosample_results/{ID}_unpaired_R2.fastq.gz",
-        pre="contam.kmc_pre",
-        suf="contam.kmc_suf"
+        refdb=expand("kmc_ref_dbs/{species}.{ext}", ext=["kmc_pre", "kmc_suf"], species=lookup(query="BioSample == '{ID}'", within = reads, cols="Species")),
     output:
         filt1=temp("no_contam_reads/{ID}_stage1.fastq"),
         list=temp("input_{ID}.txt")
     params:
         contamMatchLimitCount = config["contam_match_limit_count"],
-        #contamMatchLimitPercent = config["contam_match_limit_percent"]
     conda:
         "../envs/kmc.yaml"
     shell:
@@ -86,5 +107,5 @@ rule kmc_rm_contam:
         echo {input.pread1} {input.pread2} {input.uread1} {input.uread2} | tr ' ' '\n' > {output.list}
 
         # filter reads for contamination
-        kmc_tools -t{threads} filter contam @{output.list} -ci0 -cx{params.contamMatchLimitCount} {output.filt1}
+        kmc_tools -t{threads} filter $(basename {input.refdb[0]} .kmc_pre) @{output.list} -ci{params.contamMatchLimitCount} -cx1000000 {output.filt1}
         """

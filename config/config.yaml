@@ -30,14 +30,14 @@ mincount: 5
 maxcount: 100000
 
 ## size of counting bloom filter array
-array_size: 100000
+array_size: 500000
 
 ## number of hash functions
 num_hash: 4
 
 ## number of k-mer hits that a read needs to have to determine contamination
-contam_match_limit_count: 20
-contam_match_limit_percent: 0.5
+contam_match_limit_count: 2
+#contam_match_limit_percent: 0.5
 
 # fastp parameters ==========================================================================
 

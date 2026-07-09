@@ -112,6 +112,7 @@ runinfo <- read.csv("/global/scratch/users/milesroberts/moi_lab_projects/panNref
 runinfo_sorted <- runinfo %>% 
   #filter(!grepl("metagenome|uncultured|unidentified|human|synthetic|prokaryotic|mixed libraries|Mus musculus|Homo sapiens|Saccharomyces cerevisiae|Saccharomonospora azurea|Caenorhabditis elegans|Bos taurus|Gallus gallus|Monodelphis domestica|Drosophila", V29)) %>%
   #filter(V29 %in% (all_sam$Species)) %>% 
+  filter(V13 == "WGS" & V15 == "GENOMIC" & V16 == "PAIRED" & V19 == "ILLUMINA") %>%
   dplyr::select(V1, V26, V29) %>% 
   arrange(V26, V1, V29) 
 
