@@ -126,7 +126,7 @@ rule dump_combined_kmers:
 
 rule prejoin:
     input:
-        comb=expand("results/dump_combined_kmers/{species}.txt", species = lookup("BioSample == {ID}", within=reads, cols="Species")),
+        comb=expand("results/dump_combined_kmers/{species}.txt", species = lookup(query="BioSample == {ID}", within=reads, cols="Species")),
         counts="results/kmc/{ID}.txt"
     output:
         "results/prejoin/{ID}.txt"
@@ -136,7 +136,7 @@ rule prejoin:
 rule paste:
     input:
         kmer_list="results/dump_combined_kmers/{species}.txt",
-        kmer_dumps=expand("results/prejoin/{ID}.txt", ID=lookup("Species == {species}", within=reads, cols="BioSample"))
+        kmer_dumps=expand("results/prejoin/{ID}.txt", ID=lookup(query="Species == {species}", within=reads, cols="BioSample"))
     output:
        "results/paste/{species}.txt"
     shell:
