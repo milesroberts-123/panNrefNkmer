@@ -45,6 +45,7 @@ rule kmers_only:
 rule batch_per_species:
     input:
         "results/kmer_distances_{species}.txt",
+        "results/paste/{species}.txt",
         expand("results/fastp/post_trim/{ID}.json", ID=lookup(query="Species == '{species}'", within=reads, cols="Run")),
         expand("results/fastp/post_rm_contam/{ID}.json", ID=lookup(query="Species == '{species}'", within=reads, cols="BioSample"))
     output:

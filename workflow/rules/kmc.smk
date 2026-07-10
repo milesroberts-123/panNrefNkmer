@@ -85,3 +85,59 @@ rule kmc_rm_contam:
         # filter reads for contamination
         kmc_tools -t{threads} filter {params.refdb} @{output.list} -ci{params.contamMatchLimitCount} -cx1000000 {output.filt1}
         """
+
+rule kmc_combine_dbs:
+    input:
+        expand("results/kmc_db_{ID}.{suffix}", ID=lookup(query="Species == {species}", within=reads, cols="BioSample"), suffix=["kmc_pre", "kmc_suf"]),
+    output:
+        expand("results/kmc_combine_dbs/{{species}}.{suffix}", suffix=["kmc_pre", "kmc_suf"]),
+        temp("results/kmc_combine_dbs/{species}.complex")
+    conda:
+        "../envs/kmc.yaml"
+    shell:
+        """
+        mkdir -p results/kmc_combine_dbs
+
+        {{
+            echo "INPUT:"
+            printf '%s\\n' {input.dbs} | grep '\\.kmc_pre$' | sed 's/\\.kmc_pre$//' | awk '{{print "set" NR " = " $0 " -ci1"}}'
+            echo "OUTPUT:"
+            printf "results/kmc_combine_dbs/{wildcards.species} = "
+            printf '%s\\n' {input.dbs} | grep '\\.kmc_pre$' | sed 's/\\.kmc_pre$//' | awk '{{printf "%sset%d", (NR>1?" + ":""), NR}} END{{print ""}}'
+            echo "OUTPUT_PARAMS:"
+            echo "-cs10000000000"
+        }} > {output.complex}
+
+        kmc_tools -t{threads} complex {output.complex}
+        """
+
+rule dump_combined_kmers:
+    input:
+        expand("results/kmc_combine_dbs/{{species}}.{suffix}", suffix=["kmc_pre", "kmc_suf"]),
+    output:
+        "results/dump_combined_kmers/{species}.txt"
+    conda:
+        "../envs/kmc.yaml" 
+    shell:
+        """
+        # dump all k-mers to text file
+        kmc_tools transform results/kmc_combine_dbs/{wildcards.species} dump {output}
+        """
+
+rule prejoin:
+    input:
+        comb=expand("results/dump_combined_kmers/{species}.txt", species = lookup("BioSample == {ID}", within=reads, cols="Species")),
+        counts="results/kmc/{ID}.txt"
+    output:
+        "results/prejoin/{ID}.txt"
+    shell:
+        "join -t $'\t' -a1 -a2 -e '0' -o auto {input.comb} {input.sample} | cut -f 3 > {output}"
+
+rule paste:
+    input:
+        kmer_list="results/dump_combined_kmers/{species}.txt",
+        kmer_dumps=expand("results/prejoin/{ID}.txt", ID=lookup("Species == {species}", within=reads, cols="BioSample"))
+    output:
+       "results/paste/{species}.txt"
+    shell:
+        "paste <(cut -f 1 {input.kmer_list}) {input.kmer_dumps} > {output}"
