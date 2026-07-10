@@ -37,6 +37,9 @@ set-resources:
     kmc: 
         runtime: "180m"
         cpus_per_task: 8
+    kmc_combine_dbs:
+        runtime: "180m"
+        cpus_per_task: 8
     counting_bloom_filter:
         runtime: "180m"
         cpus_per_task: 1
@@ -51,6 +54,7 @@ set-threads:
     fastp: 8
     qc_post_rm_contam: 8
     kmc: 8
+    kmc_combine_dbs: 8
     kmc_ref_db: 4
     kmc_rm_contam: 8
     jules_psmc_subset_bam: 8

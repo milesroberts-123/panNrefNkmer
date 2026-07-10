@@ -35,6 +35,9 @@ set-resources:
     kmc:
         cpus_per_task: 12
         mem_mb_per_cpu: 2000
+    kmc_combine_dbs:
+        cpus_per_task: 12
+        mem_mb_per_cpu: 2000
     mk_test:
         mem_mb_per_cpu: 16000
 
@@ -47,3 +50,4 @@ set-threads:
     kmc_rm_contam: 12
     kmc_contam_db: 12
     kmc: 12
+    kmc_combine_dbs: 12
