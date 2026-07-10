@@ -49,7 +49,7 @@ rule batch_per_species:
         expand("results/fastp/post_trim/{ID}.json", ID=lookup(query="Species == '{species}'", within=reads, cols="Run")),
         expand("results/fastp/post_rm_contam/{ID}.json", ID=lookup(query="Species == '{species}'", within=reads, cols="BioSample"))
     output:
-        "results/batch_tracker/{species}.done"
+        touch("results/batch_tracker/{species}.done")
 
 #rule batch_per_sample:
 #    input:

@@ -88,27 +88,29 @@ rule kmc_rm_contam:
 
 rule kmc_combine_dbs:
     input:
-        expand("results/kmc_db_{ID}.{suffix}", ID=lookup(query="Species == {species}", within=reads, cols="BioSample"), suffix=["kmc_pre", "kmc_suf"]),
+        expand("results/kmc_db_{ID}.{suffix}", ID=lookup(query="Species == '{species}'", within=reads, cols="BioSample"), suffix=["kmc_pre", "kmc_suf"]),
     output:
-        expand("results/kmc_combine_dbs/{{species}}.{suffix}", suffix=["kmc_pre", "kmc_suf"]),
-        temp("results/kmc_combine_dbs/{species}.complex")
+        db=expand("results/kmc_combine_dbs/{{species}}.{suffix}", suffix=["kmc_pre", "kmc_suf"]),
+        complex=temp("results/kmc_combine_dbs/{species}.complex")
     conda:
         "../envs/kmc.yaml"
+    params:
+        prefix="results/kmc_combine_dbs/{species}"
     shell:
         """
         mkdir -p results/kmc_combine_dbs
 
         {{
             echo "INPUT:"
-            printf '%s\\n' {input.dbs} | grep '\\.kmc_pre$' | sed 's/\\.kmc_pre$//' | awk '{{print "set" NR " = " $0 " -ci1"}}'
+            printf '%s\\n' {input} | grep '\\.kmc_pre$' | sed 's/\\.kmc_pre$//' | awk '{{print "set" NR " = " $0 " -ci1"}}'
             echo "OUTPUT:"
             printf "results/kmc_combine_dbs/{wildcards.species} = "
-            printf '%s\\n' {input.dbs} | grep '\\.kmc_pre$' | sed 's/\\.kmc_pre$//' | awk '{{printf "%sset%d", (NR>1?" + ":""), NR}} END{{print ""}}'
+            printf '%s\\n' {input} | grep '\\.kmc_pre$' | sed 's/\\.kmc_pre$//' | awk '{{printf "%sset%d", (NR>1?" + ":""), NR}} END{{print ""}}'
             echo "OUTPUT_PARAMS:"
             echo "-cs10000000000"
         }} > {output.complex}
 
-        kmc_tools -t{threads} complex {output.complex}
+        kmc_tools -t{threads} complex {params.prefix}
         """
 
 rule dump_combined_kmers:
@@ -126,8 +128,8 @@ rule dump_combined_kmers:
 
 rule prejoin:
     input:
-        comb=expand("results/dump_combined_kmers/{species}.txt", species = lookup(query="BioSample == {ID}", within=reads, cols="Species")),
-        counts="results/kmc/{ID}.txt"
+        comb=expand("results/dump_combined_kmers/{species}.txt", species = lookup(query="BioSample == '{ID}'", within=reads, cols="Species")),
+        sample="results/kmc/{ID}.txt"
     output:
         "results/prejoin/{ID}.txt"
     shell:
@@ -136,8 +138,8 @@ rule prejoin:
 rule paste:
     input:
         kmer_list="results/dump_combined_kmers/{species}.txt",
-        kmer_dumps=expand("results/prejoin/{ID}.txt", ID=lookup(query="Species == {species}", within=reads, cols="BioSample"))
+        kmer_dumps=expand("results/prejoin/{ID}.txt", ID=lookup(query="Species == '{species}'", within=reads, cols="BioSample"))
     output:
-       "results/paste/{species}.txt"
+        "results/paste/{species}.txt"
     shell:
         "paste <(cut -f 1 {input.kmer_list}) {input.kmer_dumps} > {output}"
