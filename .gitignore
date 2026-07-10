@@ -13,6 +13,8 @@
 **.list
 **.html
 **.json
+**.tsv
+**/*RR*
 **/contam_genomes
 **/logs
 **/.snakemake

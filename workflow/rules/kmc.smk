@@ -1,10 +1,15 @@
 rule kmc:
     input:
+        #pread1="results/biosample/{ID}_paired_R1.fastq.gz",
+        #pread2="results/biosample/{ID}_paired_R2.fastq.gz",
+        #uread1="results/biosample/{ID}_unpaired_R1.fastq.gz",
+        #uread2="results/biosample/{ID}_unpaired_R2.fastq.gz"
         "results/no_contam_reads/{ID}_stage1.fastq"
     output:
         counts=temp("results/kmc/{ID}.txt"),
         tmp_pre=temp("results/kmc_db_{ID}.kmc_pre"),
-        tmp_suf=temp("results/kmc_db_{ID}.kmc_suf")
+        tmp_suf=temp("results/kmc_db_{ID}.kmc_suf"),
+        #list=temp("results/input_{ID}.txt")
     conda:
         "../envs/kmc.yaml"
     params:

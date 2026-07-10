@@ -7,7 +7,7 @@ rule fastp:
         pread2=temp("results/fastp/trimmed_paired_R2_{ID}.fastq.gz"),
         uread1=temp("results/fastp/trimmed_unpaired_R1_{ID}.fastq.gz"),
         uread2=temp("results/fastp/trimmed_unpaired_R2_{ID}.fastq.gz"),
-        json=temp("results/fastp/{ID}.json"),
+        json="results/fastp/post_trim/{ID}.json",
     conda:
         "../envs/fastp.yaml"
     params:
@@ -25,8 +25,8 @@ rule qc_post_rm_contam:
     input:
         "results/no_contam_reads/{ID}_stage1.fastq"    
     output:
-        temp("results/fastp/no_contam_{ID}.json")
+        "results/fastp/post_rm_contam/{ID}.json"
     conda:
         "../envs/fastp.yaml"
     shell:
-        "fastp -A -Q -L -G -i {input} --json {output}"
+        "fastp --thread {threads} -A -Q -L -G -i {input} --json {output}"

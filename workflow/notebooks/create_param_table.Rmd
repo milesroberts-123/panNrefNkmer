@@ -149,6 +149,26 @@ runinfo_filtered$Species[!(runinfo_filtered$Species %in% species_with_many_sampl
 unique(species_with_many_samples$Species[!(species_with_many_samples$Species %in% runinfo_filtered$Species)])
 
 # save list of species
-write.table(runinfo_filtered, "../../config/samples.tsv", quote = F, row.names = F, col.names = T, sep = "\t")
+write.table(runinfo_filtered, "../../config/samples_all.tsv", quote = F, row.names = F, col.names = T, sep = "\t")
+
+# partition species into groups with a small, medium, and large amount of data
+# will process species with very little data first
+
+runinfo_partitioned <- runinfo_filtered %>%
+  group_by(Species) %>%
+  mutate(num_runs = n(),
+         batches = case_when(
+    num_runs <= 3  ~ "small",
+    num_runs >= 4 & num_runs <= 20  ~ "medium",
+    TRUE      ~ "large"  # Catches everything else
+  )) %>%
+  arrange(num_runs) %>%
+  group_by(batches) %>%
+  dplyr::select(Run, BioSample, Species) %>%
+  group_walk(~ write_tsv(.x, paste0("../../config/samples_", .y$batches, ".tsv")))
+
+runinfo_partitioned %>%
+  group_by(batches) %>%
+  summarize(n_distinct(Species))
 ```
 
