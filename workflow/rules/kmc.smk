@@ -9,6 +9,7 @@ rule kmc:
         counts=temp("results/kmc/{ID}.txt"),
         tmp_pre=temp("results/kmc_db_{ID}.kmc_pre"),
         tmp_suf=temp("results/kmc_db_{ID}.kmc_suf"),
+        tmp_sort=temp(expand("results/sorted_kmc_db_{{ID}}.{ext}", ext = ["kmc_pre", "kmc_suf"]))
         #list=temp("results/input_{ID}.txt")
     conda:
         "../envs/kmc.yaml"
@@ -28,8 +29,11 @@ rule kmc:
         # count k-mers
         kmc -m15 -t{threads} -ci{params.mincount} -cs{params.maxcount} -k{params.k} {input} results/kmc_db_{wildcards.ID} tmp_kmc_{wildcards.ID}
 
+        # sort k-mer counts
+        kmc_tools -t{threads} transform results/kmc_db_{wildcards.ID} sort results/sorted_kmc_db_{wildcards.ID}
+
         # dump all k-mers to text file
-        kmc_tools transform results/kmc_db_{wildcards.ID} dump {output.counts}
+        kmc_tools -t{threads} transform results/sorted_kmc_db_{wildcards.ID} dump {output.counts}
 
         # delete tmp directories
         rm -r tmp_kmc_{wildcards.ID}
@@ -88,9 +92,10 @@ rule kmc_rm_contam:
 
 rule kmc_combine_dbs:
     input:
-        expand("results/kmc_db_{ID}.{suffix}", ID=lookup(query="Species == '{species}'", within=reads, cols="BioSample"), suffix=["kmc_pre", "kmc_suf"]),
+        pre=expand("results/kmc_db_{ID}.kmc_pre", ID=lookup(query="Species == '{species}'", within=reads, cols="BioSample")),
+        suf=expand("results/kmc_db_{ID}.kmc_suf", ID=lookup(query="Species == '{species}'", within=reads, cols="BioSample"))
     output:
-        db=expand("results/kmc_combine_dbs/{{species}}.{suffix}", suffix=["kmc_pre", "kmc_suf"]),
+        db=temp(expand("results/kmc_combine_dbs/{{species}}.{suffix}", suffix=["kmc_pre", "kmc_suf"])),
         complex=temp("results/kmc_combine_dbs/{species}.complex")
     conda:
         "../envs/kmc.yaml"
@@ -100,30 +105,32 @@ rule kmc_combine_dbs:
         """
         mkdir -p results/kmc_combine_dbs
 
-        {{
+    q    {{
             echo "INPUT:"
-            printf '%s\\n' {input} | grep '\\.kmc_pre$' | sed 's/\\.kmc_pre$//' | awk '{{print "set" NR " = " $0 " -ci1"}}'
+            printf '%s\\n' {input.pre} | grep '\\.kmc_pre$' | sed 's/\\.kmc_pre$//' | awk '{{print "set" NR " = " $0 " -ci1"}}'
             echo "OUTPUT:"
             printf "results/kmc_combine_dbs/{wildcards.species} = "
-            printf '%s\\n' {input} | grep '\\.kmc_pre$' | sed 's/\\.kmc_pre$//' | awk '{{printf "%sset%d", (NR>1?" + ":""), NR}} END{{print ""}}'
+            printf '%s\\n' {input.pre} | grep '\\.kmc_pre$' | sed 's/\\.kmc_pre$//' | awk '{{printf "%sset%d", (NR>1?" + ":""), NR}} END{{print ""}}'
             echo "OUTPUT_PARAMS:"
             echo "-cs10000000000"
         }} > {output.complex}
 
-        kmc_tools -t{threads} complex {params.prefix}
+        kmc_tools -t{threads} complex {output.complex}
         """
 
 rule dump_combined_kmers:
     input:
         expand("results/kmc_combine_dbs/{{species}}.{suffix}", suffix=["kmc_pre", "kmc_suf"]),
     output:
-        "results/dump_combined_kmers/{species}.txt"
+        temp("results/dump_combined_kmers/{species}.txt"),
+        temp(expand("results/kmc_combine_dbs/sorted_{{species}}.{ext}", ext=["kmc_pre", "kmc_suf"]))
     conda:
         "../envs/kmc.yaml" 
     shell:
         """
+        kmc_tools transform results/kmc_combine_dbs/{wildcards.species} sort results/kmc_combine_dbs/sorted_{wildcards.species}
         # dump all k-mers to text file
-        kmc_tools transform results/kmc_combine_dbs/{wildcards.species} dump {output}
+        kmc_tools transform results/kmc_combine_dbs/sorted_{wildcards.species} dump {output}
         """
 
 rule prejoin:
@@ -131,7 +138,7 @@ rule prejoin:
         comb=expand("results/dump_combined_kmers/{species}.txt", species = lookup(query="BioSample == '{ID}'", within=reads, cols="Species")),
         sample="results/kmc/{ID}.txt"
     output:
-        "results/prejoin/{ID}.txt"
+        temp("results/prejoin/{ID}.txt")
     shell:
         "join -t $'\t' -a1 -a2 -e '0' -o auto {input.comb} {input.sample} | cut -f 3 > {output}"
 
