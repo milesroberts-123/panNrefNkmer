@@ -105,7 +105,7 @@ rule kmc_combine_dbs:
         """
         mkdir -p results/kmc_combine_dbs
 
-    q    {{
+        {{
             echo "INPUT:"
             printf '%s\\n' {input.pre} | grep '\\.kmc_pre$' | sed 's/\\.kmc_pre$//' | awk '{{print "set" NR " = " $0 " -ci1"}}'
             echo "OUTPUT:"
