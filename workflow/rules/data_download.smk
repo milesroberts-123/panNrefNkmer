@@ -46,13 +46,9 @@ rule datasets:
 
 rule biosample:
     input:
-        reads=lambda wildcards: expand(
-            "results/fastp/trimmed_{ft}_{run}.fastq.gz",
-            ft=wildcards.filetype,
-            run=lookup(query="BioSample == '{bio}'", within=reads, cols="Run")
-        ),
+        reads=expand("results/fastp/trimmed_{{pairing}}_{{read}}_{run}.fastq.gz", run=lookup(query="BioSample == '{bio}'", within=reads, cols="Run")),
     output:
-        "results/biosample/{bio}_{filetype}.fastq.gz",
+        "results/biosample/{bio}_{pairing}_{read}.fastq.gz",
     params:
         no_inputs=lambda wildcards, input: len(input.reads)
     shell:

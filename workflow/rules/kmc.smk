@@ -27,7 +27,7 @@ rule kmc:
         mkdir tmp_kmc_{wildcards.ID}
 
         # count k-mers
-        kmc -m15 -t{threads} -ci{params.mincount} -cs{params.maxcount} -k{params.k} {input} results/kmc_db_{wildcards.ID} tmp_kmc_{wildcards.ID}
+        kmc -sm -m25 -t{threads} -ci{params.mincount} -cs{params.maxcount} -k{params.k} {input} results/kmc_db_{wildcards.ID} tmp_kmc_{wildcards.ID}
 
         # sort k-mer counts
         kmc_tools -t{threads} transform results/kmc_db_{wildcards.ID} sort results/sorted_kmc_db_{wildcards.ID}
@@ -123,14 +123,14 @@ rule dump_combined_kmers:
         expand("results/kmc_combine_dbs/{{species}}.{suffix}", suffix=["kmc_pre", "kmc_suf"]),
     output:
         temp("results/dump_combined_kmers/{species}.txt"),
-        temp(expand("results/kmc_combine_dbs/sorted_{{species}}.{ext}", ext=["kmc_pre", "kmc_suf"]))
+        #temp(expand("results/kmc_combine_dbs/sorted_{{species}}.{ext}", ext=["kmc_pre", "kmc_suf"]))
     conda:
         "../envs/kmc.yaml" 
     shell:
         """
-        kmc_tools transform results/kmc_combine_dbs/{wildcards.species} sort results/kmc_combine_dbs/sorted_{wildcards.species}
+        #kmc_tools transform results/kmc_combine_dbs/{wildcards.species} sort results/kmc_combine_dbs/sorted_{wildcards.species}
         # dump all k-mers to text file
-        kmc_tools transform results/kmc_combine_dbs/sorted_{wildcards.species} dump {output}
+        kmc_tools transform results/kmc_combine_dbs/{wildcards.species} dump {output}
         """
 
 rule prejoin:
