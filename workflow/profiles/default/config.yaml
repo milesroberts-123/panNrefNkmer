@@ -40,6 +40,10 @@ set-resources:
     kmc_combine_dbs:
         runtime: "180m"
         cpus_per_task: 8
+    prejoin:
+        runtime: "1440m"
+    paste:
+        runtime: "1440m"
     counting_bloom_filter:
         runtime: "180m"
         cpus_per_task: 1

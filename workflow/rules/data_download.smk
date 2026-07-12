@@ -48,7 +48,7 @@ rule biosample:
     input:
         reads=expand("results/fastp/trimmed_{{pairing}}_{{read}}_{run}.fastq.gz", run=lookup(query="BioSample == '{bio}'", within=reads, cols="Run")),
     output:
-        "results/biosample/{bio}_{pairing}_{read}.fastq.gz",
+        temp("results/biosample/{bio}_{pairing}_{read}.fastq.gz"),
     params:
         no_inputs=lambda wildcards, input: len(input.reads)
     shell:

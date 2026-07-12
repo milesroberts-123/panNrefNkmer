@@ -133,7 +133,6 @@ rule dump_combined_kmers:
         kmc_tools transform results/kmc_combine_dbs/{wildcards.species} dump {output}
         """
 
-# Input function to grab unique fastq paths for a specific patient
 def get_species_from_biosample(wildcards):
     # Filter rows matching the current patient wildcard
     matched_rows = reads[reads["BioSample"] == wildcards.ID]
@@ -150,10 +149,17 @@ rule prejoin:
     shell:
         "join -t $'\t' -a1 -a2 -e '0' -o auto {input.comb} {input.sample} | cut -f 3 > {output}"
 
+def get_unique_biosample_from_species(wildcards):
+    # Filter rows matching the current patient wildcard
+    matched_rows = reads[reads["Species"] == wildcards.species]
+    # Extract the file path column and drop duplicate paths
+    unique_outputs = matched_rows["BioSample"].unique().tolist()
+    return unique_outputs
+
 rule paste:
     input:
         kmer_list="results/dump_combined_kmers/{species}.txt",
-        kmer_dumps=expand("results/prejoin/{ID}.txt", ID=lookup(query="Species == '{species}'", within=reads, cols="BioSample"))
+        kmer_dumps=expand("results/prejoin/{ID}.txt", ID=get_unique_biosample_from_species)
     output:
         "results/paste/{species}.txt"
     shell:
