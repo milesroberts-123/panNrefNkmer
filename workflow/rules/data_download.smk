@@ -54,7 +54,7 @@ rule biosample:
     shell:
         """
         if [ {params.no_inputs} -gt 1 ]; then
-            zcat {input.reads} | gzip > {output}
+            cat {input.reads} > {output}
         else
             mv {input.reads} {output}
         fi
