@@ -191,25 +191,6 @@ rule jules_psmc_subset_bam:
         -o {output} {input.bam}
         """
 
-rule jules_psmc_gen_consensus: 
-    input:
-        ref=expand("{path_start}{ref}/{ref}.fasta", path_start = config["reference_genome_path"], ref = lookup(query = "Run == '{srr}'", within = reads, cols = "Species")),
-        bam="results/psmc/{srr}.50k.bam",
-        cov="results/coverages/{srr}.50k.coverage.txt"
-    output: 
-        "results/psmc/{srr}.con.fq.gz"
-    conda:  
-        "../envs/psmc_legacy.yaml"
-    params:
-        mincov=lambda wc: int(open("results/coverages/{}.50k.coverage.txt".format(wc.srr)).read().split()[2]) // 3,
-        maxcov=lambda wc: int(open("results/coverages/{}.50k.coverage.txt".format(wc.srr)).read().split()[2]) * 2
-    shell:
-        """
-        samtools mpileup -C50 -uf {input.ref} {input.bam} | \
-            bcftools call -c - | \
-            vcfutils.pl vcf2fq -d {params.mincov} -D {params.maxcov} | \
-            gzip > {output}
-        """
 
 rule jules_psmc_gen_consensus:
     input:
