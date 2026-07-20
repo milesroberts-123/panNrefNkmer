@@ -133,16 +133,21 @@ rule jules_bcftools_mpileup:
         bcftools index {output.vcf}
         """
 
+
 rule jules_bcftools_filter:
     input:
-        "results/bcfvcfs/{srr}_raw.vcf.gz"
+        vcf="results/bcfvcfs/{srr}_raw.vcf.gz",
+        cov="results/coverages/{srr}.50k.coverage.txt"
     output:
         "results/bcfvcfs/{srr}_filtered.vcf.gz"
     conda:
         "../envs/bcftools.yaml"
+    params:
+        mincov=lambda wc: int(float(open("coverages/{}.50k.coverage.txt".format(wc.srr)).read().split()[2])) // 3,
+        maxcov=lambda wc: int(float(open("coverages/{}.50k.coverage.txt".format(wc.srr)).read().split()[2])) * 2
     shell:
         """
-        bcftools filter -i 'QUAL>20 && FORMAT/DP>=4 && INFO/DP>=4 && INFO/MQ>30' {input} | bcftools view -Oz -o {output}
+        bcftools filter -i 'QUAL>=30 && FORMAT/DP>={params.mincov} && FORMAT/DP<={params.maxcov} && INFO/DP>={params.mincov} && INFO/MQ>=30 && FORMAT/SP<60' {input.vcf} | bcftools view -v snps -m2 -M2 -Oz -o {output}
         """
 
 rule jules_bcftools_roh:
@@ -198,6 +203,26 @@ rule jules_psmc_gen_consensus:
     params:
         mincov=lambda wc: int(open("results/coverages/{}.50k.coverage.txt".format(wc.srr)).read().split()[2]) // 3,
         maxcov=lambda wc: int(open("results/coverages/{}.50k.coverage.txt".format(wc.srr)).read().split()[2]) * 2
+    shell:
+        """
+        samtools mpileup -C50 -uf {input.ref} {input.bam} | \
+            bcftools call -c - | \
+            vcfutils.pl vcf2fq -d {params.mincov} -D {params.maxcov} | \
+            gzip > {output}
+        """
+
+rule jules_psmc_gen_consensus:
+    input:
+        ref=expand("{path_start}{ref}/{ref}.fasta", path_start = config["reference_genome_path"], ref = lookup(query = "Run == '{srr}'", within = reads, cols = "Species")),
+        bam="results/psmc/{srr}.50k.bam",
+        cov="results/coverages/{srr}.50k.coverage.txt"
+    output:
+        "results/psmc/{srr}.con.fq.gz"
+    conda:
+        "../envs/psmc_legacy.yaml"
+    params:
+        mincov=lambda wc: int(float(open("results/coverages/{}.50k.coverage.txt".format(wc.srr)).read().split()[2])) // 3,
+        maxcov=lambda wc: int(float(open("results/coverages/{}.50k.coverage.txt".format(wc.srr)).read().split()[2])) * 2
     shell:
         """
         samtools mpileup -C50 -uf {input.ref} {input.bam} | \
