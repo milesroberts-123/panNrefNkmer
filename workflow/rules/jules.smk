@@ -143,8 +143,8 @@ rule jules_bcftools_filter:
     conda:
         "../envs/bcftools.yaml"
     params:
-        mincov=lambda wc: int(float(open("coverages/{}.50k.coverage.txt".format(wc.srr)).read().split()[2])) // 3,
-        maxcov=lambda wc: int(float(open("coverages/{}.50k.coverage.txt".format(wc.srr)).read().split()[2])) * 2
+        mincov=lambda wc: int(float(open("results/coverages/{}.50k.coverage.txt".format(wc.srr)).read().split()[2])) // 3,
+        maxcov=lambda wc: int(float(open("results/coverages/{}.50k.coverage.txt".format(wc.srr)).read().split()[2])) * 2
     shell:
         """
         bcftools filter -i 'QUAL>=30 && FORMAT/DP>={params.mincov} && FORMAT/DP<={params.maxcov} && INFO/DP>={params.mincov} && INFO/MQ>=30 && FORMAT/SP<60' {input.vcf} | bcftools view -v snps -m2 -M2 -Oz -o {output}
