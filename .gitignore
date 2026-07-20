@@ -14,6 +14,7 @@
 **.html
 **.json
 **.tsv
+workflow/archives
 **/*RR*
 **/contam_genomes
 **/logs

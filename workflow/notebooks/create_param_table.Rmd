@@ -18,6 +18,24 @@ library(tidyverse)
 library(data.table)
 ```
 
+# global plotting theme
+```{r}
+theme_set(
+  theme_minimal() +
+    theme(
+      text = element_text(
+        size = 16,
+        family = "Helvetica",
+        colour = "black"
+      ),
+      axis.text = element_text(colour = "black"),
+      plot.title = element_text(hjust = 0.5),
+      strip.text = element_text(colour = "black"),
+      panel.grid.minor = element_blank()
+    )
+)
+```
+
 # compile jules' lists
 
 ```{r}
@@ -172,3 +190,74 @@ runinfo_partitioned %>%
   summarize(n_distinct(Species))
 ```
 
+# compare alignment diversity metrics to alignment-free diversity metrics
+
+```{r}
+align_div <- fread("../../data/current_most_complete_data.csv")
+
+# 1. Get a vector of all matching file paths
+file_list <- list.files(path = "../results", 
+                        pattern = "kmer_dist.*", 
+                        full.names = TRUE)
+
+kmer_div <- rbindlist(lapply(file_list, fread))
+
+names(kmer_div) <- c("bray_curtis", "cosine")
+
+kmer_div$phylo_name <- gsub(".*kmer_distances_|.txt","",file_list)
+
+all_div <- align_div %>%
+  left_join(kmer_div, by = "phylo_name")
+
+ggplot(all_div, aes(x = Avg_Val_pi, y = Avg_Val_het)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  stat_cor()
+
+ggplot(all_div, aes(x = Avg_Val_pi, y = bray_curtis)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  stat_cor()
+
+ggplot(all_div, aes(x = Avg_Val_het, y = bray_curtis)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  stat_cor()
+
+ggplot(all_div, aes(x = Avg_Val_pi, y = cosine)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  stat_cor()
+
+ggplot(all_div, aes(x = Avg_Val_het, y = cosine)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  stat_cor()
+
+# correlations with range size
+ggplot(all_div, aes(x = Avg_Val_pi, y = final_area_km2/((height_clean*1000)^2))) +
+  geom_point() +
+  scale_y_log10() +
+  geom_smooth(method = "lm") +
+  stat_cor()
+
+ggplot(all_div, aes(x = Avg_Val_het, y = final_area_km2/((height_clean*1000)^2))) +
+  geom_point() +
+  scale_y_log10() +
+  geom_smooth(method = "lm") +
+  stat_cor()
+
+ggplot(all_div, aes(x = bray_curtis, y = final_area_km2/((height_clean*1000)^2))) +
+  geom_point() +
+  scale_y_log10() +
+  #scale_x_log10() +
+  geom_smooth(method = "lm") +
+  stat_cor()
+
+ggplot(all_div, aes(x = cosine, y = final_area_km2/((height_clean*1000)^2))) +
+  geom_point() +
+  scale_y_log10() +
+  #scale_x_log10() +
+  geom_smooth(method = "lm") +
+  stat_cor()
+```

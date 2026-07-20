@@ -12,6 +12,12 @@ rule sra:
             mkdir -p results/raw_reads
         fi
 
+        # check if prefetch directory exists already
+        if [ -d "{wildcards.ID}" ]; then
+            rm -rf "{wildcards.ID}"
+            echo "Folder deleted successfully."
+        fi
+
         prefetch --max-size 500G {wildcards.ID}
 
         # download data
@@ -45,6 +51,7 @@ rule datasets:
         """
 
 rule biosample:
+    #group: "trim"
     input:
         reads=expand("results/fastp/trimmed_{{pairing}}_{{read}}_{run}.fastq.gz", run=lookup(query="BioSample == '{bio}'", within=reads, cols="Run")),
     output:

@@ -12,7 +12,7 @@ configfile: "../config/config.yaml"
 
 # load samples
 reads = pd.read_table(
-    "../config/samples_small.tsv", sep="\t", dtype={"Run": str}
+    "../config/samples_medium.tsv", sep="\t", dtype={"Run": str}
 ).set_index(["Run"], drop=False)
 
 # auto-detect linear references from the genomes provided in config/linear_genomes/sequence/
@@ -45,7 +45,8 @@ rule kmers_only:
 rule batch_per_species:
     input:
         "results/kmer_distances_{species}.txt",
-        "results/paste/{species}.txt",
+        "results/paste/{species}.txt.gz",
+        "results/kmc_histo/{species}.txt",
         expand("results/fastp/post_trim/{ID}.json", ID=lookup(query="Species == '{species}'", within=reads, cols="Run")),
         expand("results/fastp/post_rm_contam/{ID}.json", ID=lookup(query="Species == '{species}'", within=reads, cols="BioSample"))
     output:

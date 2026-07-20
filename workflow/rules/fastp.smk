@@ -1,4 +1,5 @@
 rule fastp:
+    #group: "trim"
     input:
         read1="results/raw_reads/{ID}_1.fastq",
         read2="results/raw_reads/{ID}_2.fastq",

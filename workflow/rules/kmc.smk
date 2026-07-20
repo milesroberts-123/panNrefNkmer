@@ -62,6 +62,18 @@ rule kmc_ref_db:
         rm -r kmc_tmp_{wildcards.species}/
         """
 
+rule kmc_histo:
+    input:
+        pre="results/kmc_ref_dbs/{species}.kmc_pre",
+        suf="results/kmc_ref_dbs/{species}.kmc_suf"
+    output:
+        "results/kmc_histo/{species}.txt"
+    conda: "../envs/kmc.yaml"
+    shell:
+        """
+        kmc_tools transform results/kmc_ref_dbs/{wildcards.species} histogram results/kmc_histo/{wildcards.species}.txt
+        """
+
 rule kmc_rm_contam:
     input:
         pread1="results/biosample/{ID}_paired_R1.fastq.gz",
@@ -89,11 +101,17 @@ rule kmc_rm_contam:
         # filter reads for contamination
         kmc_tools -t{threads} filter {params.refdb} @{output.list} -ci{params.contamMatchLimitCount} -cx1000000 {output.filt1}
         """
+def get_unique_biosample_from_species(wildcards):
+    # Filter rows matching the current patient wildcard
+    matched_rows = reads[reads["Species"] == wildcards.species]
+    # Extract the file path column and drop duplicate paths
+    unique_outputs = matched_rows["BioSample"].unique().tolist()
+    return unique_outputs
 
 rule kmc_combine_dbs:
     input:
-        pre=expand("results/kmc_db_{ID}.kmc_pre", ID=lookup(query="Species == '{species}'", within=reads, cols="BioSample")),
-        suf=expand("results/kmc_db_{ID}.kmc_suf", ID=lookup(query="Species == '{species}'", within=reads, cols="BioSample"))
+        pre=expand("results/kmc_db_{ID}.kmc_pre", ID=get_unique_biosample_from_species),
+        suf=expand("results/kmc_db_{ID}.kmc_suf", ID=get_unique_biosample_from_species)
     output:
         db=temp(expand("results/kmc_combine_dbs/{{species}}.{suffix}", suffix=["kmc_pre", "kmc_suf"])),
         complex=temp("results/kmc_combine_dbs/{species}.complex")
@@ -123,7 +141,6 @@ rule dump_combined_kmers:
         expand("results/kmc_combine_dbs/{{species}}.{suffix}", suffix=["kmc_pre", "kmc_suf"]),
     output:
         temp("results/dump_combined_kmers/{species}.txt"),
-        #temp(expand("results/kmc_combine_dbs/sorted_{{species}}.{ext}", ext=["kmc_pre", "kmc_suf"]))
     conda:
         "../envs/kmc.yaml" 
     shell:
@@ -149,13 +166,6 @@ rule prejoin:
     shell:
         "join -t $'\t' -a1 -a2 -e '0' -o auto {input.comb} {input.sample} | cut -f 3 > {output}"
 
-def get_unique_biosample_from_species(wildcards):
-    # Filter rows matching the current patient wildcard
-    matched_rows = reads[reads["Species"] == wildcards.species]
-    # Extract the file path column and drop duplicate paths
-    unique_outputs = matched_rows["BioSample"].unique().tolist()
-    return unique_outputs
-
 rule paste:
     input:
         kmer_list="results/dump_combined_kmers/{species}.txt",
@@ -164,3 +174,11 @@ rule paste:
         "results/paste/{species}.txt"
     shell:
         "paste <(cut -f 1 {input.kmer_list}) {input.kmer_dumps} > {output}"
+
+rule pigz:
+    input:
+        "results/paste/{species}.txt"
+    output:
+        "results/paste/{species}.txt.gz"
+    shell:
+        "pigz -p {threads} {input}"

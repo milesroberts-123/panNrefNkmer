@@ -1,5 +1,5 @@
 executor: slurm
-jobs: 100000
+jobs: 100
 cores: 100000
 
 # rules to execute locally, because they're too fast to bother with cluster submission
@@ -12,40 +12,45 @@ default-resources:
     slurm_qos: "savio_lowprio"
     ntasks: 1
     cpus_per_task: 1
-    runtime: "60m"
+    runtime: "30m"
     mem_mb: 0
 
 # here only rules, which require different (more) resources:
 set-resources:
     sra:
         cpus_per_task: 4
-        runtime: "1440m"
+        runtime: "240m"
     biosample:
-        runtime: "1440m"
+        runtime: "20m"
     fastp:
-        runtime: "180m"
+        runtime: "int(min(max(3*input.size_mb/(1024*threads), 10), 1440))"
         cpus_per_task: 8
     qc_post_rm_contam:
-        runtime: "180m"
+        runtime: "int(min(max(3*input.size_mb/(1024*threads), 10), 1440))"
         cpus_per_task: 8
     kmc_ref_db:
-        runtime: "180m"
+        runtime: "30m"
         cpus_per_task: 4
     kmc_rm_contam:
-        runtime: "1440m"
+            #slurm_partition: "savio4_htc"
+            #slurm_qos: "moilab_htc4_normal"
+        runtime: "int(min(max(5*input.size_mb/1024, 10), 1440))"
         cpus_per_task: 8
     kmc: 
-        runtime: "180m"
+        runtime: "int(min(max(4*input.size_mb/(1024*threads), 10), 1440))"
         cpus_per_task: 8
     kmc_combine_dbs:
-        runtime: "180m"
+        runtime: "120m"
         cpus_per_task: 8
     prejoin:
-        runtime: "1440m"
+        runtime: "300m"
     paste:
-        runtime: "1440m"
+        runtime: "int(min(max(input.size_mb/(1024*5), 10), 1440))"
+    pigz:
+        cpus_per_task: 8
+        runtime: "int(min(max(4*input.size_mb/(1024*threads), 10), 1440))"
     counting_bloom_filter:
-        runtime: "180m"
+        runtime: "int(min(max(3*input.size_mb*60/(30*1024), 10), 1440))"
         cpus_per_task: 1
     jules_psmc_subset_bam:
         runtime: "180m"
@@ -61,4 +66,5 @@ set-threads:
     kmc_combine_dbs: 8
     kmc_ref_db: 4
     kmc_rm_contam: 8
+    pigz: 8
     jules_psmc_subset_bam: 8
