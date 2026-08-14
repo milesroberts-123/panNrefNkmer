@@ -1,6 +1,6 @@
 executor: slurm
-jobs: 100
-cores: 100000
+jobs: 10000
+cores: 100
 
 # rules to execute locally, because they're too fast to bother with cluster submission
 # localrules: all_one_pops, all_two_pops, all
@@ -8,10 +8,10 @@ cores: 100000
 # use sensible defaults for your cluster
 default-resources:
     slurm_account: "co_moilab"
-    slurm_partition: "savio3_htc"
-    slurm_qos: "savio_lowprio"
-    #slurm_partition: "savio4_htc"
-    #slurm_qos: "moilab_htc4_normal"
+    #slurm_partition: "savio3_htc"
+    #slurm_qos: "savio_lowprio"
+    slurm_partition: "savio4_htc"
+    slurm_qos: "moilab_htc4_normal"
     ntasks: 1
     cpus_per_task: 1
     runtime: "30m"
@@ -21,7 +21,7 @@ default-resources:
 set-resources:
     sra:
         cpus_per_task: 4
-        runtime: "240m"
+        runtime: "1440m"
     biosample:
         runtime: "20m"
     fastp:
@@ -54,6 +54,8 @@ set-resources:
     counting_bloom_filter:
         runtime: "int(min(max(3*input.size_mb*60/(30*1024), 10), 1440))"
         cpus_per_task: 1
+    subset_kmer_table:
+        runtime: 180
     jules_psmc_subset_bam:
         runtime: "180m"
         cpus_per_task: 8

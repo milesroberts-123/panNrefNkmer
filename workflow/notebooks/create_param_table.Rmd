@@ -16,9 +16,15 @@ gc()
 ```{r}
 library(tidyverse)
 library(data.table)
+library(caper)
+library(ape)
+library(ggpubr)
+
+today <- Sys.Date()
 ```
 
 # global plotting theme
+
 ```{r}
 theme_set(
   theme_minimal() +
@@ -193,22 +199,35 @@ runinfo_partitioned %>%
 # compare alignment diversity metrics to alignment-free diversity metrics
 
 ```{r}
+
 align_div <- fread("../../data/current_most_complete_data.csv")
 
-# 1. Get a vector of all matching file paths
-file_list <- list.files(path = "../results", 
-                        pattern = "kmer_dist.*", 
+# Get a vector of all matching file paths
+file_list <- list.files(path = "../results/subset/kmer_distances", 
+                        pattern = ".txt", 
                         full.names = TRUE)
 
-kmer_div <- rbindlist(lapply(file_list, fread))
-
-names(kmer_div) <- c("bray_curtis", "cosine")
-
-kmer_div$phylo_name <- gsub(".*kmer_distances_|.txt","",file_list)
+kmer_div <- file_list %>% 
+  set_names() %>% 
+  map_dfr(~fread(.x, col.names = c("bray_curtis", "cosine")), .id = "source_file") %>%
+  mutate(phylo_name = gsub(".*kmer_distances/|.txt","",source_file))
 
 all_div <- align_div %>%
-  left_join(kmer_div, by = "phylo_name")
+  left_join(kmer_div, by = "phylo_name") %>%
+  dplyr::select(phylo_name, Avg_Val_pi, Avg_Val_het, bray_curtis, cosine, final_area_km2, height_clean, genome_size, redlistCategory) %>%
+  mutate(R_h2 = final_area_km2/((height_clean/1000)^2))
 
+all_div$redlistCategory[(all_div$redlistCategory == "Lower Risk/near threatened")] <- "Near Threatened"
+all_div$redlistCategory[(all_div$redlistCategory == "Lower Risk/least concern")] <- "Least Concern"
+
+all_div$redlistCategory <- factor(all_div$redlistCategory, levels = c("Least Concern", "Near Threatened", "Vulnerable", "Endangered", "Critically Endangered", "Extinct in the Wild"))
+
+all_div$redlistCategoryCollapsed <- as.character(all_div$redlistCategory)
+all_div$redlistCategoryCollapsed[(all_div$redlistCategoryCollapsed %in% c("Least Concern", "Near Threatened"))] <- "Non-Threatened"
+all_div$redlistCategoryCollapsed[(all_div$redlistCategoryCollapsed %in% c("Vulnerable", "Endangered", "Critically Endangered", "Extinct in the Wild"))] <- "Threatened"
+all_div$redlistCategoryCollapsed <- factor(all_div$redlistCategoryCollapsed, levels = c("Non-Threatened", "Threatened"))
+
+# initial data analysis
 ggplot(all_div, aes(x = Avg_Val_pi, y = Avg_Val_het)) +
   geom_point() +
   geom_smooth(method = "lm") +
@@ -216,13 +235,19 @@ ggplot(all_div, aes(x = Avg_Val_pi, y = Avg_Val_het)) +
 
 ggplot(all_div, aes(x = Avg_Val_pi, y = bray_curtis)) +
   geom_point() +
-  geom_smooth(method = "lm") +
-  stat_cor()
+  geom_smooth(method = "lm", color = "purple") +
+  stat_cor() +
+  labs(x = "Mean nucleotide diversity", y = "Mean Bray-Curtis\nk-mer dissimilarity")
+
+ggsave(paste0("../../results/by-date/", today, "/nucleotide_diversity_vs_bray_curtis.pdf"), width = 6, height = 5)
 
 ggplot(all_div, aes(x = Avg_Val_het, y = bray_curtis)) +
   geom_point() +
-  geom_smooth(method = "lm") +
-  stat_cor()
+  geom_smooth(method = "lm", color = "purple") +
+  stat_cor() +
+  labs(x = "Mean heterozygosity", y = "Mean Bray-Curtis\nk-mer dissimilarity")
+
+ggsave(paste0("../../results/by-date/", today, "/heterozygosity_vs_bray_curtis.pdf"), width = 6, height = 5)
 
 ggplot(all_div, aes(x = Avg_Val_pi, y = cosine)) +
   geom_point() +
@@ -234,30 +259,159 @@ ggplot(all_div, aes(x = Avg_Val_het, y = cosine)) +
   geom_smooth(method = "lm") +
   stat_cor()
 
+# correlations with threat status
+ggplot(all_div, aes(x = redlistCategory, y = Avg_Val_het)) +
+  geom_violin(draw_quantiles = c(0.5)) +
+  ggforce::geom_sina(
+    maxwidth = .6, scale = "count", seed = 1,
+    size = 2, alpha = .5
+  ) +
+   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+  labs(x = "Red List category", y = "Heterozygosity")
+
+ggsave(paste0("../../results/by-date/", today, "/redlist_vs_heterozygosity.pdf"), width = 6, height = 5)
+
+ggplot(all_div, aes(x = redlistCategory, y = Avg_Val_pi)) +
+  geom_violin(draw_quantiles = c(0.5)) +
+  ggforce::geom_sina(
+    maxwidth = .6, scale = "count", seed = 1,
+    size = 2, alpha = .5
+  )+
+   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+  labs(x = "Red List category", y = "Nucleotide diversity")
+
+ggsave(paste0("../../results/by-date/", today, "/redlist_vs_pi.pdf"), width = 6, height = 5)
+
+ggplot(all_div, aes(x = redlistCategory, y = bray_curtis)) +
+  geom_violin(draw_quantiles = c(0.5)) +
+  ggforce::geom_sina(
+    maxwidth = .6, scale = "count", seed = 1,
+    size = 2, alpha = .5
+  ) +
+   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+  labs(x = "Red List category", y = "Bray-Curtis\nk-mer dissimilarity") 
+
+ggsave(paste0("../../results/by-date/", today, "/redlist_vs_bray_curtis.pdf"), width = 6, height = 5)
+
+ggplot(all_div, aes(x = redlistCategoryCollapsed, y = Avg_Val_het)) +
+  geom_violin(draw_quantiles = c(0.5)) +
+  ggforce::geom_sina(
+    maxwidth = .6, scale = "count", seed = 1,
+    size = 2, alpha = .5
+  ) +
+   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+  labs(x = "Red List category", y = "Heterozygosity") 
+
+ggsave(paste0("../../results/by-date/", today, "/redlist_collapsed_vs_heterozygosity.pdf"), width = 6, height = 5)
+
+ggplot(all_div, aes(x = redlistCategoryCollapsed, y = Avg_Val_pi)) +
+  geom_violin(draw_quantiles = c(0.5)) +
+  ggforce::geom_sina(
+    maxwidth = .6, scale = "count", seed = 1,
+    size = 2, alpha = .5
+  ) +
+   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+  labs(x = "Red List category", y = "Nucleotide diversity") 
+
+ggsave(paste0("../../results/by-date/", today, "/redlist_collapsed_vs_pi.pdf"), width = 6, height = 5)
+
+ggplot(all_div, aes(x = redlistCategoryCollapsed, y = bray_curtis)) +
+  geom_violin(draw_quantiles = c(0.5)) +
+  ggforce::geom_sina(
+    maxwidth = .6, scale = "count", seed = 1,
+    size = 2, alpha = .5
+  ) +
+   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+  labs(x = "Red List category", y = "Bray-Curtis\nk-mer dissimilarity") 
+
+ggsave(paste0("../../results/by-date/", today, "/redlist_collapsed_vs_bray_curtis.pdf"), width = 6, height = 5)
+
 # correlations with range size
-ggplot(all_div, aes(x = Avg_Val_pi, y = final_area_km2/((height_clean*1000)^2))) +
+ggplot(all_div, aes(x = Avg_Val_pi, y = R_h2)) +
   geom_point() +
   scale_y_log10() +
   geom_smooth(method = "lm") +
   stat_cor()
 
-ggplot(all_div, aes(x = Avg_Val_het, y = final_area_km2/((height_clean*1000)^2))) +
+ggplot(all_div, aes(x = Avg_Val_het, y = R_h2)) +
   geom_point() +
   scale_y_log10() +
   geom_smooth(method = "lm") +
   stat_cor()
 
-ggplot(all_div, aes(x = bray_curtis, y = final_area_km2/((height_clean*1000)^2))) +
+ggplot(all_div, aes(x = bray_curtis, y = R_h2)) +
   geom_point() +
   scale_y_log10() +
-  #scale_x_log10() +
   geom_smooth(method = "lm") +
   stat_cor()
 
-ggplot(all_div, aes(x = cosine, y = final_area_km2/((height_clean*1000)^2))) +
+ggplot(all_div, aes(x = cosine, y = R_h2)) +
   geom_point() +
   scale_y_log10() +
-  #scale_x_log10() +
   geom_smooth(method = "lm") +
   stat_cor()
+
+```
+
+```{r}
+jtree <- read.tree("../../resources/analysis_tree.tre")
+
+plot(jtree)
+jtree$node.label <- NULL
+
+all_div <- all_div %>%
+  filter(phylo_name %in% jtree$tip.label) %>%
+  arrange(match(phylo_name, jtree$tip.label))
+
+# Combine tree and data into a single comparative object
+# data MUST be dataframe, NOT a tibble
+comp_data <- comparative.data(phy = jtree, data = as.data.frame(all_div), 'phylo_name')
+
+# Run the PGLS model
+# Setting lambda = "ML" estimates Pagel's Lambda via Maximum Likelihood
+pgls_mod_bray_curtis <- pgls(log10(R_h2) ~ scale(bray_curtis) + log10(genome_size), data = comp_data, lambda = "ML")
+pgls_mod_pi <- pgls(log10(R_h2) ~ scale(log10(Avg_Val_pi)) + log10(genome_size), data = comp_data, lambda = "ML")
+
+# View results
+summary(pgls_mod_pi)
+summary(pgls_mod_bray_curtis)
+
+# 
+all_div %>%
+  filter(!is.na(Avg_Val_pi) & !is.na(R_h2)) %>%
+  nrow()
+
+all_div %>%
+  filter(!is.na(bray_curtis) & !is.na(R_h2)) %>%
+  nrow()
+
+all_div %>%
+  filter(!is.na(Avg_Val_pi) & !is.na(final_area_km2)) %>%
+  nrow()
+
+all_div %>%
+  filter(!is.na(bray_curtis) & !is.na(final_area_km2)) %>%
+  nrow()
+
+all_div %>%
+  filter(!is.na(Avg_Val_pi) & !is.na(height_clean)) %>%
+  nrow()
+
+all_div %>%
+  filter(!is.na(bray_curtis) & !is.na(height_clean)) %>%
+  nrow()
+
+# try just area
+pgls_mod_bray_curtis_range <- pgls(log10(final_area_km2) ~ scale(bray_curtis)  + log10(genome_size), data = comp_data, lambda = "ML")
+pgls_mod_pi_range <- pgls(log10(final_area_km2) ~ scale(log10(Avg_Val_pi)) + log10(genome_size), data = comp_data, lambda = "ML")
+
+summary(pgls_mod_pi_range)
+summary(pgls_mod_bray_curtis_range)
+
+# try just height
+pgls_mod_bray_curtis_height <- pgls(log10(height_clean) ~ scale(bray_curtis)  + log10(genome_size), data = comp_data, lambda = "ML")
+pgls_mod_pi_height <- pgls(log10(height_clean) ~ scale(log10(Avg_Val_pi)) + log10(genome_size), data = comp_data, lambda = "ML")
+
+summary(pgls_mod_pi_height)
+summary(pgls_mod_bray_curtis_height)
 ```

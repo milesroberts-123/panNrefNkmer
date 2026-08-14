@@ -42,11 +42,16 @@ rule kmers_only:
      #expand("results/kmer_distances_{species}.txt", species = reads["Species"].unique()),
      expand("results/batch_tracker/{species}.done", species = reads["Species"].unique())
 
+rule kmers_subset_only:
+    input:
+        expand("results/subset/kmer_distances/{species}.txt", species = reads["Species"].unique())
+
 rule batch_per_species:
     input:
         "results/kmer_distances_{species}.txt",
         "results/paste/{species}.txt.gz",
         "results/kmc_histo/{species}.txt",
+        "results/subset/kmer_distances/{species}.txt",
         expand("results/fastp/post_trim/{ID}.json", ID=lookup(query="Species == '{species}'", within=reads, cols="Run")),
         expand("results/fastp/post_rm_contam/{ID}.json", ID=lookup(query="Species == '{species}'", within=reads, cols="BioSample"))
     output:
@@ -76,6 +81,7 @@ include: "rules/fastp.smk"
 ## K-mer counting rules
 include: "rules/kmc.smk"
 include: "rules/cbf.smk"
+include: "rules/subset.smk"
 
 ## Pangenome graph building and alignment rules
 #include: "rules/pggb.smk"
