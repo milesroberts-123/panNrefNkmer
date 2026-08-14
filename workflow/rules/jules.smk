@@ -134,6 +134,18 @@ rule jules_bcftools_mpileup:
         """
 
 
+MIN_ACCEPTABLE_AVG_DEPTH = 10
+
+def get_avg_cov(srr):
+    avg = float(open(f"results/coverages/{srr}.50k.coverage.txt").read().split()[2])
+    if avg < MIN_ACCEPTABLE_AVG_DEPTH:
+        raise ValueError(
+            f"Sample {srr} has average depth {avg:.1f}x, below the "
+            f"{MIN_ACCEPTABLE_AVG_DEPTH}x floor -- too shallow to trust for "
+            f"ROH/PSMC (undercalled heterozygosity at low depth inflates F_ROH)."
+        )
+    return avg
+
 rule jules_bcftools_filter:
     input:
         vcf="results/bcfvcfs/{srr}_raw.vcf.gz",
@@ -143,11 +155,16 @@ rule jules_bcftools_filter:
     conda:
         "../envs/bcftools.yaml"
     params:
-        mincov=lambda wc: int(float(open("results/coverages/{}.50k.coverage.txt".format(wc.srr)).read().split()[2])) // 3,
-        maxcov=lambda wc: int(float(open("results/coverages/{}.50k.coverage.txt".format(wc.srr)).read().split()[2])) * 2
+        mincov=lambda wc: int(get_avg_cov(wc.srr)) // 3,
+        maxcov=lambda wc: int(get_avg_cov(wc.srr)) * 2,
+        ab_low=0.30,
+        ab_high=0.70
     shell:
         """
-        bcftools filter -i 'QUAL>=30 && FORMAT/DP>={params.mincov} && FORMAT/DP<={params.maxcov} && INFO/DP>={params.mincov} && INFO/MQ>=30 && FORMAT/SP<60' {input.vcf} | bcftools view -v snps -m2 -M2 -Oz -o {output}
+        bcftools filter -i 'QUAL>=30 && FORMAT/DP>={params.mincov} && FORMAT/DP<={params.maxcov} && INFO/DP>={params.mincov} && INFO/MQ>=30 && FORMAT/SP<60' {input.vcf} \\
+            | bcftools view -v snps -m2 -M2 \\
+            | bcftools filter -S . -e '(GT="het") && ((FMT/AD[0:1])/(FMT/AD[0:0]+FMT/AD[0:1]) < {params.ab_low} || (FMT/AD[0:1])/(FMT/AD[0:0]+FMT/AD[0:1]) > {params.ab_high})' \\
+            -Oz -o {output}
         """
 
 rule jules_bcftools_roh:
