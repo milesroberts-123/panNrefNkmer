@@ -116,48 +116,6 @@ rule pigz_kraken:
         "pigz -p {threads} {input}"
 
 
-rule counting_bloom_filter_kraken:
-    input:
-        "results/kraken/kmc/{ID}.txt"
-    output:
-        temp("results/kraken/cbf/{ID}.txt")
-    params:
-        array_size=config["array_size"],
-        num_hash=config["num_hash"]
-    conda:
-        "../envs/cbf.yaml"
-    shell:
-        """
-        if [ ! -d "results/kraken/cbf" ]; then
-            mkdir -p results/kraken/cbf
-        fi
-
-        python scripts/counting_bloom_filter.py --input {input} --output {output} --array-size {params.array_size} --num-hash {params.num_hash}
-        """
-
-
-rule cbind_kraken:
-    input:
-        expand("results/kraken/cbf/{ID}.txt", ID=lookup(query="Species == '{species}'", within=reads, cols="BioSample"))
-    output:
-        "results/kraken/cbf_table/{species}.txt"
-    shell:
-        r"""
-        paste -d' ' {input} > {output}
-        """
-
-
-rule kmer_distances_kraken:
-    input:
-        "results/kraken/cbf_table/{species}.txt"
-    output:
-        "results/kraken/kmer_distances/{species}.txt"
-    conda:
-        "../envs/cbf.yaml"
-    shell:
-        "python scripts/kmer_distances.py --input {input} --output {output}"
-
-
 rule subset_kmer_table_kraken:
     input:
         "results/kraken/paste/{species}.txt.gz"
@@ -189,7 +147,6 @@ rule subset_kmer_distances_kraken:
 
 rule batch_per_species_kraken:
     input:
-        "results/kraken/kmer_distances/{species}.txt",
         "results/kraken/paste/{species}.txt.gz",
         "results/kraken/subset/kmer_distances/{species}.txt",
         expand("results/kraken2_reports/{ID}.txt", ID=lookup(query="Species == '{species}'", within=reads, cols="BioSample")),

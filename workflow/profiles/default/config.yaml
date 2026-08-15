@@ -42,22 +42,56 @@ set-resources:
     kmc_nofilt: 
         runtime: "int(min(max(4*input.size_mb/(1024*threads),10), 1440))"
         cpus_per_task: 8
+    kmc_kraken:
+        runtime: "int(min(max(4*input.size_mb/(1024*threads),10), 1440))"
+        cpus_per_task: 8
+    kraken2_rm_microbial:
+        runtime: "int(min(max(5*input.size_mb/1024, 10), 1440))"
+        cpus_per_task: 8
     kmc_combine_dbs:
+        runtime: "120m"
+        cpus_per_task: 8
+    kmc_combine_dbs_nofilt:
+        runtime: "120m"
+        cpus_per_task: 8
+    kmc_combine_dbs_kraken:
         runtime: "120m"
         cpus_per_task: 8
     prejoin:
         slurm_partition: "savio4_htc"
         slurm_qos: "moilab_htc4_normal"
         runtime: "300m"
+    prejoin_nofilt:
+        slurm_partition: "savio4_htc"
+        slurm_qos: "moilab_htc4_normal"
+        runtime: "300m"
+    prejoin_kraken:
+        slurm_partition: "savio4_htc"
+        slurm_qos: "moilab_htc4_normal"
+        runtime: "300m"
     paste:
         runtime: "int(min(max(input.size_mb/(1024*5), 10), 1440))"
+    paste_nofilt:
+        runtime: "int(min(max(input.size_mb/(1024*5), 10), 1440))"
+    paste_kraken:
+        runtime: "int(min(max(input.size_mb/(1024*5), 10), 1440))"
     pigz:
+        cpus_per_task: 8
+        runtime: "int(min(max(4*input.size_mb/(1024*threads), 10), 1440))"
+    pigz_nofilt:
+        cpus_per_task: 8
+        runtime: "int(min(max(4*input.size_mb/(1024*threads), 10), 1440))"
+    pigz_kraken:
         cpus_per_task: 8
         runtime: "int(min(max(4*input.size_mb/(1024*threads), 10), 1440))"
     counting_bloom_filter:
         runtime: "int(min(max(3*input.size_mb*60/(30*1024), 10), 1440))"
         cpus_per_task: 1
     subset_kmer_table:
+        runtime: 180
+    subset_kmer_table_nofilt:
+        runtime: 180
+    subset_kmer_table_kraken:
         runtime: 180
     jules_psmc_subset_bam:
         runtime: "180m"
@@ -70,9 +104,15 @@ set-threads:
     fastp: 8
     qc_post_rm_contam: 8
     kmc: 8
-    kmc_no_filt: 8
+    kmc_nofilt: 8
+    kmc_kraken: 8
+    kraken2_rm_microbial: 8
     kmc_combine_dbs: 8
+    kmc_combine_dbs_nofilt: 8
+    kmc_combine_dbs_kraken: 8
     kmc_ref_db: 4
     kmc_rm_contam: 8
     pigz: 8
+    pigz_nofilt: 8
+    pigz_kraken: 8
     jules_psmc_subset_bam: 8

@@ -35,6 +35,8 @@ Profiles in `workflow/profiles/`: `default` (slurm), `icer` (MSU ICER), `local` 
 - `all` (default) — samtools/bcftools stats, MK test, salmon, pixy, k-mer distances, multiqc
 - `jules_only` — legacy PSMC/ROH track; **not included in `all`**, must be run separately
 - `kmers_only` — k-mer distance outputs only (no reference needed)
+- `kmers_nofilt_only` — k-mer branch with no reference contamination removal (outputs under `results/nofilt/`)
+- `kmers_kraken_only` — k-mer branch with kraken2 microbial screening (outputs under `results/kraken/`)
 - `batch_per_sample` — per-BioSample VCF splits, counting bloom filter, salmon quant
 
 ## Linear references are auto-detected
@@ -85,3 +87,7 @@ Rules from different tracks generally don't share intermediates.
 ## `localrules` bypass slurm
 
 `all` and `batch_per_sample` are declared as `localrules` in the Snakefile — they run on the submit node regardless of profile.
+
+## Adding rules: update the slurm profile
+
+Every new cluster rule needs `set-resources` and `set-threads` entries in `workflow/profiles/default/config.yaml`, mirroring the analogous existing rule. Rules without entries silently fall back to `default-resources` (30m runtime, 1 cpu), which will kill long jobs. Also check `workflow/profiles/icer/config.yaml` if the rule will run on ICER.
