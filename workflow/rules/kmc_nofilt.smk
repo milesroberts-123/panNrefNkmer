@@ -1,10 +1,11 @@
 rule kmc_nofilt:
     input:
-        pread1="results/biosample/{ID}_paired_R1.fastq.gz",
-        pread2="results/biosample/{ID}_paired_R2.fastq.gz",
-        uread1="results/biosample/{ID}_unpaired_R1.fastq.gz",
-        uread2="results/biosample/{ID}_unpaired_R2.fastq.gz"
+        "results/biosample/{ID}_paired_R1.fastq.gz",
+        "results/biosample/{ID}_paired_R2.fastq.gz",
+        "results/biosample/{ID}_unpaired_R1.fastq.gz",
+        "results/biosample/{ID}_unpaired_R2.fastq.gz"
     output:
+        list=temp("results/nofilt/kmc/{ID}_list.txt"),
         counts=temp("results/nofilt/kmc/{ID}.txt"),
         tmp_pre=temp("results/nofilt/kmc_db_{ID}.kmc_pre"),
         tmp_suf=temp("results/nofilt/kmc_db_{ID}.kmc_suf"),
@@ -23,9 +24,9 @@ rule kmc_nofilt:
 
         mkdir -p results/nofilt tmp_kmc_nofilt_{wildcards.ID}
 
-        kmc -sm -m25 -t{threads} -ci{params.mincount} -cs{params.maxcount} -k{params.k} \
-            {input.pread1} {input.pread2} {input.uread1} {input.uread2} \
-            results/nofilt/kmc_db_{wildcards.ID} tmp_kmc_nofilt_{wildcards.ID}
+        echo {input} | tr ' ' '\n' > {output.list}
+
+        kmc -sm -m25 -t{threads} -ci{params.mincount} -cs{params.maxcount} -k{params.k} @{output.list} results/nofilt/kmc_db_{wildcards.ID} tmp_kmc_nofilt_{wildcards.ID}
 
         kmc_tools -t{threads} transform results/nofilt/kmc_db_{wildcards.ID} sort results/nofilt/sorted_kmc_db_{wildcards.ID}
 
@@ -118,48 +119,6 @@ rule pigz_nofilt:
         "pigz -p {threads} {input}"
 
 
-rule counting_bloom_filter_nofilt:
-    input:
-        "results/nofilt/kmc/{ID}.txt"
-    output:
-        temp("results/nofilt/cbf/{ID}.txt")
-    params:
-        array_size=config["array_size"],
-        num_hash=config["num_hash"]
-    conda:
-        "../envs/cbf.yaml"
-    shell:
-        """
-        if [ ! -d "results/nofilt/cbf" ]; then
-            mkdir -p results/nofilt/cbf
-        fi
-
-        python scripts/counting_bloom_filter.py --input {input} --output {output} --array-size {params.array_size} --num-hash {params.num_hash}
-        """
-
-
-rule cbind_nofilt:
-    input:
-        expand("results/nofilt/cbf/{ID}.txt", ID=lookup(query="Species == '{species}'", within=reads, cols="BioSample"))
-    output:
-        "results/nofilt/cbf_table/{species}.txt"
-    shell:
-        r"""
-        paste -d' ' {input} > {output}
-        """
-
-
-rule kmer_distances_nofilt:
-    input:
-        "results/nofilt/cbf_table/{species}.txt"
-    output:
-        "results/nofilt/kmer_distances/{species}.txt"
-    conda:
-        "../envs/cbf.yaml"
-    shell:
-        "python scripts/kmer_distances.py --input {input} --output {output}"
-
-
 rule subset_kmer_table_nofilt:
     input:
         "results/nofilt/paste/{species}.txt.gz"
@@ -191,7 +150,6 @@ rule subset_kmer_distances_nofilt:
 
 rule batch_per_species_nofilt:
     input:
-        "results/nofilt/kmer_distances/{species}.txt",
         "results/nofilt/paste/{species}.txt.gz",
         "results/nofilt/subset/kmer_distances/{species}.txt",
         expand("results/fastp/post_trim/{ID}.json", ID=lookup(query="Species == '{species}'", within=reads, cols="Run"))

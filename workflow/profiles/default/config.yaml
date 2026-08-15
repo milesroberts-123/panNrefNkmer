@@ -39,6 +39,9 @@ set-resources:
     kmc: 
         runtime: "int(min(max(4*input.size_mb/(1024*threads), 10), 1440))"
         cpus_per_task: 8
+    kmc_nofilt: 
+        runtime: "int(min(max(4*input.size_mb/(1024*threads),10), 1440))"
+        cpus_per_task: 8
     kmc_combine_dbs:
         runtime: "120m"
         cpus_per_task: 8
@@ -67,6 +70,7 @@ set-threads:
     fastp: 8
     qc_post_rm_contam: 8
     kmc: 8
+    kmc_no_filt: 8
     kmc_combine_dbs: 8
     kmc_ref_db: 4
     kmc_rm_contam: 8
