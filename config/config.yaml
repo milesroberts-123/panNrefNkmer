@@ -41,6 +41,14 @@ contam_match_limit_count: 2
 ## number of k-mers to randomly subset from large table for distance metrics
 num_kmers_kept: 10000000
 
+# kraken2 parameters =========================================================================
+
+## path to kraken2 microbial database
+kraken_db_path: "/path/to/kraken2/microbial/db"
+
+## kraken2 confidence threshold (0.0 = no filtering by confidence)
+kraken_confidence: 0.0
+
 # fastp parameters ==========================================================================
 
 ## unqualified_percent_limit for fastp: how many percents of bases are allowed to be unqualified in terms of quality score

@@ -56,3 +56,13 @@ properties:
     type: array
     items:
       type: string
+  kraken_db_path:
+    description: path to kraken2 microbial database directory
+    type: string
+    default: "/path/to/kraken2/microbial/db"
+  kraken_confidence:
+    description: kraken2 confidence threshold for classification
+    type: number
+    default: 0.0
+    minimum: 0.0
+    maximum: 1.0

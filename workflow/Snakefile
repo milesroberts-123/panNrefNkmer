@@ -46,6 +46,14 @@ rule kmers_subset_only:
     input:
         expand("results/subset/kmer_distances/{species}.txt", species = reads["Species"].unique())
 
+rule kmers_nofilt_only:
+    input:
+        expand("results/nofilt/batch_tracker/{species}.done", species = reads["Species"].unique())
+
+rule kmers_kraken_only:
+    input:
+        expand("results/kraken/batch_tracker/{species}.done", species = reads["Species"].unique())
+
 rule batch_per_species:
     input:
         "results/kmer_distances_{species}.txt",
@@ -82,6 +90,13 @@ include: "rules/fastp.smk"
 include: "rules/kmc.smk"
 include: "rules/cbf.smk"
 include: "rules/subset.smk"
+
+## No-filter k-mer branch (no reference contamination removal)
+include: "rules/kmc_nofilt.smk"
+
+## Kraken2 microbial filter + k-mer branch
+include: "rules/kraken2.smk"
+include: "rules/kmc_kraken.smk"
 
 ## Pangenome graph building and alignment rules
 #include: "rules/pggb.smk"
