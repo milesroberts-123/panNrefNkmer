@@ -222,7 +222,7 @@ rule jules_bcftools_mpileup:
         """
         bcftools mpileup -f {input.ref} -a "FORMAT/AD,FORMAT/DP" -q {params.q} -Q {params.Q} {input.bam} | bcftools call -mv -Oz -o {output.vcf}
 
-        bcftools index {output.vcf}
+        tabix {output.vcf}
         """
 
 
