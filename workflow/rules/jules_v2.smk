@@ -228,8 +228,13 @@ rule jules_bcftools_mpileup:
 
 MIN_ACCEPTABLE_AVG_DEPTH = 10
 
+def get_avg_cov_value(srr):
+    """Average depth for a sample, parsed from its coverage file."""
+    return float(open(f"results/coverages/{srr}.50k.coverage.txt").read().split()[2])
+
 def get_avg_cov(srr):
-    avg = float(open(f"results/coverages/{srr}.50k.coverage.txt").read().split()[2])
+    """Average depth, raising if below the minimum acceptable floor."""
+    avg = get_avg_cov_value(srr)
     if avg < MIN_ACCEPTABLE_AVG_DEPTH:
         raise ValueError(
             f"Sample {srr} has average depth {avg:.1f}x, below the "
@@ -276,7 +281,7 @@ rule jules_bcftools_roh:
 
 rule jules_psmc_50k_bed:
     input:
-        expand("{path_start}{{ref}}/{{ref}}.fasta.fai", path_start = config["reference_genome_path"])
+        config["reference_genome_path"] + "{ref}/{ref}.fasta.fai"
     output:
         "results/psmc_bed/{ref}.50k.bed"
     conda:
@@ -312,8 +317,8 @@ rule jules_psmc_gen_consensus:
     conda:
         "../envs/psmc_legacy.yaml"
     params:
-        mincov=lambda wc: int(float(open("results/coverages/{}.50k.coverage.txt".format(wc.srr)).read().split()[2])) // 3,
-        maxcov=lambda wc: int(float(open("results/coverages/{}.50k.coverage.txt".format(wc.srr)).read().split()[2])) * 2
+        mincov=lambda wc: int(get_avg_cov_value(wc.srr)) // 3,
+        maxcov=lambda wc: int(get_avg_cov_value(wc.srr)) * 2
     shell:
         """
         samtools mpileup -C50 -uf {input.ref} {input.bam} | \

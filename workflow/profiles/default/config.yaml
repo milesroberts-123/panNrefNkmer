@@ -218,24 +218,6 @@ set-resources:
         # alive for as long as the transfer takes, hence the long runtime.
         cpus_per_task: 1
         runtime: "360m"
-    jules_msmc_tools_fetch:
-        # one shallow git clone
-        cpus_per_task: 1
-        runtime: "10m"
-    jules_msmc2_bed:
-        cpus_per_task: 1
-        runtime: "5m"
-    jules_msmc2_contig:
-        # one contig per job now (checkpoint-driven, not a sequential loop
-        # over every contig) -- much cheaper per-job than the old whole-
-        # species jules_msmc2_input, still single-threaded.
-        cpus_per_task: 1
-        runtime: "480m"
-    jules_msmc2_run:
-        # msmc2's EM scales with haplotype count and total sequence; it does
-        # parallelize, unlike psmc.
-        cpus_per_task: 8
-        runtime: "1440m"
     jules_psmc_run_psmc:
         # PSMC's HMM (-N25 -t15 -r5) is single-threaded and iterative --
         # give it generous headroom (12h) rather than risk a timeout kill on
@@ -267,4 +249,3 @@ set-threads:
     jules_trimmomatic: 8
     jules_bwa_mem: 8
     jules_samtools_index: 2
-    jules_msmc2_run: 8

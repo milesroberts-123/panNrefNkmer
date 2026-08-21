@@ -33,23 +33,15 @@ rule kmc_kraken:
         """
 
 
-def get_unique_biosample_from_species_kraken(wildcards):
-    matched_rows = reads[reads["Species"] == wildcards.species]
-    unique_outputs = matched_rows["BioSample"].unique().tolist()
-    return unique_outputs
-
-
 rule kmc_combine_dbs_kraken:
     input:
-        pre=expand("results/kraken/kmc_db_{ID}.kmc_pre", ID=get_unique_biosample_from_species_kraken),
-        suf=expand("results/kraken/kmc_db_{ID}.kmc_suf", ID=get_unique_biosample_from_species_kraken)
+        pre=expand("results/kraken/kmc_db_{ID}.kmc_pre", ID=get_unique_biosample_from_species),
+        suf=expand("results/kraken/kmc_db_{ID}.kmc_suf", ID=get_unique_biosample_from_species)
     output:
         db=temp(expand("results/kraken/kmc_combine_dbs/{{species}}.{suffix}", suffix=["kmc_pre", "kmc_suf"])),
         complex=temp("results/kraken/kmc_combine_dbs/{species}.complex")
     conda:
         "../envs/kmc.yaml"
-    params:
-        prefix="results/kraken/kmc_combine_dbs/{species}"
     shell:
         """
         mkdir -p results/kraken/kmc_combine_dbs
@@ -81,15 +73,9 @@ rule dump_combined_kmers_kraken:
         """
 
 
-def get_species_from_biosample_kraken(wildcards):
-    matched_rows = reads[reads["BioSample"] == wildcards.ID]
-    unique_outputs = matched_rows["Species"].unique().tolist()
-    return unique_outputs
-
-
 rule prejoin_kraken:
     input:
-        comb=expand("results/kraken/dump_combined_kmers/{species}.txt", species=get_species_from_biosample_kraken),
+        comb=expand("results/kraken/dump_combined_kmers/{species}.txt", species=get_species_from_biosample),
         sample="results/kraken/kmc/{ID}.txt"
     output:
         temp("results/kraken/prejoin/{ID}.txt")
@@ -100,7 +86,7 @@ rule prejoin_kraken:
 rule paste_kraken:
     input:
         kmer_list="results/kraken/dump_combined_kmers/{species}.txt",
-        kmer_dumps=expand("results/kraken/prejoin/{ID}.txt", ID=get_unique_biosample_from_species_kraken)
+        kmer_dumps=expand("results/kraken/prejoin/{ID}.txt", ID=get_unique_biosample_from_species)
     output:
         "results/kraken/paste/{species}.txt"
     shell:
