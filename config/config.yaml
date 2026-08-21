@@ -60,7 +60,7 @@ custom_contams:
 # --- PSMC pipeline ------------------------------------------------------------------------------------------------------
 # Confirmed correct on Savio: {species}/{species}.fasta + bwa index files
 # # already present here (e.g. Erythroxylum_citrifolium/Erythroxylum_citrifolium.fasta{,.amb,.ann,.bwt,.pac,.sa,.fai}).
-reference_genome_path: "global/scratch/projects/fc_moilab/julesperez/post_rot/new_refgenomes/"
+reference_genome_path: "/global/scratch/projects/fc_moilab/julesperez/post_rot/new_refgenomes/"
 #reference_genome_path: "../config/jules_ref_genomes/"
 
 # TruSeq3-PE-2.fa (not TruSeq3-PE.fa), matching your actual established
