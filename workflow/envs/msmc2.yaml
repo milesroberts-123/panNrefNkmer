@@ -1,0 +1,9 @@
+name: msmc2
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - msmc2=2.1.4
+  - samtools=1.22
+  - bcftools=1.22
+  - python=3.11

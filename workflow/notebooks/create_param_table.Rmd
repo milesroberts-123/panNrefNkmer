@@ -14,18 +14,15 @@ gc()
 # packages
 
 ```{r}
-library(tidyverse)
-library(data.table)
-library(caper)
-library(ape)
-library(ggpubr)
+suppressPackageStartupMessages({library(tidyverse)
+                               library(data.table)
+                               library(caper)
+                               library(ape)
+                               library(ggpubr)})
 
 today <- Sys.Date()
-```
 
 # global plotting theme
-
-```{r}
 theme_set(
   theme_minimal() +
     theme(
@@ -37,7 +34,8 @@ theme_set(
       axis.text = element_text(colour = "black"),
       plot.title = element_text(hjust = 0.5),
       strip.text = element_text(colour = "black"),
-      panel.grid.minor = element_blank()
+      panel.grid.minor = element_blank(),
+      panel.background = element_rect(fill = "white")
     )
 )
 ```
@@ -203,7 +201,10 @@ runinfo_partitioned %>%
 align_div <- fread("../../data/current_most_complete_data.csv")
 
 # Get a vector of all matching file paths
-file_list <- list.files(path = "../results/subset/kmer_distances", 
+# file_list <- list.files(path = "../results/subset/kmer_distances", 
+#                         pattern = ".txt", 
+#                         full.names = TRUE)
+file_list <- list.files(path = "../results/nofilt/subset/kmer_distances", 
                         pattern = ".txt", 
                         full.names = TRUE)
 
@@ -361,11 +362,25 @@ jtree$node.label <- NULL
 
 all_div <- all_div %>%
   filter(phylo_name %in% jtree$tip.label) %>%
-  arrange(match(phylo_name, jtree$tip.label))
+  arrange(match(phylo_name, jtree$tip.label)) %>%
+  mutate(redlistCategoryCollapsedFactor = factor(redlistCategoryCollapsed, levels = c("Non-Threatened", "Threatened")),
+         redlistCategoryFactor = factor(redlistCategory, levels = c("Least Concern", "Near Threatened", "Vulnerable", "Endangered", "Critically Endangered", "Extinct in the Wild")))
 
 # Combine tree and data into a single comparative object
 # data MUST be dataframe, NOT a tibble
-comp_data <- comparative.data(phy = jtree, data = as.data.frame(all_div), 'phylo_name')
+comp_data <- comparative.data(phy = jtree, data = as.data.frame(all_div), 'phylo_name', na.omit = F)
+
+# threat status
+pgls_mod_bc <- pgls(bray_curtis ~ redlistCategoryCollapsedFactor, data = comp_data, lambda = "ML")
+pgls_mod_pi <- pgls(log10(Avg_Val_pi) ~ redlistCategoryCollapsedFactor, data = comp_data, lambda = "ML")
+pgls_mod_het <- pgls(log10(Avg_Val_het) ~ redlistCategoryCollapsedFactor, data = comp_data, lambda = "ML")
+
+summary(pgls_mod_bc)
+summary(pgls_mod_pi)
+summary(pgls_mod_het)
+
+brunch(bray_curtis ~ redlistCategoryFactor, data = comp_data)
+brunch(Avg_Val_pi ~ redlistCategoryFactor, data = comp_data)
 
 # Run the PGLS model
 # Setting lambda = "ML" estimates Pagel's Lambda via Maximum Likelihood
@@ -382,8 +397,9 @@ all_div %>%
   nrow()
 
 all_div %>%
-  filter(!is.na(bray_curtis) & !is.na(R_h2)) %>%
-  nrow()
+  filter(!is.na(bray_curtis) & !is.na(redlistCategoryCollapsed)) %>%
+  count(redlistCategoryCollapsed)
+
 
 all_div %>%
   filter(!is.na(Avg_Val_pi) & !is.na(final_area_km2)) %>%
@@ -400,6 +416,8 @@ all_div %>%
 all_div %>%
   filter(!is.na(bray_curtis) & !is.na(height_clean)) %>%
   nrow()
+
+
 
 # try just area
 pgls_mod_bray_curtis_range <- pgls(log10(final_area_km2) ~ scale(bray_curtis)  + log10(genome_size), data = comp_data, lambda = "ML")

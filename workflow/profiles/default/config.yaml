@@ -26,7 +26,7 @@ set-resources:
         runtime: "20m"
     fastp:
         runtime: "int(min(max(3*input.size_mb/(1024*threads), 10), 1440))"
-        cpus_per_task: 8
+        cpus_per_task: 16
     qc_post_rm_contam:
         runtime: "int(min(max(3*input.size_mb/(1024*threads), 10), 1440))"
         cpus_per_task: 8
@@ -37,13 +37,13 @@ set-resources:
         runtime: "int(min(max(5*input.size_mb/1024, 10), 1440))"
         cpus_per_task: 8
     kmc: 
-        runtime: "int(min(max(4*input.size_mb/(1024*threads), 10), 1440))"
+        runtime: "int(min(max(4*input.size_mb/(1024*threads), 30), 1440))"
         cpus_per_task: 8
     kmc_nofilt: 
-        runtime: "int(min(max(4*input.size_mb/(1024*threads),10), 1440))"
+        runtime: "int(min(max(6*input.size_mb/(1024*threads), 30), 1440))"
         cpus_per_task: 8
     kmc_kraken:
-        runtime: "int(min(max(4*input.size_mb/(1024*threads),10), 1440))"
+        runtime: "int(min(max(4*input.size_mb/(1024*threads), 30), 1440))"
         cpus_per_task: 8
     kraken2_rm_microbial:
         runtime: "int(min(max(5*input.size_mb/1024, 10), 1440))"
@@ -64,17 +64,17 @@ set-resources:
     prejoin_nofilt:
         slurm_partition: "savio4_htc"
         slurm_qos: "moilab_htc4_normal"
-        runtime: "300m"
+        runtime: "600m"
     prejoin_kraken:
         slurm_partition: "savio4_htc"
         slurm_qos: "moilab_htc4_normal"
         runtime: "300m"
     paste:
-        runtime: "int(min(max(input.size_mb/(1024*5), 10), 1440))"
+        runtime: "int(min(max(input.size_mb/(1024*5), 30), 1440))"
     paste_nofilt:
-        runtime: "int(min(max(input.size_mb/(1024*5), 10), 1440))"
+        runtime: "int(min(max(input.size_mb/(1024*5), 30), 1440))"
     paste_kraken:
-        runtime: "int(min(max(input.size_mb/(1024*5), 10), 1440))"
+        runtime: "int(min(max(input.size_mb/(1024*5), 30), 1440))"
     pigz:
         cpus_per_task: 8
         runtime: "int(min(max(4*input.size_mb/(1024*threads), 10), 1440))"
@@ -93,15 +93,163 @@ set-resources:
         runtime: 180
     subset_kmer_table_kraken:
         runtime: 180
+# --- alignment / calling pipeline (jules_*) ---
+    jules_bwa_index:
+        # bwa index's own algorithm (bwtsw) is single-threaded, but savio4_htc
+        # allocates memory proportional to cores (4GB/core) -- cpus_per_task
+        # raised 1 -> 4 purely to unlock the 16GB this needs, not for real
+        # parallelism. Bump further if you hit an OOM on a big genome.
+        cpus_per_task: 4
+        runtime: "240m"
+    jules_samtools_faidx:
+        cpus_per_task: 1
+        runtime: "10m"
+    jules_fastq_dump:
+        # network/IO bound (prefetch + fastq-dump), not CPU-bound -- same
+        # runtime convention as the existing "sra" entry above.
+        # Raised from 240m to 72h -- matches the same generous budget used
+        # elsewhere in this project for similarly uncertain-duration jobs
+        # (psmc_dp_variant_array.sh's SBATCH --time=72:00:00). A BioSample
+        # accession can resolve to an unknown number of SRA runs, and with
+        # --max-size raised to 5000G there's no longer a size ceiling
+        # limiting how long any single one can take -- the priority here is
+        # not timing out, not finishing fast.
+        # Raised again 4320m -> 10080m (7d): co_moilab's moilab_htc4_normal
+        # QOS has no MaxWall at all (confirmed via `sacctmgr show qos`) --
+        # this is a condo priority QOS, not the shared FCA pool's ~72h cap.
+        # 7d is a deliberately bounded choice, not "unlimited": long enough
+        # for any realistic BioSample-scale aggregation, short enough that a
+        # genuinely hung job (vs. a slow-but-real one) doesn't run forever
+        # unnoticed burning condo allocation.
+        cpus_per_task: 4
+    jules_trimmomatic:
+        # Fixed 72h, not the inherited size-based formula -- that formula
+        # (shared with fastp) allocated 45m for a 6.4GB input and timed out.
+        # Trimmomatic is a JVM tool, substantially slower per GB than fastp.
+        # Raised again 4320m -> 10080m (7d), same condo-QOS-has-no-MaxWall
+        # reasoning as jules_fastq_dump above.
+        runtime: "10080m"
+        cpus_per_task: 8
+    jules_bwa_mem:
+        # Fixed 72h for the same reason as trimmomatic above -- the inherited
+        # formula underestimates by a wide margin, and alignment is the most
+        # expensive step in the pipeline.
+        # mem_mb raised 16000 -> 32000: observed MaxRSS ~15.4GB on a
+        # BioSample-accession sample (jules_fastq_dump concatenates ALL of a
+        # BioSample's constituent SRA runs -- read volume, and so sort
+        # memory, can run well above a typical single-SRR sample). 32000
+        # matches what 8 cores already provide for free on savio4_htc
+        # (4GB/core, memory proportional to cores requested) -- no reason to
+        # cap below that once you're already paying for the 8 cores.
+        # Raised again 4320m -> 10080m (7d), same condo-QOS-has-no-MaxWall
+        # reasoning as jules_fastq_dump above -- this job was already past
+        # 20h on the BioSample test sample when the 24h remote profile (pre-
+        # dating this push) was about to kill it.
+        runtime: "10080m"
+        cpus_per_task: 8
+    jules_picard_mark_dup:
+        # Picard is a Java process -- memory-heavy regardless of thread count.
+        # Fixed budget rather than the inherited size formula, same reason
+        # as trimmomatic/bwa_mem above.
+        # mem_mb raised 16000 -> 32000, same BioSample-inflation risk as
+        # jules_bwa_mem above -- this rule sees the exact same oversized BAM
+        # immediately downstream, and bwa_mem's MaxRSS was directly observed
+        # near its old ceiling, so match it rather than assume less is
+        # enough here without evidence.
+        # cpus_per_task raised 2 -> 8 to match: savio4_htc allocates memory
+        # proportional to cores (4GB/core), so 32GB needs 8 cores reserved
+        # even though Picard's dedup pass won't use them for real compute.
+        # Raised again 4320m -> 10080m (7d), same condo-QOS-has-no-MaxWall
+        # reasoning as jules_fastq_dump above.
+        runtime: "10080m"
+        cpus_per_task: 8
+    jules_samtools_index:
+        cpus_per_task: 2
+        runtime: "120m"
+    jules_sample_coverage:
+        # samtools depth -a walks every position genome-wide -- slow, and
+        # scales with genome size, not just BAM size. Also scales somewhat
+        # with read depth (more overlapping reads per position), so runtime
+        # raised 720m -> 1440m for the same BioSample-inflation risk noted
+        # on jules_bwa_mem above.
+        runtime: "1440m"
+        cpus_per_task: 1
+    jules_bcftools_mpileup:
+        # single-sample pileup+call over the whole genome, single-threaded --
+        # one of the slowest steps. Fixed 72h rather than the inherited
+        # size formula. mem_mb raised 8000 -> 12000 for headroom on the same
+        # BioSample-inflation risk as jules_bwa_mem above. cpus_per_task
+        # raised 1 -> 3 to match (savio4_htc: 4GB/core) -- mpileup over a
+        # single region is still effectively single-threaded compute.
+        # Raised again 4320m -> 10080m (7d), same condo-QOS-has-no-MaxWall
+        # reasoning as jules_fastq_dump above.
+        runtime: "10080m"
+        cpus_per_task: 3
+    jules_bcftools_filter:
+        cpus_per_task: 1
+        runtime: "240m"
+    jules_bcftools_roh:
+        cpus_per_task: 1
+        runtime: "30m"
+    jules_psmc_50k_bed:
+        cpus_per_task: 1
+        runtime: "5m"
     jules_psmc_subset_bam:
+        # savio4_htc: 4GB/core -- made explicit (was implicitly correct via
+        # default-resources' mem_mb: 0, i.e. "no --mem, use the partition's
+        # natural per-core default"); spelling it out here matches this
+        # file's convention everywhere else and removes the ambiguity.
         runtime: "180m"
         cpus_per_task: 8
+    jules_psmc_gen_consensus:
+        # samtools mpileup -C50 (subset to >50kb contigs) | bcftools call |
+        # vcfutils.pl vcf2fq -- lighter than the full mpileup rule since it's
+        # restricted to the 50k bed, but still whole-genome scale.
+        # cpus_per_task raised 1 -> 2 to match mem_mb (savio4_htc: 4GB/core) --
+        # still effectively single-threaded compute, extra core buys memory.
+        cpus_per_task: 2
+        runtime: "180m"
+    jules_psmc_gen_input:
+        cpus_per_task: 1
+        runtime: "10m"
+    jules_backup_bam_globus:
+        # mostly idle (globus task wait polls Globus's own infra, not local
+        # compute) -- low cpu/mem, but the SLURM job itself needs to stay
+        # alive for as long as the transfer takes, hence the long runtime.
+        cpus_per_task: 1
+        runtime: "360m"
+    jules_msmc_tools_fetch:
+        # one shallow git clone
+        cpus_per_task: 1
+        runtime: "10m"
+    jules_msmc2_bed:
+        cpus_per_task: 1
+        runtime: "5m"
+    jules_msmc2_contig:
+        # one contig per job now (checkpoint-driven, not a sequential loop
+        # over every contig) -- much cheaper per-job than the old whole-
+        # species jules_msmc2_input, still single-threaded.
+        cpus_per_task: 1
+        runtime: "480m"
+    jules_msmc2_run:
+        # msmc2's EM scales with haplotype count and total sequence; it does
+        # parallelize, unlike psmc.
+        cpus_per_task: 8
+        runtime: "1440m"
+    jules_psmc_run_psmc:
+        # PSMC's HMM (-N25 -t15 -r5) is single-threaded and iterative --
+        # give it generous headroom (12h) rather than risk a timeout kill on
+        # a larger genome partway through.
+        # cpus_per_task raised 1 -> 2 to match mem_mb (savio4_htc: 4GB/core) --
+        # PSMC can't multithread, extra core buys memory only.
+        cpus_per_task: 2
+        runtime: "720m"
 
 # parallelization with threads needs to be defined separately:
 # threads and cpus_per_task are supposed to be synonymous for this plugin, but for some reason I need to specify them separately
 set-threads:
     sra: 4
-    fastp: 8
+    fastp: 6
     qc_post_rm_contam: 8
     kmc: 8
     kmc_nofilt: 8
@@ -116,3 +264,7 @@ set-threads:
     pigz_nofilt: 8
     pigz_kraken: 8
     jules_psmc_subset_bam: 8
+    jules_trimmomatic: 8
+    jules_bwa_mem: 8
+    jules_samtools_index: 2
+    jules_msmc2_run: 8
