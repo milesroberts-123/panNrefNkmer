@@ -32,22 +32,18 @@ Profiles in `workflow/profiles/`: `default` (slurm), `icer` (MSU ICER), `local` 
 
 ## Target rules
 
-- `all` (default) — samtools/bcftools stats, MK test, salmon, pixy, k-mer distances, multiqc
 - `jules_only` — legacy PSMC/ROH track; **not included in `all`**, must be run separately
 - `kmers_only` — k-mer distance outputs only (no reference needed)
+- `kmers_subset_only` — subset k-mer distance outputs only
 - `kmers_nofilt_only` — k-mer branch with no reference contamination removal (outputs under `results/nofilt/`)
 - `kmers_kraken_only` — k-mer branch with kraken2 microbial screening (outputs under `results/kraken/`)
-- `batch_per_sample` — per-BioSample VCF splits, counting bloom filter, salmon quant
+- `batch_per_species` — per-species aggregation (k-mer distances, paste table, kmc histo, fastp JSONs)
 
-## Linear references are auto-detected
+There is no `all` target currently — the linear-reference, pangenome, and population-genetics tracks are disabled (see below).
 
-The Snakefile discovers linear references from the filesystem:
-```python
-linrefs = [os.path.splitext(os.path.basename(f))[0]
-           for f in glob.glob("../config/linear_genomes/sequence/*.fa")]
-```
+## Disabled tracks are archived
 
-There is **no `linrefs` key in config.yaml**. To add a reference, place `{ref}.fa` in `config/linear_genomes/sequence/` and `{ref}.gff` in `config/linear_genomes/annotation/`.
+Rules for the linear-reference (`bwa`, `samtools`), pangenome (`vg`, `pggb`), and population-genetics (`salmon`, `degenotate`, `pixy`, `split`, `mash`, `multiqc`, `change_headers`) tracks are disabled. They live in `workflow/archives/rules/` (with their envs in `workflow/archives/envs/` and the unused `call_fastdfe.py` in `workflow/archives/scripts/`). To re-enable a track, move the file back to `workflow/rules/` and add its `include:` line to the Snakefile.
 
 ## Split numbering starts at 10
 
@@ -56,9 +52,9 @@ The `{split}` wildcard uses `--numeric-suffixes=10` in `split.smk` and `range(10
 ## Three independent tracks
 
 The pipeline has three largely non-overlapping tracks:
-1. **Linear-reference** (`bwa` → `samtools`/`bcftools`) — keyed by `{ref}`
-2. **Pangenome** (`vg`/`pggb`) — keyed by `{panref}`/`{chr}`
-3. **Jules** (legacy) — `jules.smk`, uses its own `reference_genome_path` config key
+1. **Linear-reference** (`bwa` → `samtools`/`bcftools`) — keyed by `{ref}` (archived)
+2. **Pangenome** (`vg`/`pggb`) — keyed by `{panref}`/`{chr}` (archived)
+3. **Jules** (legacy) — `jules_v2.smk`, uses its own `reference_genome_path` config key
 
 Rules from different tracks generally don't share intermediates.
 
@@ -74,11 +70,16 @@ Rules from different tracks generally don't share intermediates.
 ## Configuration
 
 - `config/config.yaml` — pipeline parameters; schema at `config/config.schema.yaml`
-- `config/samples.tsv` — columns: `Run`, `BioSample`, `Species`, `LibraryType`, `Group`
-  - `Group` column: used for ingroup/outgroup in MK test (`degenotate.smk`)
-  - `LibraryType`: `rna` values are used for salmon quantification
+- `config/samples_medium.tsv` — columns: `Run`, `BioSample`, `Species`
+  - The `Group` (ingroup/outgroup for MK test) and `LibraryType` (salmon) columns referenced by the archived rules are not present in the current samples file
 - `reference_genome_path` — only used by the jules track, points at `{species}/{species}.fasta` directories
 - Contaminant genomes: NCBI taxa in `config["ncbi_contams"]` + custom fastas in `config/contaminants/`
+
+## Known broken env references
+
+- `jules_backup_bam_globus` (in `jules_v2.smk`) points at `../envs/globus.yaml`, which does not exist — the rule will fail if run
+- `workflow/envs/bcftools.yaml`, `picard.yaml`, `trimmomatic.yaml` are 0-byte files (jules rules using them rely on the base snakemake env)
+- `workflow/envs/msmc2.yaml` is orphaned — no rule references it
 
 ## No lint or test suite
 

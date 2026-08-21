@@ -36,23 +36,15 @@ rule kmc_nofilt:
         """
 
 
-def get_unique_biosample_from_species_nofilt(wildcards):
-    matched_rows = reads[reads["Species"] == wildcards.species]
-    unique_outputs = matched_rows["BioSample"].unique().tolist()
-    return unique_outputs
-
-
 rule kmc_combine_dbs_nofilt:
     input:
-        pre=expand("results/nofilt/kmc_db_{ID}.kmc_pre", ID=get_unique_biosample_from_species_nofilt),
-        suf=expand("results/nofilt/kmc_db_{ID}.kmc_suf", ID=get_unique_biosample_from_species_nofilt)
+        pre=expand("results/nofilt/kmc_db_{ID}.kmc_pre", ID=get_unique_biosample_from_species),
+        suf=expand("results/nofilt/kmc_db_{ID}.kmc_suf", ID=get_unique_biosample_from_species)
     output:
         db=temp(expand("results/nofilt/kmc_combine_dbs/{{species}}.{suffix}", suffix=["kmc_pre", "kmc_suf"])),
         complex=temp("results/nofilt/kmc_combine_dbs/{species}.complex")
     conda:
         "../envs/kmc.yaml"
-    params:
-        prefix="results/nofilt/kmc_combine_dbs/{species}"
     shell:
         """
         mkdir -p results/nofilt/kmc_combine_dbs
@@ -84,15 +76,9 @@ rule dump_combined_kmers_nofilt:
         """
 
 
-def get_species_from_biosample_nofilt(wildcards):
-    matched_rows = reads[reads["BioSample"] == wildcards.ID]
-    unique_outputs = matched_rows["Species"].unique().tolist()
-    return unique_outputs
-
-
 rule prejoin_nofilt:
     input:
-        comb=expand("results/nofilt/dump_combined_kmers/{species}.txt", species=get_species_from_biosample_nofilt),
+        comb=expand("results/nofilt/dump_combined_kmers/{species}.txt", species=get_species_from_biosample),
         sample="results/nofilt/kmc/{ID}.txt"
     output:
         temp("results/nofilt/prejoin/{ID}.txt")
@@ -103,7 +89,7 @@ rule prejoin_nofilt:
 rule paste_nofilt:
     input:
         kmer_list="results/nofilt/dump_combined_kmers/{species}.txt",
-        kmer_dumps=expand("results/nofilt/prejoin/{ID}.txt", ID=get_unique_biosample_from_species_nofilt)
+        kmer_dumps=expand("results/nofilt/prejoin/{ID}.txt", ID=get_unique_biosample_from_species)
     output:
         "results/nofilt/paste/{species}.txt"
     shell:

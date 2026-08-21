@@ -1,16 +1,11 @@
 rule kmc:
     input:
-        #pread1="results/biosample/{ID}_paired_R1.fastq.gz",
-        #pread2="results/biosample/{ID}_paired_R2.fastq.gz",
-        #uread1="results/biosample/{ID}_unpaired_R1.fastq.gz",
-        #uread2="results/biosample/{ID}_unpaired_R2.fastq.gz"
         "results/no_contam_reads/{ID}_stage1.fastq"
     output:
         counts=temp("results/kmc/{ID}.txt"),
         tmp_pre=temp("results/kmc_db_{ID}.kmc_pre"),
         tmp_suf=temp("results/kmc_db_{ID}.kmc_suf"),
         tmp_sort=temp(expand("results/sorted_kmc_db_{{ID}}.{ext}", ext = ["kmc_pre", "kmc_suf"]))
-        #list=temp("results/input_{ID}.txt")
     conda:
         "../envs/kmc.yaml"
     params:
@@ -101,12 +96,6 @@ rule kmc_rm_contam:
         # filter reads for contamination
         kmc_tools -t{threads} filter {params.refdb} @{output.list} -ci{params.contamMatchLimitCount} -cx1000000 {output.filt1}
         """
-def get_unique_biosample_from_species(wildcards):
-    # Filter rows matching the current patient wildcard
-    matched_rows = reads[reads["Species"] == wildcards.species]
-    # Extract the file path column and drop duplicate paths
-    unique_outputs = matched_rows["BioSample"].unique().tolist()
-    return unique_outputs
 
 rule kmc_combine_dbs:
     input:
@@ -117,8 +106,6 @@ rule kmc_combine_dbs:
         complex=temp("results/kmc_combine_dbs/{species}.complex")
     conda:
         "../envs/kmc.yaml"
-    params:
-        prefix="results/kmc_combine_dbs/{species}"
     shell:
         """
         mkdir -p results/kmc_combine_dbs
@@ -145,17 +132,9 @@ rule dump_combined_kmers:
         "../envs/kmc.yaml" 
     shell:
         """
-        #kmc_tools transform results/kmc_combine_dbs/{wildcards.species} sort results/kmc_combine_dbs/sorted_{wildcards.species}
         # dump all k-mers to text file
         kmc_tools transform results/kmc_combine_dbs/{wildcards.species} dump {output}
         """
-
-def get_species_from_biosample(wildcards):
-    # Filter rows matching the current patient wildcard
-    matched_rows = reads[reads["BioSample"] == wildcards.ID]
-    # Extract the file path column and drop duplicate paths
-    unique_outputs = matched_rows["Species"].unique().tolist()
-    return unique_outputs
 
 rule prejoin:
     input:
