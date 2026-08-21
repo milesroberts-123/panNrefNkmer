@@ -1,0 +1,13 @@
+# You already have a `globus_env` conda env on Savio (used by
+# globus_verify_delete.sh / globus_transfer_missing.sh / etc. in SCRIPTS/).
+# --use-conda builds its own hash-named env from this yaml rather than
+# reusing that one by name -- if you'd rather reuse it directly, drop the
+# `conda:` line from jules_backup_bam_globus and run Snakemake itself inside
+# `conda activate globus_env` (no --use-conda for that rule), same
+# consideration as psmc_legacy.yaml.
+channels:
+  - conda-forge
+dependencies:
+  - pip
+  - pip:
+      - globus-cli
