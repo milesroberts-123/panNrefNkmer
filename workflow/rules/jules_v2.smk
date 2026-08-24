@@ -178,7 +178,7 @@ rule jules_picard_mark_dup:
         "../envs/picard.yaml"
     shell:
         """
-        picard MarkDuplicates I={input} O={output.bam} M={output.metrics} VALIDATION_STRINGENCY=SILENT CREATE_INDEX=true TMP_DIR={output.tmp_dir}
+        picard -Xmx28g MarkDuplicates I={input} O={output.bam} M={output.metrics} VALIDATION_STRINGENCY=SILENT CREATE_INDEX=true TMP_DIR={output.tmp_dir}
         """
 
 rule jules_samtools_index:
@@ -220,7 +220,7 @@ rule jules_bcftools_mpileup:
         Q=config["Q"]
     shell:
         """
-        bcftools mpileup -f {input.ref} -a "FORMAT/AD,FORMAT/DP" -q {params.q} -Q {params.Q} {input.bam} | bcftools call -mv -Oz -o {output.vcf}
+        bcftools mpileup -f {input.ref} -a "FORMAT/AD,FORMAT/DP,FORMAT/SP" -q {params.q} -Q {params.Q} {input.bam} | bcftools call -mv -Oz -o {output.vcf}
 
         tabix {output.vcf}
         """
