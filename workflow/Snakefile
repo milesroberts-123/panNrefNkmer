@@ -22,6 +22,13 @@ rule jules_only:
         expand("results/psmc/{srr}.psmc", srr = reads["Run"]),
         expand("results/roh/{srr}_ROH.txt", srr = reads["Run"])
 
+# Not part of jules_only -- MSMC2 track is drafted/reviewed but not yet
+# run end-to-end even once. Kept as a separate target until it's proven
+# out, the same way jules_only itself is kept out of `all`.
+rule jules_msmc2_only:
+    input:
+        expand("results/msmc2/{srr}/msmc2.final.txt", srr = reads["Run"])
+
 rule kmers_only:
     input:
         expand("results/batch_tracker/{species}.done", species = reads["Species"].unique())
@@ -51,6 +58,7 @@ rule batch_per_species:
 
 ## Jules branch
 include: "rules/jules_v2.smk"
+include: "rules/jules_msmc2.smk"
 
 ## Data download and QC rules
 include: "rules/data_download.smk"

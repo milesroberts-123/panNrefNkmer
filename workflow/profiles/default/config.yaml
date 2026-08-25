@@ -227,6 +227,39 @@ set-resources:
         cpus_per_task: 2
         runtime: "720m"
 
+    # --- jules MSMC2 track (draft, not yet run end-to-end) ---
+    jules_msmc2_contigs:
+        # just `cut -f1` on an already-built .fai -- trivial.
+        cpus_per_task: 1
+        runtime: "10m"
+        mem_mb: 4000
+    jules_msmc2_call:
+        # samtools mpileup -C50 | bcftools call -c | bamCaller.py, restricted
+        # to ONE chromosome via -r -- a fraction of jules_bcftools_mpileup's
+        # whole-genome cost, so not given that rule's full 7d budget, but
+        # still generous (48h) since a single contig can itself be huge in a
+        # scaffold-level assembly. cpus_per_task/mem_mb mirror
+        # jules_bcftools_mpileup's own sizing (savio4_htc: 4GB/core) since
+        # it's the same single-threaded consensus-calling shape.
+        cpus_per_task: 3
+        runtime: "2880m"
+        mem_mb: 12000
+    jules_msmc2_contig:
+        # generate_multihetsep.py: pure-Python, single-threaded, one
+        # sequential pass over one chromosome's VCF + mask. Lighter than the
+        # calling step above, but still generous headroom for a large contig.
+        cpus_per_task: 1
+        runtime: "180m"
+        mem_mb: 4000
+    jules_msmc2_run:
+        # msmc2's EM does parallelize (unlike PSMC), scales with haplotype
+        # count and total sequence across every contig for this sample.
+        # cpus_per_task matches the rule's own `threads: 4`; mem_mb matches
+        # what 4 cores already provide for free on savio4_htc (4GB/core).
+        cpus_per_task: 4
+        runtime: "2880m"
+        mem_mb: 16000
+
 # parallelization with threads needs to be defined separately:
 # threads and cpus_per_task are supposed to be synonymous for this plugin, but for some reason I need to specify them separately
 set-threads:
@@ -249,3 +282,4 @@ set-threads:
     jules_trimmomatic: 8
     jules_bwa_mem: 8
     jules_samtools_index: 2
+    jules_msmc2_run: 4
