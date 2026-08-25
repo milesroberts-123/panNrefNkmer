@@ -37,9 +37,14 @@ checkpoint jules_msmc2_contigs:
     output:
         "results/msmc2/{srr}_contigs.txt"
     shell:
+        # Same >50000bp floor jules_psmc_50k_bed already uses -- MSMC2 gets
+        # nothing useful from tiny scaffolds, and without this every scaffold
+        # in a fragmented assembly would spawn its own jules_msmc2_call +
+        # jules_msmc2_contig job pair (each reserving several cpus/GB for up
+        # to 48h), regardless of how little sequence it actually contains.
         """
         mkdir -p results/msmc2
-        cut -f1 {input.fai} > {output}
+        awk '$2>50000 {{print $1}}' {input.fai} > {output}
         """
 
 rule jules_msmc2_call:
@@ -113,10 +118,13 @@ rule jules_msmc2_run:
     conda:
         "../envs/msmc2.yaml"
     params:
-        p=config.get("msmc2_p", "1*2+25*1+1*2+1*3"),
+        # No guessed fallback pattern -- only override -p if msmc2_p is
+        # explicitly set in config; otherwise trust msmc2's own built-in
+        # default time-segmentation rather than substituting a guess for it.
+        p_flag=lambda wc: f"-p {config['msmc2_p']}" if config.get("msmc2_p") else "",
         prefix=lambda wc: f"results/msmc2/{wc.srr}/msmc2"
     threads: 4
     shell:
         """
-        msmc2 -t {threads} -p {params.p} -o {params.prefix} {input}
+        msmc2 -t {threads} {params.p_flag} -o {params.prefix} {input}
         """
