@@ -72,9 +72,17 @@ rule jules_msmc2_call:
         Q=config["Q"],
         mean_cov=lambda wc: get_avg_cov_value(wc.srr)
     shell:
+        # msmc-tools' README documents `samtools mpileup -u`, but modern
+        # samtools (pinned 1.22 in envs/msmc2.yaml) has removed BCF/VCF
+        # output from `samtools mpileup` entirely -- it silently produces
+        # plain-text pileup instead, which `bcftools call` then can't parse
+        # ("Failed to read from standard input: unknown file type").
+        # `bcftools mpileup -Ou` is the modern replacement (same -C/-q/-Q/-r/-f
+        # flags), and matches what jules_bcftools_mpileup already uses
+        # elsewhere in this repo.
         """
         mkdir -p results/msmc2/{wildcards.srr}
-        samtools mpileup -C50 -q {params.q} -Q {params.Q} -u -r {wildcards.chrom} -f {input.ref} {input.bam} \
+        bcftools mpileup -C50 -q {params.q} -Q {params.Q} -Ou -r {wildcards.chrom} -f {input.ref} {input.bam} \
             | bcftools call -c -V indels \
             | python {input.tools}/bamCaller.py {params.mean_cov} {output.mask} \
             | gzip -c > {output.vcf}
