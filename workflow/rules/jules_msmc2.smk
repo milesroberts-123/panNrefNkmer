@@ -143,6 +143,8 @@ rule jules_msmc2_run:
         prefix=lambda wc: f"results/msmc2/{wc.srr}/msmc2"
     threads: 4
     shell:
+        # bioconda's msmc2 package installs its binary as msmc2_Linux, not
+        # msmc2 -- confirmed via `ls .snakemake/conda/.../bin/ | grep msmc`.
         """
-        msmc2 -t {threads} {params.p_flag} -o {params.prefix} {input}
+        msmc2_Linux -t {threads} {params.p_flag} -o {params.prefix} {input}
         """
