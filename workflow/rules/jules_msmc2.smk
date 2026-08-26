@@ -80,8 +80,18 @@ rule jules_msmc2_call:
         # `bcftools mpileup -Ou` is the modern replacement (same -C/-q/-Q/-r/-f
         # flags), and matches what jules_bcftools_mpileup already uses
         # elsewhere in this repo.
+        # bamCaller.py only instantiates its MaskGenerator (the only thing
+        # that ever writes output.mask) upon seeing the FIRST non-header
+        # line from bcftools call. A contig with zero reads -- entirely
+        # possible on a real genome, not just this subset test -- produces
+        # header-only input, so the mask file never gets created at all and
+        # Snakemake fails with MissingOutputException even though the shell
+        # pipeline itself exited 0. Pre-create a valid empty gzip file as a
+        # fallback; bamCaller.py overwrites it normally whenever there IS
+        # real coverage.
         """
         mkdir -p results/msmc2/{wildcards.srr}
+        echo -n | gzip -c > {output.mask}
         bcftools mpileup -C50 -q {params.q} -Q {params.Q} -Ou -r {wildcards.chrom} -f {input.ref} {input.bam} \
             | bcftools call -c -V indels \
             | python {input.tools}/bamCaller.py {params.mean_cov} {output.mask} \
