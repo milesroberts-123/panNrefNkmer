@@ -145,6 +145,20 @@ rule jules_msmc2_run:
     shell:
         # bioconda's msmc2 package installs its binary as msmc2_Linux, not
         # msmc2 -- confirmed via `ls .snakemake/conda/.../bin/ | grep msmc`.
+        #
+        # msmc2_Linux crashes (core.exception.ArrayIndexError@psmc_hmm.d:124,
+        # "index [0] is out of bounds for array of length 0") if handed a
+        # multihetsep.txt with zero segregating sites -- which is exactly
+        # what a zero-coverage contig produces (see jules_msmc2_call). All
+        # 74 declared inputs still have to exist for Snakemake, they just
+        # aren't all worth feeding to msmc2 itself, so filter to non-empty
+        # files at the shell level before invoking it.
         """
-        msmc2_Linux -t {threads} {params.p_flag} -o {params.prefix} {input}
+        FILES=""
+        for f in {input}; do
+            if [ -s "$f" ]; then
+                FILES="$FILES $f"
+            fi
+        done
+        msmc2_Linux -t {threads} {params.p_flag} -o {params.prefix} $FILES
         """
