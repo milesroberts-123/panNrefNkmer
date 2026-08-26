@@ -207,8 +207,14 @@ set-resources:
         # restricted to the 50k bed, but still whole-genome scale.
         # cpus_per_task raised 1 -> 2 to match mem_mb (savio4_htc: 4GB/core) --
         # still effectively single-threaded compute, extra core buys memory.
-        cpus_per_task: 2
-        runtime: "180m"
+        # runtime raised 180m -> 1440m, mem_mb added 8000 -> 16000: SAMN50010308
+        # (a BioSample accession) timed out at 180m -- same BioSample-read-volume
+        # inflation risk already flagged for jules_bwa_mem/jules_picard_mark_dup/
+        # jules_bcftools_mpileup elsewhere in this file, just not previously
+        # applied here too.
+        cpus_per_task: 4
+        runtime: "1440m"
+        mem_mb: 16000
     jules_psmc_gen_input:
         cpus_per_task: 1
         runtime: "10m"
