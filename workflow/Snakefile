@@ -22,6 +22,15 @@ rule jules_only:
         expand("results/psmc/{srr}.psmc", srr = reads["Run"]),
         expand("results/roh/{srr}_ROH.txt", srr = reads["Run"])
 
+# ROH only, no PSMC -- jules_only pulls in both since PSMC and ROH share
+# the same upstream chain through mark_reads/coverage, but ROH's own path
+# from there (bcftools mpileup -> filter -> roh) doesn't touch the PSMC-
+# specific steps (50k bed subset, consensus calling, psmc itself), so this
+# skips real work when you only want ROH.
+rule jules_roh_only:
+    input:
+        expand("results/roh/{srr}_ROH.txt", srr = reads["Run"])
+
 # Not part of jules_only -- MSMC2 track is drafted/reviewed but not yet
 # run end-to-end even once. Kept as a separate target until it's proven
 # out, the same way jules_only itself is kept out of `all`.

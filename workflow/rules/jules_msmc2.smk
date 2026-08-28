@@ -37,14 +37,28 @@ checkpoint jules_msmc2_contigs:
     output:
         "results/msmc2/{srr}_contigs.txt"
     shell:
-        # Same >50000bp floor jules_psmc_50k_bed already uses -- MSMC2 gets
-        # nothing useful from tiny scaffolds, and without this every scaffold
-        # in a fragmented assembly would spawn its own jules_msmc2_call +
-        # jules_msmc2_contig job pair (each reserving several cpus/GB for up
-        # to 48h), regardless of how little sequence it actually contains.
+        # Raised from the >50000bp floor jules_psmc_50k_bed uses --
+        # confirmed on a real reference (SRR28361932's species, 795.7Mb
+        # genome) that >50000bp let through 381 contigs, most of them small
+        # unplaced scaffolds, and produced ~20,000 DAG steps for the msmc2
+        # track alone. >500000bp gives the same 14 contigs as >1000000bp and
+        # >5000000bp on that same genome (a real gap in the size
+        # distribution, not an arbitrary cutoff) while still covering 93.8%
+        # of total genome bp (746.4Mb of 795.7Mb) -- PSMC's own per-sample
+        # cost is far lower per contig, so it can afford to keep more small
+        # scaffolds; MSMC2's per-contig cost (a full mpileup/call/bamCaller
+        # pass, each reserving several cpus/GB for up to 48h) can't.
+        # Fallback for the edge case none of your actual references should
+        # hit (all scaffold-level-or-better, so N50 should sit well above
+        # 500000bp) -- if a species somehow has zero contigs that large,
+        # take its single biggest contig instead of silently producing an
+        # empty list and leaving jules_msmc2_run with no input files.
         """
         mkdir -p results/msmc2
-        awk '$2>50000 {{print $1}}' {input.fai} > {output}
+        awk '$2>500000 {{print $1}}' {input.fai} > {output}
+        if [ ! -s {output} ]; then
+            sort -k2,2nr {input.fai} | head -1 | cut -f1 > {output}
+        fi
         """
 
 rule jules_msmc2_call:
