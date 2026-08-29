@@ -66,3 +66,8 @@ properties:
     default: 0.0
     minimum: 0.0
     maximum: 1.0
+  paste_group_size:
+    description: number of samples per group when pasting k-mer tables in parallel
+    type: integer
+    default: 100
+    minimum: 1

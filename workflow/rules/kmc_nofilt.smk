@@ -86,23 +86,35 @@ rule prejoin_nofilt:
         "join -t $'\t' -a1 -a2 -e '0' -o auto {input.comb} {input.sample} | cut -f 3 > {output}"
 
 
+def get_prejoin_group(wildcards):
+    """Prejoin files for one paste group."""
+    ids = get_unique_biosample_from_species(wildcards)
+    g = int(wildcards.group)
+    size = config["paste_group_size"]
+    return expand("results/nofilt/prejoin/{ID}.txt", ID=ids[g * size:(g + 1) * size])
+
+
+rule paste_nofilt_group:
+    input:
+        get_prejoin_group
+    output:
+        temp("results/nofilt/paste_groups/{species}.{group}.txt")
+    shell:
+        """
+        paste {input} > {output}
+        """
+
+
 rule paste_nofilt:
     input:
         kmer_list="results/nofilt/dump_combined_kmers/{species}.txt",
-        kmer_dumps=expand("results/nofilt/prejoin/{ID}.txt", ID=get_unique_biosample_from_species)
-    output:
-        "results/nofilt/paste/{species}.txt"
-    shell:
-        "paste <(cut -f 1 {input.kmer_list}) {input.kmer_dumps} > {output}"
-
-
-rule pigz_nofilt:
-    input:
-        "results/nofilt/paste/{species}.txt"
+        groups=expand("results/nofilt/paste_groups/{{species}}.{group}.txt", group=get_paste_groups)
     output:
         "results/nofilt/paste/{species}.txt.gz"
     shell:
-        "pigz -p {threads} {input}"
+        """
+        paste <(cut -f 1 {input.kmer_list}) {input.groups} | pigz -p {threads} > {output}
+        """
 
 
 rule subset_kmer_table_nofilt:

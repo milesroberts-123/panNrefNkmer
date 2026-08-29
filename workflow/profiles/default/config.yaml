@@ -72,13 +72,13 @@ set-resources:
     paste:
         runtime: "int(min(max(input.size_mb/(1024*5), 30), 1440))"
     paste_nofilt:
+        cpus_per_task: 8
+        runtime: "int(min(max(input.size_mb/(1024*5), 30), 1440))"
+    paste_nofilt_group:
         runtime: "int(min(max(input.size_mb/(1024*5), 30), 1440))"
     paste_kraken:
         runtime: "int(min(max(input.size_mb/(1024*5), 30), 1440))"
     pigz:
-        cpus_per_task: 8
-        runtime: "int(min(max(4*input.size_mb/(1024*threads), 10), 1440))"
-    pigz_nofilt:
         cpus_per_task: 8
         runtime: "int(min(max(4*input.size_mb/(1024*threads), 10), 1440))"
     pigz_kraken:
@@ -282,8 +282,8 @@ set-threads:
     kmc_ref_db: 4
     kmc_rm_contam: 8
     pigz: 8
-    pigz_nofilt: 8
     pigz_kraken: 8
+    paste_nofilt: 8
     jules_psmc_subset_bam: 8
     jules_trimmomatic: 8
     jules_bwa_mem: 8
