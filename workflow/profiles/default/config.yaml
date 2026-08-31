@@ -303,15 +303,11 @@ set-threads:
     kmc_rm_contam: 8
     pigz: 8
     pigz_kraken: 8
-<<<<<<< HEAD
     paste_nofilt: 4
-=======
-    paste_nofilt: 8
     subset_kmer_distances: 8
     subset_kmer_distances_nofilt: 8
     subset_kmer_distances_kraken: 8
     kmer_distances: 8
->>>>>>> 2a26d13315aa8b600fd4099f81319511a5b06553
     jules_psmc_subset_bam: 8
     jules_trimmomatic: 8
     jules_bwa_mem: 8
