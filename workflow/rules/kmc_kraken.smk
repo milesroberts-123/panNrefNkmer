@@ -128,7 +128,7 @@ rule subset_kmer_distances_kraken:
     conda:
         "../envs/cbf.yaml"
     shell:
-        "python scripts/kmer_distances.py --input {input} --output {output}"
+        "python scripts/kmer_distances.py --input {input} --output {output} --threads {threads}"
 
 
 rule batch_per_species_kraken:

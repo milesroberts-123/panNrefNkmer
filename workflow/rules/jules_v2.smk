@@ -232,17 +232,6 @@ def get_avg_cov_value(srr):
     """Average depth for a sample, parsed from its coverage file."""
     return float(open(f"results/coverages/{srr}.50k.coverage.txt").read().split()[2])
 
-def get_avg_cov(srr):
-    """Average depth, raising if below the minimum acceptable floor."""
-    avg = get_avg_cov_value(srr)
-    if avg < MIN_ACCEPTABLE_AVG_DEPTH:
-        raise ValueError(
-            f"Sample {srr} has average depth {avg:.1f}x, below the "
-            f"{MIN_ACCEPTABLE_AVG_DEPTH}x floor -- too shallow to trust for "
-            f"ROH/PSMC (undercalled heterozygosity at low depth inflates F_ROH)."
-        )
-    return avg
-
 rule jules_bcftools_filter:
     input:
         vcf="results/bcfvcfs/{srr}_raw.vcf.gz",
@@ -252,12 +241,28 @@ rule jules_bcftools_filter:
     conda:
         "../envs/bcftools.yaml"
     params:
-        mincov=lambda wc: int(get_avg_cov(wc.srr)) // 3,
-        maxcov=lambda wc: int(get_avg_cov(wc.srr)) * 2,
+        avg_int=lambda wc: int(get_avg_cov_value(wc.srr)),
+        mincov=lambda wc: int(get_avg_cov_value(wc.srr)) // 3,
+        maxcov=lambda wc: int(get_avg_cov_value(wc.srr)) * 2,
         ab_low=0.30,
-        ab_high=0.70
+        ab_high=0.70,
+        min_depth=MIN_ACCEPTABLE_AVG_DEPTH
     shell:
+        # Depth floor moved here from a DAG-construction-time Python
+        # exception (formerly raised inside a params lambda) to a plain job
+        # failure: a Python exception while Snakemake is still building the
+        # DAG is fatal to the whole run regardless of --keep-going, since
+        # that flag only isolates failures of jobs that actually execute.
+        # At 200+ species, one too-shallow sample shouldn't take down every
+        # other species' run -- exiting here instead lets --keep-going skip
+        # just this sample's ROH output (and downstream jules_bcftools_roh
+        # for it) while everything else proceeds.
         """
+        if [ {params.avg_int} -lt {params.min_depth} ]; then
+            echo "Sample {wildcards.srr} has average depth {params.avg_int}x, below the {params.min_depth}x floor -- too shallow to trust for ROH/PSMC (undercalled heterozygosity at low depth inflates F_ROH)." >&2
+            exit 1
+        fi
+
         bcftools filter -i 'QUAL>=30 && FORMAT/DP>={params.mincov} && FORMAT/DP<={params.maxcov} && INFO/DP>={params.mincov} && INFO/MQ>=30 && FORMAT/SP<60' {input.vcf} \\
             | bcftools view -v snps -m2 -M2 \\
             | bcftools filter -S . -e '(GT="het") && ((FMT/AD[0:1])/(FMT/AD[0:0]+FMT/AD[0:1]) < {params.ab_low} || (FMT/AD[0:1])/(FMT/AD[0:0]+FMT/AD[0:1]) > {params.ab_high})' \\
