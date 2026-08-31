@@ -354,6 +354,7 @@ ggplot(all_div, aes(x = cosine, y = R_h2)) +
 
 ```
 
+# Phylogenetic analysis
 ```{r}
 jtree <- read.tree("../../resources/analysis_tree.tre")
 
@@ -432,4 +433,81 @@ pgls_mod_pi_height <- pgls(log10(height_clean) ~ scale(log10(Avg_Val_pi)) + log1
 
 summary(pgls_mod_pi_height)
 summary(pgls_mod_bray_curtis_height)
+```
+
+# k-mer mar
+```{r}
+
+kmer_tables_full <- list.files(path = "../results/nofilt/paste", pattern = ".txt.gz", full.names = T)
+
+kmer_tables_full <- names(sort(sapply(kmer_tables_full, file.size)))
+
+# file_path <- "../results/nofilt/paste/Oemleria_cerasiformis.txt.gz"
+chunk_size <- 100000  # rows per chunk, tune to your memory
+
+# function to iterate through chunks
+sum_chunk <- function(chunk, pos) {
+  
+  cat("Pos: ", pos, "\n")
+  chunk_no_kmers <- chunk[, 2:ncol(chunk)]
+  
+  chunk_sums <- colSums(chunk_no_kmers, na.rm = TRUE)
+  chunk_num_non_zeros <- colSums(chunk_no_kmers != 0, na.rm = TRUE)
+  
+  if (is.null(running_sums)) {
+    running_sums <<- chunk_sums
+  } else {
+    running_sums <<- running_sums + chunk_sums
+  }
+  
+  if(is.null(running_num_non_zeros)){
+    running_num_non_zeros <<- chunk_num_non_zeros
+  } else {
+    running_num_non_zeros <<- running_num_non_zeros + chunk_num_non_zeros
+  }
+}
+
+# loop over k-mer tables and summarize coverage vs number of unique k-mers found
+for(file_path in kmer_tables_full) {
+  cat(file_path, "\n")
+  
+  # Accumulator for running column sums
+  running_sums <- NULL
+  running_num_non_zeros <- NULL
+  
+  read_tsv_chunked(
+    file_path,
+    callback = SideEffectChunkCallback$new(sum_chunk),
+    chunk_size = chunk_size,
+    col_types = cols(),  # let it guess types; or specify explicitly for speed/safety
+    col_names = F
+  )
+  
+  kmer_cov <- data.frame(
+    file = file_path,
+    sample = 1:length(running_sums),
+    kmer_sum = running_sums,
+    kmer_num_unique = running_num_non_zeros
+  )
+  
+  write.table(
+    kmer_cov,
+    paste0(
+      "../../results/by-date/",
+      today,
+      "/kmer_coverage_summary.txt"
+    ),
+    append = T,
+    quote = F,
+    row.names = F
+  )
+}
+
+ggplot(kmer_cov, aes(x = kmer_sum, y = kmer_num_unique)) +
+  geom_point() +
+  scale_x_log10() +
+  scale_y_log10()
+
+print(running_sums)
+print(running_num_non_zeros)
 ```

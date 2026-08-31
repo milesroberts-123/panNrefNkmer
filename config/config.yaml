@@ -27,7 +27,7 @@ contam_match_limit_count: 2
 num_kmers_kept: 10000000
 
 ## number of samples per group when pasting k-mer tables in parallel
-paste_group_size: 100
+paste_group_size: 50
 
 # kraken2 parameters =========================================================================
 

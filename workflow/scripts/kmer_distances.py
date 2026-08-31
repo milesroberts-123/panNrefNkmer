@@ -1,5 +1,6 @@
 """Mean pairwise k-mer distance metrics (Bray-Curtis, cosine) over a count matrix."""
 
+print("Importing modules...")
 import click
 import pandas as pd
 import numpy as np
@@ -9,7 +10,6 @@ import math
 
 def load_matrix(filename):
     """Load a whitespace-delimited k-mer count matrix (rows = k-mers, cols = samples)."""
-    print("Loading k-mer count matrix...")
     return pd.read_table(filename, header=None, sep=" ")
 
 
@@ -35,9 +35,13 @@ def cosine_distance(x, y):
 @click.option("-o", "--output", required=True, help="Path to output file")
 def main(input, output):
     """Average Bray-Curtis and cosine distances over all column pairs."""
+    print(f"Loading k-mer count matrix: {input}...")
     df = load_matrix(input)
 
+    print("Counting number of columns...")
     n = len(df.columns)
+
+    print("Calculating number of pairwise comparisions...")
     num_pairs = math.comb(n, 2)
 
     bc_total = 0
@@ -58,7 +62,7 @@ def main(input, output):
         pairs_done += 1
 
         if pairs_done % 1000 == 0:
-            print(f"Processed {pairs_done} k-mers...")
+            print(f"Processed {pairs_done} pairs...")
 
     final_result = [str(bc_total / num_pairs), str(cos_total / num_pairs)]
 
