@@ -31,6 +31,17 @@ rule jules_roh_only:
     input:
         expand("results/roh/{srr}_ROH.txt", srr = reads["Run"])
 
+# Audits every already-downloaded sample's raw_reads for gzip corruption
+# (jules_verify_raw_reads), without downloading anything new. Run with
+# --keep-going: samples that fail have their corrupt raw_reads r1/r2 deleted
+# as a side effect, so a later run of jules_only/jules_roh_only/
+# jules_msmc2_only will see those files missing and have jules_fastq_dump
+# redownload just the failed samples -- no need to track which ones failed
+# by hand.
+rule jules_verify_downloads_only:
+    input:
+        expand("results/raw_reads/{srr}.verified", srr = reads["Run"])
+
 # Not part of jules_only -- MSMC2 track is drafted/reviewed but not yet
 # run end-to-end even once. Kept as a separate target until it's proven
 # out, the same way jules_only itself is kept out of `all`.

@@ -86,9 +86,16 @@ rule jules_fastq_dump:
                 local r1="${{dir}}/${{run}}_1.fastq.gz"
                 local r2="${{dir}}/${{run}}_2.fastq.gz"
 
-                if [[ -s "$r1" && -s "$r2" ]]; then
+                if [[ -s "$r1" && -s "$r2" ]] && gzip -t "$r1" 2>/dev/null && gzip -t "$r2" 2>/dev/null; then
                     echo "--- run ${{run}} already downloaded (from a prior attempt), skipping ---"
                     return 0
+                elif [[ -s "$r1" || -s "$r2" ]]; then
+                    # leftover from a prior attempt that got cut short (e.g. a SLURM
+                    # walltime kill mid-fastq-dump) -- non-empty but not a valid
+                    # gzip stream, so `-s` alone would have wrongly treated it as
+                    # complete. Clear it so this run re-downloads from scratch.
+                    echo "--- run ${{run}}: found a truncated/corrupt file from a prior attempt, re-downloading ---"
+                    rm -f "$r1" "$r2"
                 fi
 
                 echo "--- downloading run ${{run}} (part of BioSample {wildcards.ID}) ---"
@@ -97,6 +104,11 @@ rule jules_fastq_dump:
 
                 if [[ ! -s "$r1" || ! -s "$r2" ]]; then
                     echo "Error: run ${{run}} finished without producing both non-empty R1/R2 files" >&2
+                    return 1
+                fi
+                if ! gzip -t "$r1" 2>/dev/null || ! gzip -t "$r2" 2>/dev/null; then
+                    echo "Error: run ${{run}} produced a truncated/corrupt gzip file (likely killed mid-download, e.g. by a SLURM walltime limit) -- deleting partial output so a retry starts clean" >&2
+                    rm -f "$r1" "$r2"
                     return 1
                 fi
             }}
@@ -115,13 +127,35 @@ rule jules_fastq_dump:
                 exit 1
             fi
 
+            # Re-validate every staged per-run file immediately before merging,
+            # independent of download_one_run's own check. `cat` has no way to
+            # tell a truncated gzip member from a complete one -- it just
+            # concatenates bytes -- so this is the last point before the merge
+            # where a corrupt run can still be caught and named individually,
+            # rather than surfacing later as an unexplained coverage/read-count
+            # shortfall on the merged {wildcards.ID} file.
+            for f in "${{staging_dir}}"/*_1.fastq.gz "${{staging_dir}}"/*_2.fastq.gz; do
+                if ! gzip -t "$f" 2>/dev/null; then
+                    echo "Error: ${{f}} is a truncated/corrupt gzip file -- refusing to merge into {wildcards.ID}. Staging dir left in place for inspection." >&2
+                    exit 1
+                fi
+            done
+
             cat "${{staging_dir}}"/*_1.fastq.gz > results/raw_reads/{wildcards.ID}_1.fastq.gz
             cat "${{staging_dir}}"/*_2.fastq.gz > results/raw_reads/{wildcards.ID}_2.fastq.gz
 
             # Verify the combined output before deleting the only copies of
-            # the source data.
+            # the source data. gzip -t on a `cat`-concatenated multi-member
+            # gzip stream still validates fine (gzip supports concatenated
+            # members), so this also catches a truncated per-run file that
+            # somehow made it past download_one_run's own check.
             if [[ ! -s results/raw_reads/{wildcards.ID}_1.fastq.gz || ! -s results/raw_reads/{wildcards.ID}_2.fastq.gz ]]; then
                 echo "Error: concatenation produced an empty/missing output for {wildcards.ID} -- staging dir left in place at ${{staging_dir}}" >&2
+                exit 1
+            fi
+            if ! gzip -t results/raw_reads/{wildcards.ID}_1.fastq.gz 2>/dev/null || ! gzip -t results/raw_reads/{wildcards.ID}_2.fastq.gz 2>/dev/null; then
+                echo "Error: concatenated output for {wildcards.ID} is a truncated/corrupt gzip stream -- staging dir left in place at ${{staging_dir}} for inspection" >&2
+                rm -f results/raw_reads/{wildcards.ID}_1.fastq.gz results/raw_reads/{wildcards.ID}_2.fastq.gz
                 exit 1
             fi
             rm -rf "$staging_dir"
@@ -131,6 +165,45 @@ rule jules_fastq_dump:
             # here exceed that and were being silently skipped by prefetch.
             prefetch --max-size 5000G {wildcards.ID}
             fastq-dump --gzip --clip --outdir ./results/raw_reads --split-3 --skip-technical ./{wildcards.ID}
+
+            # Same failure mode as the BioSample branch: a killed job (e.g. a
+            # SLURM walltime limit on a run with a large spot count) can leave
+            # a non-empty but truncated gzip file that would otherwise be
+            # silently accepted by every downstream rule.
+            if [[ ! -s results/raw_reads/{wildcards.ID}_1.fastq.gz || ! -s results/raw_reads/{wildcards.ID}_2.fastq.gz ]]; then
+                echo "Error: {wildcards.ID} finished without producing both non-empty R1/R2 files" >&2
+                exit 1
+            fi
+            if ! gzip -t results/raw_reads/{wildcards.ID}_1.fastq.gz 2>/dev/null || ! gzip -t results/raw_reads/{wildcards.ID}_2.fastq.gz 2>/dev/null; then
+                echo "Error: {wildcards.ID} produced a truncated/corrupt gzip file -- deleting partial output so a retry starts clean" >&2
+                rm -f results/raw_reads/{wildcards.ID}_1.fastq.gz results/raw_reads/{wildcards.ID}_2.fastq.gz
+                exit 1
+            fi
+        fi
+        """
+
+# Standalone gate between download and trimming. Separated from
+# jules_fastq_dump itself so it can be run as its own target across every
+# already-downloaded sample (`snakemake jules_verify_downloads_only
+# --keep-going`) without re-triggering a full download -- useful for auditing
+# raw_reads that were produced before the gzip-integrity checks in
+# jules_fastq_dump existed. On failure it deletes the corrupt r1/r2 pair, so
+# they no longer exist as jules_fastq_dump's declared outputs -- the next
+# snakemake invocation targeting anything downstream sees them missing and
+# reruns jules_fastq_dump to redownload just that sample, with no manual
+# bookkeeping of which samples failed.
+rule jules_verify_raw_reads:
+    input:
+        r1="results/raw_reads/{srr}_1.fastq.gz",
+        r2="results/raw_reads/{srr}_2.fastq.gz"
+    output:
+        touch("results/raw_reads/{srr}.verified")
+    shell:
+        """
+        if ! gzip -t {input.r1} 2>/dev/null || ! gzip -t {input.r2} 2>/dev/null; then
+            echo "Error: {wildcards.srr} raw reads are a truncated/corrupt gzip stream -- deleting so jules_fastq_dump reruns on the next invocation" >&2
+            rm -f {input.r1} {input.r2}
+            exit 1
         fi
         """
 
@@ -138,6 +211,7 @@ rule jules_trimmomatic:
     input:
         r1="results/raw_reads/{srr}_1.fastq.gz",
         r2="results/raw_reads/{srr}_2.fastq.gz",
+        verified="results/raw_reads/{srr}.verified",
         adapters=config["adapter_path"]
     output:
         r1=temp("results/trim_reads/{srr}_r1.fastq.gz"),
