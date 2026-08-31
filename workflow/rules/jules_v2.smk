@@ -98,6 +98,18 @@ rule jules_fastq_dump:
                     rm -f "$r1" "$r2"
                 fi
 
+                # If a prior attempt at this specific run was killed mid-download
+                # (walltime, node failure, etc.), prefetch leaves its own
+                # ${{run}}/${{run}}.sra.lock file behind under $dir and refuses
+                # to redownload -- every retry fails immediately with "lock
+                # exists ... download canceled" even though nothing is still
+                # running. Clear any leftover state for this run before
+                # starting, independent of whether r1/r2 above needed clearing.
+                if [[ -d "${{dir}}/${{run}}" ]]; then
+                    echo "--- run ${{run}}: found a leftover ${{dir}}/${{run}} directory from a prior attempt -- removing before redownloading (likely a stale prefetch lock) ---"
+                    rm -rf "${{dir}}/${{run}}"
+                fi
+
                 echo "--- downloading run ${{run}} (part of BioSample {wildcards.ID}) ---"
                 prefetch --max-size 5000G -O "$dir" "$run" \\
                     && fastq-dump --gzip --clip --outdir "$dir" --split-3 --skip-technical "${{dir}}/${{run}}/${{run}}.sra"
@@ -161,6 +173,20 @@ rule jules_fastq_dump:
             rm -rf "$staging_dir"
         else
             # Plain Run accession (SRR/ERR/DRR) -- single download.
+            #
+            # If a prior attempt got killed mid-download (walltime, node
+            # failure, etc.), prefetch leaves its own
+            # {wildcards.ID}/{wildcards.ID}.sra.lock file behind and refuses
+            # to redownload -- every retry fails
+            # immediately with "lock exists ... download canceled" even
+            # though nothing is actually still running. Clear any leftover
+            # state from a prior attempt before starting, so a killed job
+            # doesn't permanently wedge this sample.
+            if [[ -d "{wildcards.ID}" ]]; then
+                echo "Found a leftover {wildcards.ID}/ directory from a prior attempt -- removing before redownloading (likely a stale prefetch lock from a job that was killed mid-download)" >&2
+                rm -rf "{wildcards.ID}"
+            fi
+
             # --max-size raised from sra-tools' 20G default; some samples
             # here exceed that and were being silently skipped by prefetch.
             prefetch --max-size 5000G {wildcards.ID}
