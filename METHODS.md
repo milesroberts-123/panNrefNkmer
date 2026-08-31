@@ -1,0 +1,43 @@
+# Methods
+
+## Workflow orchestration
+
+We implemented all analyses as a Snakemake workflow (Snakemake 9.5.1) with per-rule Conda environments, executed on a Slurm cluster. We organized the workflow into independent target rules, each corresponding to a distinct analysis branch: `jules_only` (per-sample PSMC/ROH), `jules_roh_only` (ROH only), `jules_msmc2_only` (per-sample MSMC2), `kmers_only` (k-mer distances with reference-based contamination removal), `kmers_nofilt_only` (k-mer distances without contamination removal), and `kmers_kraken_only` (k-mer distances after Kraken2 microbial screening). We specified sample metadata (SRA Run accession, BioSample accession, and species) in a tab-separated table (`config/samples_medium.tsv`).
+
+## Read acquisition and quality control
+
+We downloaded raw sequencing reads from the NCBI Sequence Read Archive using `prefetch` with `fasterq-dump` (sra-tools 3.1.1, `--max-size 500G`, `--split-files`, `--skip-technical`) for the k-mer tracks, and `prefetch` with `fastq-dump` (sra-tools 3.1.1, `--max-size 5000G`, `--gzip`, `--clip`, `--split-3`, `--skip-technical`) for the per-sample PSMC/ROH track. For BioSample accessions, we resolved the constituent SRA runs via the NCBI eutils API and concatenated their reads into a single read pair. We trimmed and quality-filtered reads with fastp (0.26.0, `--n_base_limit 5`, `-u 40`, `-q 30`, `-l 31`, `--cut_tail`, `--cut_tail_window_size 1`, `--cut_tail_mean_quality 30`, `--dedup`, `--correction`), retaining paired and unpaired outputs. We aggregated reads from multiple runs of the same BioSample by concatenation. We downloaded reference genomes of contaminant taxa (e.g., human) with the NCBI Datasets CLI (18.3.0, `--reference --dehydrated`) and concatenated them into a single contaminant FASTA.
+
+## Per-sample PSMC and ROH analysis (`jules_only`, `jules_roh_only`)
+
+We indexed each species reference genome with BWA (0.7.19) and SAMtools (1.21). We trimmed adapters and low-quality bases with Trimmomatic (version unpinned in the workflow environment; `ILLUMINACLIP:<adapters>:2:30:10:2:True`, `LEADING:3`, `TRAILING:3`, `MINLEN:36`). We aligned reads to the species reference with `bwa mem` (0.7.19, `-M`, read group tagged with sample ID) and sorted the alignments with SAMtools (1.22). We marked duplicates with Picard MarkDuplicates (version unpinned; `VALIDATION_STRINGENCY=SILENT`, `CREATE_INDEX=true`) and computed genome-wide average depth with `samtools depth -a` (1.21). We called variants with `bcftools mpileup` (1.17, `-q 20`, `-Q 20`, annotating `FORMAT/AD`, `FORMAT/DP`, `FORMAT/SP`) piped to `bcftools call -mv`. We filtered variants with `bcftools filter` (1.17), retaining biallelic SNPs with `QUAL>=30`, per-sample depth between one-third and twice the sample's average depth, `INFO/MQ>=30`, and `FORMAT/SP<60`, and we masked heterozygous calls with allele balance outside 0.30–0.70. We excluded samples with average depth below 10x from ROH/PSMC analysis. We called runs of homozygosity with `bcftools roh` (1.17, `-G30`, `--AF-dflt 0.10`).
+
+For PSMC, we restricted analysis to contigs longer than 50 kb, subset the deduplicated BAM to those regions with `samtools view -L` (1.21), and generated a diploid consensus sequence with `samtools mpileup -C50 -uf` (1.9) piped to `bcftools call -c` (1.9) and `vcfutils.pl vcf2fq` (1.9, `-d <avg_depth/3>`, `-D <avg_depth*2>`). We converted the consensus to PSMC input with `fq2psmcfa -q20` and ran PSMC (version unpinned; `-N25 -t15 -r5 -p "1+1+1+1+25*2+4+6"`).
+
+## Per-sample MSMC2 analysis (`jules_msmc2_only`)
+
+We restricted MSMC2 analysis to contigs longer than 500 kb (falling back to the single largest contig if none qualified). For each contig we called variants with `bcftools mpileup -C50 -q 20 -Q 20 -Ou -r <contig>` (1.22) piped to `bcftools call -c -V indels` (1.22), and generated calling masks with `bamCaller.py` from msmc-tools using the sample's mean coverage. We converted each contig's VCF and mask to multihetsep format with `generate_multihetsep.py` and ran MSMC2 (2.1.4, `-t 4`, default time segmentation) on all non-empty contig inputs.
+
+## K-mer counting and reference-based contamination removal (`kmers_only`)
+
+We counted canonical k-mers of length 31 in each BioSample's reads with KMC (3.2.4, `-sm -m25 -ci5 -cs100000 -k31`), sorted the database with `kmc_tools transform sort`, and dumped counts to text. We built a reference k-mer database for each species from its reference genome with KMC (3.2.4, `-k31 -m23 -ci1 -cs2 -fm`) and computed a k-mer count histogram with `kmc_tools transform histogram`. We removed reads matching reference-genome k-mers with `kmc_tools filter` (3.2.4, `-ci2 -cx1000000`), treating reads with at least two reference k-mer hits as contamination. We combined per-sample k-mer databases within each species with `kmc_tools complex` (3.2.4, `-cs10000000000`), dumped the combined k-mer list, and joined each sample's counts against the species-wide k-mer list with `join` (GNU coreutils, `-a1 -a2 -e '0' -o auto`), filling absent k-mers with zero. We assembled the per-species count matrix by column-wise `paste` and compressed it with pigz (2.8).
+
+## K-mer distances without contamination removal (`kmers_nofilt_only`)
+
+We repeated the k-mer counting and matrix assembly described above directly on trimmed reads, skipping the reference-based contamination removal step. To assemble count matrices for species with many samples, we pasted columns in groups of 100 samples (`paste_group_size`), writing each group to a temporary file in parallel, and then pasted the group files together while compressing the final matrix with pigz (2.8).
+
+## K-mer distances with Kraken2 microbial screening (`kmers_kraken_only`)
+
+We classified trimmed reads with Kraken2 (2.1.3, `--paired`, `--confidence 0.0`) against a microbial database and retained only unclassified reads for downstream k-mer counting, which we performed as described above.
+
+## K-mer distance computation
+
+We computed two pairwise distance metrics between samples from the per-species k-mer count matrices: mean Bray-Curtis dissimilarity and mean cosine distance. For each species, we randomly subsampled 10,000,000 rows from the compressed count matrix with `shuf` (GNU coreutils, `-n 10000000`) and extracted the corresponding rows with `awk`, producing a whitespace-delimited count matrix with one column per sample.
+
+We implemented the distance computation in a custom Python script (Python 3.13.3, NumPy 2.3.0, pandas 2.3.0, joblib 1.5.1). To avoid loading the full matrix into memory, we streamed the input file in chunks of 100,000 rows with `pandas.read_csv` (chunked reading, float64). We performed two passes over the file: a first pass to accumulate per-sample column sums, and a second pass to accumulate pairwise distance statistics. In the second pass, we processed chunks in parallel with `joblib.Parallel` (thread-based backend, 8 threads, single-threaded BLAS within each worker).
+
+For each chunk, we computed the Bray-Curtis contribution using the identity that, for columns normalized to unit L1 norm, the Bray-Curtis dissimilarity between two samples equals half their L1 (city-block) distance. We normalized each chunk's columns by their precomputed column sums and computed the sum of pairwise L1 distances over all sample pairs without enumerating pairs: we sorted each column independently and accumulated each sorted value weighted by its rank, exploiting the fact that the sum of pairwise absolute differences over a sorted vector equals the sum of `(2k - n + 1) * s_k` over sorted values `s_k` (n samples). This reduces the pairwise computation from O(n²) per chunk to O(n log n) per chunk. We computed the cosine distance contribution by accumulating the pairwise dot-product matrix via a single BLAS matrix multiplication per chunk (`Y @ Y.T`) and per-sample squared norms, from which we derived all pairwise cosine distances as `1 - dot / (norm_i * norm_j)` after the final chunk. We averaged both metrics over all sample pairs and wrote them to a comma-separated output file. We verified that this implementation reproduces the results of a naive per-pair loop to within floating-point summation-order error (~1e-15 relative).
+
+## Counting Bloom filter distances (`kmers_only`)
+
+As an alternative to the full count matrix, we computed a counting Bloom filter for each sample's k-mer counts (Python 3.13.3, NumPy 2.3.0, mmh3 5.1.0; array size 500,000, 4 hash functions), concatenated the per-sample filters column-wise with `paste`, and computed mean Bray-Curtis and cosine distances between the filter vectors with the same distance script described above.
