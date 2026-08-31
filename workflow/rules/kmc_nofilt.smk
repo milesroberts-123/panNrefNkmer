@@ -143,7 +143,7 @@ rule subset_kmer_distances_nofilt:
     conda:
         "../envs/cbf.yaml"
     shell:
-        "python scripts/kmer_distances.py --input {input} --output {output}"
+        "python scripts/kmer_distances.py --input {input} --output {output} --threads {threads}"
 
 
 rule batch_per_species_nofilt:

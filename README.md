@@ -74,3 +74,7 @@ done
 ## Run whole workflow with conda envs on slurm cluster
 
 `snakemake --sdm conda --rerun-incomplete --rerun-triggers mtime --scheduler greedy --retries 1 --keep-going`
+
+# Notes
+
+- `workflow/scripts/kmer_distances.py` was rewritten (2026-08-31) to stream the count matrix in chunks and compute pairwise Bray-Curtis/cosine distances with vectorized numpy + joblib threads instead of a per-pair Python loop. Results match the previous implementation to ~1e-15 (floating-point summation order only). The script accepts a `--threads` option; the calling rules pass `{threads}` and the default profile allocates 8 cpus for them.

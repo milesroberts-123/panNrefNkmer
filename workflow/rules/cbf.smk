@@ -37,4 +37,4 @@ rule kmer_distances:
     conda:
         "../envs/cbf.yaml"
     shell:
-        "python scripts/kmer_distances.py --input {input} --output {output}"
+        "python scripts/kmer_distances.py --input {input} --output {output} --threads {threads}"

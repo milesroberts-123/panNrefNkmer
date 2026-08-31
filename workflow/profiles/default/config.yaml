@@ -93,6 +93,18 @@ set-resources:
         runtime: 180
     subset_kmer_table_kraken:
         runtime: 180
+    subset_kmer_distances:
+        cpus_per_task: 8
+        runtime: "int(min(max(2*input.size_mb/(1024*threads), 30), 1440))"
+    subset_kmer_distances_nofilt:
+        cpus_per_task: 8
+        runtime: "int(min(max(2*input.size_mb/(1024*threads), 30), 1440))"
+    subset_kmer_distances_kraken:
+        cpus_per_task: 8
+        runtime: "int(min(max(2*input.size_mb/(1024*threads), 30), 1440))"
+    kmer_distances:
+        cpus_per_task: 8
+        runtime: "int(min(max(2*input.size_mb/(1024*threads), 30), 1440))"
 # --- alignment / calling pipeline (jules_*) ---
     jules_bwa_index:
         # bwa index's own algorithm (bwtsw) is single-threaded, but savio4_htc
@@ -284,6 +296,10 @@ set-threads:
     pigz: 8
     pigz_kraken: 8
     paste_nofilt: 8
+    subset_kmer_distances: 8
+    subset_kmer_distances_nofilt: 8
+    subset_kmer_distances_kraken: 8
+    kmer_distances: 8
     jules_psmc_subset_bam: 8
     jules_trimmomatic: 8
     jules_bwa_mem: 8
