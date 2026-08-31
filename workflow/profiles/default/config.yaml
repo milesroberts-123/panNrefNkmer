@@ -52,8 +52,11 @@ set-resources:
         runtime: "120m"
         cpus_per_task: 8
     kmc_combine_dbs_nofilt:
-        runtime: "120m"
-        cpus_per_task: 8
+        runtime: "240m"
+        slurm_partition: "savio3_xlmem"
+        slurm_nodes: 1
+        slurm_mem: "1000G"
+        cpus_per_task: 4
     kmc_combine_dbs_kraken:
         runtime: "120m"
         cpus_per_task: 8
@@ -72,10 +75,10 @@ set-resources:
     paste:
         runtime: "int(min(max(input.size_mb/(1024*5), 30), 1440))"
     paste_nofilt:
-        cpus_per_task: 8
-        runtime: "int(min(max(input.size_mb/(1024*5), 30), 1440))"
+        cpus_per_task: 4
+        runtime: "int(min(max(input.size_mb/(1024*1), 30), 1440))"
     paste_nofilt_group:
-        runtime: "int(min(max(input.size_mb/(1024*5), 30), 1440))"
+        runtime: "int(min(max(input.size_mb/(1024*0.25), 60), 1440))"
     paste_kraken:
         runtime: "int(min(max(input.size_mb/(1024*5), 30), 1440))"
     pigz:
@@ -90,9 +93,26 @@ set-resources:
     subset_kmer_table:
         runtime: 180
     subset_kmer_table_nofilt:
-        runtime: 180
+        runtime: 1440
+    subset_kmer_distances_nofilt:
+        cpus_per_task: 1
+        slurm_partition: "savio3_xlmem"
+        slurm_mem: "300G"
+        runtime: 720
     subset_kmer_table_kraken:
         runtime: 180
+    subset_kmer_distances:
+        cpus_per_task: 8
+        runtime: "int(min(max(2*input.size_mb/(1024*threads), 30), 1440))"
+    subset_kmer_distances_nofilt:
+        cpus_per_task: 8
+        runtime: "int(min(max(2*input.size_mb/(1024*threads), 30), 1440))"
+    subset_kmer_distances_kraken:
+        cpus_per_task: 8
+        runtime: "int(min(max(2*input.size_mb/(1024*threads), 30), 1440))"
+    kmer_distances:
+        cpus_per_task: 8
+        runtime: "int(min(max(2*input.size_mb/(1024*threads), 30), 1440))"
 # --- alignment / calling pipeline (jules_*) ---
     jules_bwa_index:
         # bwa index's own algorithm (bwtsw) is single-threaded, but savio4_htc
@@ -277,13 +297,21 @@ set-threads:
     kmc_kraken: 8
     kraken2_rm_microbial: 8
     kmc_combine_dbs: 8
-    kmc_combine_dbs_nofilt: 8
+    kmc_combine_dbs_nofilt: 4
     kmc_combine_dbs_kraken: 8
     kmc_ref_db: 4
     kmc_rm_contam: 8
     pigz: 8
     pigz_kraken: 8
+<<<<<<< HEAD
+    paste_nofilt: 4
+=======
     paste_nofilt: 8
+    subset_kmer_distances: 8
+    subset_kmer_distances_nofilt: 8
+    subset_kmer_distances_kraken: 8
+    kmer_distances: 8
+>>>>>>> 2a26d13315aa8b600fd4099f81319511a5b06553
     jules_psmc_subset_bam: 8
     jules_trimmomatic: 8
     jules_bwa_mem: 8
