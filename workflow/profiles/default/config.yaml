@@ -2,6 +2,24 @@ executor: slurm
 jobs: 10000
 cores: 100
 
+# Global resource pools (separate from the per-rule cpus_per_task/mem_mb
+# under set-resources below, and from `jobs`/`cores` above which cap total
+# concurrency, not concurrency-per-rule). ncbi_slots throttles how many
+# jules_fastq_dump jobs can run at once, independent of the overall `jobs:
+# 10000` cap -- without this, a batch-wide rerun (e.g. triggered by editing
+# jules_fastq_dump's own code, which Snakemake's default `code` rerun-trigger
+# treats as invalidating every sample's existing download) submits every
+# sample's SRA download simultaneously, which floods NCBI's API/prefetch
+# servers and fails nearly the whole batch at once rather than a targeted
+# few. Raised 8 -> 100: real-world precedent (hundreds of concurrent SRA
+# downloads run successfully before on this same workflow) shows NCBI
+# throttling isn't actually a bottleneck at this scale -- the original mass
+# failure this pool was added to guard against was actually caused by an
+# unrelated missing `runtime` override (see set-resources' jules_fastq_dump
+# below), not concurrent request volume.
+resources:
+    ncbi_slots: 100
+
 # rules to execute locally, because they're too fast to bother with cluster submission
 # localrules: all_one_pops, all_two_pops, all
 
@@ -141,6 +159,12 @@ set-resources:
         # for any realistic BioSample-scale aggregation, short enough that a
         # genuinely hung job (vs. a slow-but-real one) doesn't run forever
         # unnoticed burning condo allocation.
+        # NOTE: this runtime key itself had gone missing at some point
+        # (comments above survived, the value didn't -- likely lost in the
+        # earlier conflict-marker merge), which silently dropped every job
+        # here back to default-resources' 30m and caused a mass
+        # walltime-kill failure across ~221 samples. Restored below.
+        runtime: "10080m"
         cpus_per_task: 4
     jules_trimmomatic:
         # Fixed 72h, not the inherited size-based formula -- that formula
@@ -303,7 +327,7 @@ set-threads:
     kmc_rm_contam: 8
     pigz: 8
     pigz_kraken: 8
-    paste_nofilt: 8
+    paste_nofilt: 4
     subset_kmer_distances: 8
     subset_kmer_distances_nofilt: 8
     subset_kmer_distances_kraken: 8
