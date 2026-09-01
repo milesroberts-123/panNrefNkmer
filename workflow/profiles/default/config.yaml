@@ -2,6 +2,21 @@ executor: slurm
 jobs: 10000
 cores: 100
 
+# Global resource pools (separate from the per-rule cpus_per_task/mem_mb
+# under set-resources below, and from `jobs`/`cores` above which cap total
+# concurrency, not concurrency-per-rule). ncbi_slots throttles how many
+# jules_fastq_dump jobs can run at once, independent of the overall `jobs:
+# 10000` cap -- without this, a batch-wide rerun (e.g. triggered by editing
+# jules_fastq_dump's own code, which Snakemake's default `code` rerun-trigger
+# treats as invalidating every sample's existing download) submits every
+# sample's SRA download simultaneously, which floods NCBI's API/prefetch
+# servers and fails nearly the whole batch at once rather than a targeted
+# few. 8 concurrent downloads is a starting point, not a measured NCBI rate
+# limit -- raise or lower it if downloads are still failing or if 8 is overly
+# conservative.
+resources:
+    ncbi_slots: 8
+
 # rules to execute locally, because they're too fast to bother with cluster submission
 # localrules: all_one_pops, all_two_pops, all
 
@@ -24,6 +39,18 @@ set-resources:
         runtime: "1440m"
     biosample:
         runtime: "20m"
+    # No override previously existed for this rule, so it silently fell back
+    # to default-resources' runtime: "30m" -- confirmed via real SLURM job
+    # logs (DRR417010, SAMEA2242590, ERR3140072) all ending in "CANCELLED
+    # ... DUE TO TIME LIMIT" mid-download or mid-fastq-dump, including one
+    # case (SAMEA2242590) where 3 of 4 runs (24-34GB each) had already
+    # downloaded and verified successfully within that window before the
+    # kill. 1440m (24h) matches the existing `sra` rule above, which does
+    # the same kind of work (prefetch + fastq conversion) for the older,
+    # unused download rule. Bumped to 48h (2880m) for extra headroom above
+    # the largest observed multi-run BioSamples.
+    jules_fastq_dump:
+        runtime: "2880m"
     fastp:
         runtime: "int(min(max(3*input.size_mb/(1024*threads), 10), 1440))"
         cpus_per_task: 16

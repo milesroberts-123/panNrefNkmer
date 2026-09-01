@@ -33,6 +33,15 @@ rule jules_fastq_dump:
     output:
         r1=temp("results/raw_reads/{ID}_1.fastq.gz"),
         r2=temp("results/raw_reads/{ID}_2.fastq.gz")
+    # Caps how many of these run concurrently against the global ncbi_slots
+    # pool (set in profiles/default/config.yaml), independent of the overall
+    # `jobs: 10000` limit -- without this, a batch-wide rerun (e.g. triggered
+    # by editing this rule's own code, which Snakemake's default `code`
+    # rerun-trigger treats as invalidating every sample's existing download)
+    # submits every sample's SRA download at once, flooding NCBI and failing
+    # nearly the whole batch instead of a targeted few.
+    resources:
+        ncbi_slots=1
     conda:
         "../envs/sra.yaml"
     shell:
