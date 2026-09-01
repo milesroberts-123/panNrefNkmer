@@ -11,11 +11,14 @@ cores: 100
 # treats as invalidating every sample's existing download) submits every
 # sample's SRA download simultaneously, which floods NCBI's API/prefetch
 # servers and fails nearly the whole batch at once rather than a targeted
-# few. 8 concurrent downloads is a starting point, not a measured NCBI rate
-# limit -- raise or lower it if downloads are still failing or if 8 is overly
-# conservative.
+# few. Raised 8 -> 100: real-world precedent (hundreds of concurrent SRA
+# downloads run successfully before on this same workflow) shows NCBI
+# throttling isn't actually a bottleneck at this scale -- the original mass
+# failure this pool was added to guard against was actually caused by an
+# unrelated missing `runtime` override (see set-resources' jules_fastq_dump
+# below), not concurrent request volume.
 resources:
-    ncbi_slots: 8
+    ncbi_slots: 100
 
 # rules to execute locally, because they're too fast to bother with cluster submission
 # localrules: all_one_pops, all_two_pops, all
