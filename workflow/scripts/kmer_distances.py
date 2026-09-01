@@ -10,9 +10,10 @@ import click
 import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
+import gzip
+from pathlib import Path
 
-CHUNK_ROWS = 100000
-
+#CHUNK_ROWS = 100000
 
 def process_chunk(values, col_sums):
     """Partial pairwise sums for one row-chunk of the count matrix.
@@ -37,21 +38,59 @@ def process_chunk(values, col_sums):
 
 @click.command(context_settings={"show_default": True})
 @click.option("-i", "--input", required=True, help="Path to k-mer count matrix")
-@click.option("-o", "--output", required=True, help="Path to output file")
+@click.option("-p", "--prefix", required=True, help="Path to prefix file")
 @click.option("-t", "--threads", default=1, help="Number of threads")
-def main(input, output, threads):
+@click.option("-c", "--chunk-size", default=100000, help="Number of rows per chunk (lower means less memory is required)")
+@click.option("-v", "--print-freq", default=100, help="Print a message every v chunks to indicate progress.")
+@click.option("-g", "--ignore-first", default=False, help="Ignore first column of text file (e.g. k-mer sequence column)")
+@click.option("-s", "--seperator", default=" ", help="Separator between columns")
+
+def main(input, prefix, threads, chunk_size, print_freq, ignore_first, seperator):
     """Average Bray-Curtis and cosine distances over all column pairs."""
-    print("Loading k-mer count matrix...")
-    reader = pd.read_csv(input, sep=" ", header=None, chunksize=CHUNK_ROWS, dtype=np.float64)
+    print("Determining number of columns in k-mer table...")
+    
+    if Path(input).suffix.lower() == ".gz":
+        print("Detected .gz at end of file name. Assuming file is gzip compressed...")
+        with gzip.open(input, 'rt') as x:
+            ncols = len(x.readline().split(seperator))
+    else:
+        print("No .gz detected at end of file name. Assuming file is not gzip compressed...")
+        with open(input, 'rt') as x:
+            ncols = len(x.readline().split(seperator))
+
+    print(f"Number of columns is: {ncols}")
+
+    if ignore_first:
+        cols_kept=range(1,ncols)
+    else:
+        cols_kept=range(0,ncols)
+
+    print("Loading k-mer count matrix by chunk...")
+    reader = pd.read_csv(input, sep=seperator, header=None, chunksize=chunk_size, dtype=np.float64, usecols=cols_kept)
 
     print("Pass 1: column sums...")
     col_sums = None
+    col_non_zero = None
+    chunk_tracker = 0
     for chunk in reader:
         s = chunk.sum(axis=0).values
+        b = chunk.astype(bool).sum(axis=0) 
         col_sums = s if col_sums is None else col_sums + s
+        col_non_zero = b if col_non_zero is None else col_non_zero + b
+        chunk_tracker += 1
+        if chunk_tracker % print_freq == 0:
+            print(f"{chunk_tracker*chunk_size} rows processed.")
 
     if col_sums is None:
         raise ValueError(f"Input file {input} is empty")
+    
+    print(f"Write summed k-mer counts per column to {prefix}" + "_sums.txt" + "...")
+    with open(prefix + "_sums.txt", "w") as file:
+        file.write(",".join(map(str, col_sums)))
+
+    print(f"Write total unique k-mers per column to {prefix}" + "_non_zero.txt" + "...")
+    with open(prefix + "_non_zero.txt", "w") as file:
+        file.write(",".join(map(str, col_non_zero)))
 
     n = len(col_sums)
     num_pairs = n * (n - 1) // 2
@@ -59,7 +98,7 @@ def main(input, output, threads):
     print(f"Number of column pairs: {num_pairs}")
 
     print("Pass 2: pairwise distances...")
-    reader = pd.read_csv(input, sep=" ", header=None, chunksize=CHUNK_ROWS, dtype=np.float64)
+    reader = pd.read_csv(input, sep=" ", header=None, chunksize=chunk_size, dtype=np.float64, usecols=cols_kept)
     results = Parallel(n_jobs=threads, prefer="threads", pre_dispatch=threads)(
         delayed(process_chunk)(chunk.values, col_sums) for chunk in reader
     )
@@ -82,8 +121,8 @@ def main(input, output, threads):
 
     final_result = [str(bc_total / num_pairs), str(cos_total / num_pairs)]
 
-    print(f"Write result to {output}...")
-    with open(output, "w") as file:
+    print(f"Write k-mer distances to {prefix}" + ".txt" + "...")
+    with open(prefix + ".txt", "w") as file:
         file.write(",".join(final_result))
 
     print("Done!")
