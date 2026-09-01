@@ -27,9 +27,17 @@ rule jules_only:
 # from there (bcftools mpileup -> filter -> roh) doesn't touch the PSMC-
 # specific steps (50k bed subset, consensus calling, psmc itself), so this
 # skips real work when you only want ROH.
+#
+# .verified is listed explicitly here (not just left as an implicit
+# dependency through jules_trimmomatic) so it's forced as its own target
+# for every sample -- otherwise a sample whose final ROH output already
+# exists from before jules_verify_raw_reads existed is treated as
+# up-to-date and the check never runs for it at all (confirmed: 4 samples
+# with pre-existing ROH/PSMC output had no .verified file on disk).
 rule jules_roh_only:
     input:
-        expand("results/roh/{srr}_ROH.txt", srr = reads["Run"])
+        expand("results/roh/{srr}_ROH.txt", srr = reads["Run"]),
+        expand("results/raw_reads/{srr}.verified", srr = reads["Run"])
 
 # Audits every already-downloaded sample's raw_reads for gzip corruption
 # (jules_verify_raw_reads), without downloading anything new. Run with
@@ -45,9 +53,12 @@ rule jules_verify_downloads_only:
 # Not part of jules_only -- MSMC2 track is drafted/reviewed but not yet
 # run end-to-end even once. Kept as a separate target until it's proven
 # out, the same way jules_only itself is kept out of `all`.
+#
+# .verified listed explicitly for the same reason as jules_roh_only above.
 rule jules_msmc2_only:
     input:
-        expand("results/msmc2/{srr}/msmc2.final.txt", srr = reads["Run"])
+        expand("results/msmc2/{srr}/msmc2.final.txt", srr = reads["Run"]),
+        expand("results/raw_reads/{srr}.verified", srr = reads["Run"])
 
 rule kmers_only:
     input:
