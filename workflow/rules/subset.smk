@@ -22,8 +22,8 @@ rule subset_kmer_distances:
     input:
         "results/subset/kmer_tables/{species}.txt"
     output:
-        "results/subset/kmer_distances/{species}.txt"
+        "results/subset/kmer_distances/{species}_dist.txt"
     conda:
         "../envs/cbf.yaml"
     shell:
-        "python scripts/kmer_distances.py --input {input} --output {output} --threads {threads}"
+        "python scripts/kmer_distances.py --input {input} --prefix $(echo {output} | sed 's:_dist.txt::g') --threads {threads} --no-ignore-first"

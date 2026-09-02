@@ -137,19 +137,23 @@ rule subset_kmer_table_nofilt:
 
 rule subset_kmer_distances_nofilt:
     input:
-        "results/nofilt/subset/kmer_tables/{species}.txt"
+        #"results/nofilt/subset/kmer_tables/{species}.txt"
+        "results/nofilt/paste/{species}.txt.gz"
     output:
-        "results/nofilt/subset/kmer_distances/{species}.txt"
+        #"results/nofilt/subset/kmer_distances/{species}_dist.txt"
+        "results/nofilt/kmer_distances/{species}_dist.txt"
     conda:
         "../envs/cbf.yaml"
     shell:
-        "python scripts/kmer_distances.py --input {input} --output {output} --threads {threads}"
+        """
+        python scripts/kmer_distances.py --input {input} --prefix $(echo {output} | sed 's:_dist.txt::g') --threads {threads} --seperator '\t'
+        """
 
 
 rule batch_per_species_nofilt:
     input:
         "results/nofilt/paste/{species}.txt.gz",
-        "results/nofilt/subset/kmer_distances/{species}.txt",
+        "results/nofilt/kmer_distances/{species}_dist.txt",
         expand("results/fastp/post_trim/{ID}.json", ID=lookup(query="Species == '{species}'", within=reads, cols="Run"))
     output:
         touch("results/nofilt/batch_tracker/{species}.done")

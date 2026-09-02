@@ -124,11 +124,11 @@ rule subset_kmer_distances_kraken:
     input:
         "results/kraken/subset/kmer_tables/{species}.txt"
     output:
-        "results/kraken/subset/kmer_distances/{species}.txt"
+        "results/kraken/subset/kmer_distances/{species}_dist.txt"
     conda:
         "../envs/cbf.yaml"
     shell:
-        "python scripts/kmer_distances.py --input {input} --output {output} --threads {threads}"
+        "python scripts/kmer_distances.py --input {input} --prefix $(echo {output} | sed 's:_dist.txt::g') --threads {threads} --no-ignore-first"
 
 
 rule batch_per_species_kraken:

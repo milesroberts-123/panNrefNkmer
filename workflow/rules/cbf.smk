@@ -33,8 +33,8 @@ rule kmer_distances:
     input:
         "results/cbf_table_{species}.txt"
     output:
-        "results/kmer_distances_{species}.txt"
+        "results/kmer_distances_{species}_dist.txt"
     conda:
         "../envs/cbf.yaml"
     shell:
-        "python scripts/kmer_distances.py --input {input} --output {output} --threads {threads}"
+        "python scripts/kmer_distances.py --input {input} --prefix $(echo {output} | sed 's:_dist.txt::g') --threads {threads} --no-ignore-first"

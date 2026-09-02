@@ -66,7 +66,7 @@ rule kmers_only:
 
 rule kmers_subset_only:
     input:
-        expand("results/subset/kmer_distances/{species}.txt", species = reads["Species"].unique())
+        expand("results/subset/kmer_distances/{species}_dist.txt", species = reads["Species"].unique())
 
 rule kmers_nofilt_only:
     input:
@@ -78,10 +78,10 @@ rule kmers_kraken_only:
 
 rule batch_per_species:
     input:
-        "results/kmer_distances_{species}.txt",
+        "results/kmer_distances_{species}_dist.txt",
         "results/paste/{species}.txt.gz",
         "results/kmc_histo/{species}.txt",
-        "results/subset/kmer_distances/{species}.txt",
+        "results/subset/kmer_distances/{species}_dist.txt",
         expand("results/fastp/post_trim/{ID}.json", ID=lookup(query="Species == '{species}'", within=reads, cols="Run")),
         expand("results/fastp/post_rm_contam/{ID}.json", ID=lookup(query="Species == '{species}'", within=reads, cols="BioSample"))
     output:
