@@ -47,8 +47,13 @@ def process_chunk(values, col_sums):
 
 def main(input, prefix, threads, chunk_size, print_freq, ignore_first, seperator):
     """Average Bray-Curtis and cosine distances over all column pairs."""
+    # Interpret escape sequences like '\t' (single quotes in bash pass the
+    # literal two characters backslash+t) so both --seperator '\t' and
+    # --seperator $'\t' work.
+    seperator = seperator.encode().decode("unicode_escape")
+
     print("Determining number of columns in k-mer table...")
-    
+
     if Path(input).suffix.lower() == ".gz":
         print("Detected .gz at end of file name. Assuming file is gzip compressed...")
         with gzip.open(input, 'rt') as x:
@@ -57,6 +62,13 @@ def main(input, prefix, threads, chunk_size, print_freq, ignore_first, seperator
         print("No .gz detected at end of file name. Assuming file is not gzip compressed...")
         with open(input, 'rt') as x:
             ncols = len(x.readline().split(seperator))
+
+    if ncols < 2:
+        raise ValueError(
+            f"Detected {ncols} column(s) in {input} using separator "
+            f"{seperator!r}. Check that the separator matches the file "
+            f"(e.g. pass --seperator $'\\t' for tab-separated files)."
+        )
 
     print(f"Number of columns is: {ncols}")
 
@@ -98,7 +110,7 @@ def main(input, prefix, threads, chunk_size, print_freq, ignore_first, seperator
     print(f"Number of column pairs: {num_pairs}")
 
     print("Pass 2: pairwise distances...")
-    reader = pd.read_csv(input, sep=" ", header=None, chunksize=chunk_size, dtype=np.float64, usecols=cols_kept)
+    reader = pd.read_csv(input, sep=seperator, header=None, chunksize=chunk_size, dtype=np.float64, usecols=cols_kept)
     results = Parallel(n_jobs=threads, prefer="threads", pre_dispatch=threads)(
         delayed(process_chunk)(chunk.values, col_sums) for chunk in reader
     )

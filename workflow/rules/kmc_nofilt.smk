@@ -146,7 +146,7 @@ rule subset_kmer_distances_nofilt:
         "../envs/cbf.yaml"
     shell:
         """
-        python scripts/kmer_distances.py --input {input} --prefix $(echo {output} | sed 's:_dist.txt::g') --threads {threads}
+        python scripts/kmer_distances.py --input {input} --prefix $(echo {output} | sed 's:_dist.txt::g') --threads {threads} --seperator '\t'
         """
 
 
