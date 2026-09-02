@@ -81,7 +81,7 @@ rule batch_per_species:
         "results/kmer_distances_{species}.txt",
         "results/paste/{species}.txt.gz",
         "results/kmc_histo/{species}.txt",
-        "results/subset/kmer_distances/{species}.txt",
+        "results/subset/kmer_distances/{species}_dist.txt",
         expand("results/fastp/post_trim/{ID}.json", ID=lookup(query="Species == '{species}'", within=reads, cols="Run")),
         expand("results/fastp/post_rm_contam/{ID}.json", ID=lookup(query="Species == '{species}'", within=reads, cols="BioSample"))
     output:

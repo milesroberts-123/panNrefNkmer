@@ -42,7 +42,7 @@ def process_chunk(values, col_sums):
 @click.option("-t", "--threads", default=1, help="Number of threads")
 @click.option("-c", "--chunk-size", default=100000, help="Number of rows per chunk (lower means less memory is required)")
 @click.option("-v", "--print-freq", default=100, help="Print a message every v chunks to indicate progress.")
-@click.option("-g", "--ignore-first", default=False, help="Ignore first column of text file (e.g. k-mer sequence column)")
+@click.option("--ignore-first/--no-ignore-first", default=True, help="Toggle whether to ignore first column of text file (e.g. k-mer sequence column)")
 @click.option("-s", "--seperator", default=" ", help="Separator between columns")
 
 def main(input, prefix, threads, chunk_size, print_freq, ignore_first, seperator):
@@ -121,8 +121,8 @@ def main(input, prefix, threads, chunk_size, print_freq, ignore_first, seperator
 
     final_result = [str(bc_total / num_pairs), str(cos_total / num_pairs)]
 
-    print(f"Write k-mer distances to {prefix}" + ".txt" + "...")
-    with open(prefix + ".txt", "w") as file:
+    print(f"Write k-mer distances to {prefix}" + "_dist.txt" + "...")
+    with open(prefix + "_dist.txt", "w") as file:
         file.write(",".join(final_result))
 
     print("Done!")
