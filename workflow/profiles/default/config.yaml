@@ -166,6 +166,17 @@ set-resources:
         # walltime-kill failure across ~221 samples. Restored below.
         runtime: "10080m"
         cpus_per_task: 4
+    # Same failure mode as jules_fastq_dump above, just discovered later:
+    # no runtime override existed here either, so it also fell back to
+    # default-resources' 30m -- confirmed via a real SLURM TIMEOUT on
+    # SRR25783949, whose raw reads were ~210GB (see the job's own disk=
+    # resource line). gzip -t has to stream through the whole file to
+    # verify it, which for a file this size easily exceeds 30m even though
+    # it's a much lighter task than the download itself. Same 10080m budget
+    # as jules_fastq_dump since it's operating on the same SRA-scale data.
+    jules_verify_raw_reads:
+        cpus_per_task: 1
+        runtime: "10080m"
     jules_trimmomatic:
         # Fixed 72h, not the inherited size-based formula -- that formula
         # (shared with fastp) allocated 45m for a 6.4GB input and timed out.
