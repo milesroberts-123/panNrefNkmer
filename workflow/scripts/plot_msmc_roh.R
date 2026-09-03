@@ -3,13 +3,19 @@
 # Base R only (no ggplot2/tidyverse) since no R conda env exists in this repo yet.
 #
 # Usage:
-#   Rscript plot_msmc_roh.R [results_dir] [mu] [generation_time]
-#   Rscript plot_msmc_roh.R results 1.25e-8 30
+#   Rscript plot_msmc_roh.R [results_dir] [mu] [generation_time] [sample_ids_file]
+#   Rscript plot_msmc_roh.R results 1.25e-8 30 top10_ids.txt
+#
+# sample_ids_file (optional): one Run ID per line -- restricts plotting to
+# just those samples instead of every finished one found under results_dir.
+# Generate one for e.g. the first 10 samples in the sheet with:
+#   tail -n +2 ../config/samples_medium.tsv | cut -f1 | head -10 > top10_ids.txt
 
 args <- commandArgs(trailingOnly = TRUE)
 results_dir <- if (length(args) >= 1) args[1] else "results"
 mu  <- if (length(args) >= 2) as.numeric(args[2]) else 1.25e-8
 gen <- if (length(args) >= 3) as.numeric(args[3]) else 30.0
+sample_ids <- if (length(args) >= 4) readLines(args[4]) else NULL
 
 dir.create("plots/msmc2", recursive = TRUE, showWarnings = FALSE)
 dir.create("plots/roh", recursive = TRUE, showWarnings = FALSE)
@@ -28,6 +34,9 @@ read_msmc <- function(path, mu, gen) {
 }
 
 msmc_files <- Sys.glob(file.path(results_dir, "msmc2", "*", "msmc2.final.txt"))
+if (!is.null(sample_ids)) {
+  msmc_files <- msmc_files[basename(dirname(msmc_files)) %in% sample_ids]
+}
 if (length(msmc_files) == 0) {
   cat("No finished msmc2.final.txt files found.\n")
 } else {
@@ -66,6 +75,9 @@ if (length(msmc_files) == 0) {
 # bcftools roh output: "RG" data lines have columns
 # RG, Sample, Chromosome, Start, End, Length(bp), nMarkers, Quality
 roh_files <- Sys.glob(file.path(results_dir, "roh", "*_ROH.txt"))
+if (!is.null(sample_ids)) {
+  roh_files <- roh_files[sub("_ROH.txt$", "", basename(roh_files)) %in% sample_ids]
+}
 if (length(roh_files) == 0) {
   cat("No finished *_ROH.txt files found.\n")
 } else {
