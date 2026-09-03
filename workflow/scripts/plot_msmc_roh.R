@@ -6,9 +6,10 @@
 #   Rscript plot_msmc_roh.R [results_dir] [mu] [gentime_csv] [sample_ids_file] [samples_tsv]
 #   Rscript plot_msmc_roh.R results 1.25e-8 gentimes.csv top10_ids.txt ../config/samples_medium.tsv
 #
-# gentime_csv: two columns "species,gentime" (header required) -- generation
-# time varies per species, so each sample's years-ago axis is scaled using
-# its own species' value, looked up via samples_tsv's Run->Species mapping.
+# gentime_csv: expects "phylo_name","gen_time" columns (e.g.
+# gen_time_estimates.csv) -- generation time varies per species, so each
+# sample's years-ago axis is scaled using its own species' value, looked up
+# via samples_tsv's Run->Species mapping matched against phylo_name.
 #
 # sample_ids_file (optional): one Run ID per line -- restricts plotting to
 # just those samples instead of every finished one found under results_dir.
@@ -32,7 +33,7 @@ gen_for_run <- function(run_id) {
     warning(paste0("No Species found for Run ", run_id, " in ", samples_tsv))
     return(NA)
   }
-  gt <- gentimes$gentime[gentimes$species == species[1]]
+  gt <- gentimes$gen_time[gentimes$phylo_name == species[1]]
   if (length(gt) == 0) {
     warning(paste0("No gentime found for species '", species[1], "' (sample ", run_id, ") in ", gentime_csv))
     return(NA)
