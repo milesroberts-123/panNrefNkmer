@@ -3,8 +3,12 @@
 # Base R only (no ggplot2/tidyverse) since no R conda env exists in this repo yet.
 #
 # Usage:
-#   Rscript plot_msmc_roh.R [results_dir] [mu] [generation_time] [sample_ids_file]
-#   Rscript plot_msmc_roh.R results 1.25e-8 30 top10_ids.txt
+#   Rscript plot_msmc_roh.R [results_dir] [mu] [gentime_csv] [sample_ids_file] [samples_tsv]
+#   Rscript plot_msmc_roh.R results 1.25e-8 gentimes.csv top10_ids.txt ../config/samples_medium.tsv
+#
+# gentime_csv: two columns "species,gentime" (header required) -- generation
+# time varies per species, so each sample's years-ago axis is scaled using
+# its own species' value, looked up via samples_tsv's Run->Species mapping.
 #
 # sample_ids_file (optional): one Run ID per line -- restricts plotting to
 # just those samples instead of every finished one found under results_dir.
@@ -13,9 +17,28 @@
 
 args <- commandArgs(trailingOnly = TRUE)
 results_dir <- if (length(args) >= 1) args[1] else "results"
-mu  <- if (length(args) >= 2) as.numeric(args[2]) else 1.25e-8
-gen <- if (length(args) >= 3) as.numeric(args[3]) else 30.0
-sample_ids <- if (length(args) >= 4) readLines(args[4]) else NULL
+mu           <- if (length(args) >= 2) as.numeric(args[2]) else 1.25e-8
+gentime_csv  <- if (length(args) >= 3) args[3] else stop("gentime_csv is required (species,gentime columns)")
+sample_ids   <- if (length(args) >= 4) readLines(args[4]) else NULL
+samples_tsv  <- if (length(args) >= 5) args[5] else "../config/samples_medium.tsv"
+
+gentimes <- read.csv(gentime_csv, stringsAsFactors = FALSE)
+sample_sheet <- read.table(samples_tsv, header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+
+# Run ID -> generation time, via Run -> Species -> gentime
+gen_for_run <- function(run_id) {
+  species <- sample_sheet$Species[sample_sheet$Run == run_id]
+  if (length(species) == 0) {
+    warning(paste0("No Species found for Run ", run_id, " in ", samples_tsv))
+    return(NA)
+  }
+  gt <- gentimes$gentime[gentimes$species == species[1]]
+  if (length(gt) == 0) {
+    warning(paste0("No gentime found for species '", species[1], "' (sample ", run_id, ") in ", gentime_csv))
+    return(NA)
+  }
+  gt[1]
+}
 
 dir.create("plots/msmc2", recursive = TRUE, showWarnings = FALSE)
 dir.create("plots/roh", recursive = TRUE, showWarnings = FALSE)
@@ -41,7 +64,16 @@ if (length(msmc_files) == 0) {
   cat("No finished msmc2.final.txt files found.\n")
 } else {
   srr_ids <- basename(dirname(msmc_files))
-  curves <- lapply(msmc_files, read_msmc, mu = mu, gen = gen)
+  gens <- setNames(sapply(srr_ids, gen_for_run), srr_ids)
+  keep <- !is.na(gens)
+  if (any(!keep)) {
+    cat("Skipping (no gentime found):", paste(srr_ids[!keep], collapse = ", "), "\n")
+  }
+  msmc_files <- msmc_files[keep]
+  srr_ids <- srr_ids[keep]
+  gens <- gens[keep]
+
+  curves <- Map(function(f, g) read_msmc(f, mu = mu, gen = g), msmc_files, gens)
   names(curves) <- srr_ids
 
   # individual plots
@@ -50,7 +82,7 @@ if (length(msmc_files) == 0) {
     png(file.path("plots/msmc2", paste0(srr, ".png")), width = 900, height = 700)
     plot(d$x, d$y, type = "s", log = "xy",
          xlab = "Years ago", ylab = "Effective population size (Ne)",
-         main = paste0("MSMC2 -- ", srr))
+         main = paste0("MSMC2 -- ", srr, " (gen=", gens[[srr]], ")"))
     dev.off()
   }
 
