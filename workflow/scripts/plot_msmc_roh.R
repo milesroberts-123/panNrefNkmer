@@ -41,6 +41,11 @@ gen_for_run <- function(run_id) {
   gt[1]
 }
 
+species_for_run <- function(run_id) {
+  species <- sample_sheet$Species[sample_sheet$Run == run_id]
+  if (length(species) == 0) run_id else species[1]
+}
+
 dir.create("plots/msmc2", recursive = TRUE, showWarnings = FALSE)
 dir.create("plots/roh", recursive = TRUE, showWarnings = FALSE)
 
@@ -73,17 +78,21 @@ if (length(msmc_files) == 0) {
   msmc_files <- msmc_files[keep]
   srr_ids <- srr_ids[keep]
   gens <- gens[keep]
+  species_labels <- sapply(srr_ids, species_for_run)
 
   curves <- Map(function(f, g) read_msmc(f, mu = mu, gen = g), msmc_files, gens)
   names(curves) <- srr_ids
 
-  # individual plots
+  # individual plots -- filenames/titles/legend all use species name, not
+  # the Run ID, per request. Falls back to srr_id only if a species somehow
+  # maps to itself (see species_for_run).
   for (srr in srr_ids) {
     d <- curves[[srr]]
-    png(file.path("plots/msmc2", paste0(srr, ".png")), width = 900, height = 700)
+    label <- species_labels[[srr]]
+    png(file.path("plots/msmc2", paste0(label, ".png")), width = 900, height = 700)
     plot(d$x, d$y, type = "s", log = "xy",
          xlab = "Years ago", ylab = "Effective population size (Ne)",
-         main = paste0("MSMC2 -- ", srr, " (gen=", gens[[srr]], ")"))
+         main = paste0("MSMC2 -- ", label, " (gen=", gens[[srr]], ")"))
     dev.off()
   }
 
@@ -98,7 +107,7 @@ if (length(msmc_files) == 0) {
   for (i in seq_along(curves)) {
     lines(curves[[i]]$x, curves[[i]]$y, type = "s", col = cols[i])
   }
-  legend("topright", legend = names(curves), col = cols, lty = 1, cex = 0.6, ncol = 2)
+  legend("topright", legend = species_labels, col = cols, lty = 1, cex = 0.6, ncol = 2)
   dev.off()
 
   cat("Wrote", length(msmc_files), "individual MSMC2 plots + 1 overlay to plots/msmc2/\n")
