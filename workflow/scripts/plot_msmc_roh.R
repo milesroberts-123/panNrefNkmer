@@ -186,15 +186,16 @@ if (length(roh_files) == 0) {
       file.path(ref_genome_path, species, paste0(species, ".fasta.fai"))
     }
 
-    # NCBI GenBank accession convention: "CM" prefix (e.g. CM017761.1) marks
-    # an assembled chromosome; WGS scaffolds/contigs carry a longer 4-6
-    # letter project prefix instead (e.g. VAHF01000047.1). jules_bcftools_
-    # mpileup runs against the whole reference with no chromosome
-    # restriction (confirmed in workflow/rules/jules_v2.smk), so ROH itself
-    # was called across every scaffold -- this is the only way to separate
-    # real chromosomes from scaffold fragments after the fact, for both
-    # painting and the FROH calculation below.
-    is_chromosome <- function(chrom) grepl("^CM[0-9]+(\\.[0-9]+)?$", chrom)
+    # NOTE: a "CM" GenBank-accession filter was tried here and reverted --
+    # it incorrectly excluded species (e.g. Arabidopsis) whose reference
+    # uses a different chromosome-naming convention (plain numbers/Chr-style
+    # instead of GenBank CM accessions). No single naming pattern reliably
+    # separates real chromosomes from scaffolds across every species' source
+    # here, so for now this paints whatever ROH was actually called on
+    # (jules_bcftools_mpileup runs against the whole reference with no
+    # chromosome restriction -- confirmed in workflow/rules/jules_v2.smk).
+    # Revisit with a size-based or per-species cutoff once we've checked
+    # for a natural large-chromosome-vs-small-scaffold gap in the data.
 
     froh_rows <- list()
     for (srr in unique(all_roh$srr)) {
@@ -206,9 +207,8 @@ if (length(roh_files) == 0) {
       }
       fai <- read.table(fai_path, sep = "\t", stringsAsFactors = FALSE)
       colnames(fai)[1:2] <- c("chrom", "len")
-      fai <- fai[is_chromosome(fai$chrom), ]
 
-      sample_roh <- all_roh[all_roh$srr == srr & is_chromosome(all_roh$chrom), ]
+      sample_roh <- all_roh[all_roh$srr == srr, ]
 
       # paint exactly the chromosome set present in this sample's
       # chromosome-only ROH output, looked up in the chromosome-only .fai
