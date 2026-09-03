@@ -176,7 +176,7 @@ set-resources:
     # as jules_fastq_dump since it's operating on the same SRA-scale data.
     jules_verify_raw_reads:
         cpus_per_task: 1
-        runtime: "10080m"
+        runtime: "1440m"
     jules_trimmomatic:
         # Fixed 72h, not the inherited size-based formula -- that formula
         # (shared with fastp) allocated 45m for a 6.4GB input and timed out.
