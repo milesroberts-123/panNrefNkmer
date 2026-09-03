@@ -196,30 +196,33 @@ if (length(roh_files) == 0) {
       }
       fai <- read.table(fai_path, sep = "\t", stringsAsFactors = FALSE)
       colnames(fai)[1:2] <- c("chrom", "len")
-      # >500000bp matches jules_msmc2_contigs' own real-chromosome cutoff --
-      # painting every scaffold (not just a fixed top-N) is what was asked
-      # for, but a raw .fai can carry thousands of tiny unplaced fragments,
-      # which is both unreadable and can blow past Cairo's ~32767px max PNG
-      # dimension (confirmed: this failed outright on a fragmented assembly
-      # before this filter was added).
-      top_scaffolds <- fai[fai$len > 500000, ]
-      top_scaffolds <- top_scaffolds[order(-top_scaffolds$len), ]
-      if (nrow(top_scaffolds) == 0) {
-        top_scaffolds <- fai[order(-fai$len), ][1, ]
-      }
 
       sample_roh <- all_roh[all_roh$srr == srr, ]
 
+      # ROH itself was only ever called on chromosome-level scaffolds (see
+      # jules_bcftools_mpileup's own restriction upstream) -- paint exactly
+      # that set, looked up in the .fai for real lengths, rather than an
+      # independent size cutoff on the .fai that can pull in large
+      # non-chromosome scaffolds ROH was never actually run on.
+      called_chroms <- unique(sample_roh$chrom)
+      top_scaffolds <- fai[fai$chrom %in% called_chroms, ]
+      top_scaffolds <- top_scaffolds[order(-top_scaffolds$len), ]
+      if (nrow(top_scaffolds) == 0) {
+        warning(paste0("No .fai lengths matched the chromosomes ROH was called on for ", srr, " -- skipping painting"))
+        next
+      }
+
       # chromosome painting: one horizontal track per scaffold (grey = full
       # length), red blocks = ROH segments drawn to scale within it.
-      # Height clamped to Cairo's device limit as a hard safety net even
-      # after the >500000bp filter above.
+      # Height clamped to Cairo's device limit as a hard safety net (only
+      # matters if ROH was somehow called on an unusually large number of
+      # chromosomes).
       png(file.path("plots/roh/painting", paste0(species, "_painting.png")),
           width = 1200, height = min(30000, max(400, nrow(top_scaffolds) * 25)))
       par(mar = c(5, 10, 4, 2))
       plot(NA, xlim = c(0, max(top_scaffolds$len)), ylim = c(0, nrow(top_scaffolds) + 1),
            yaxt = "n", xlab = "Position (bp)", ylab = "",
-           main = paste0("ROH painting -- ", species, " (", nrow(top_scaffolds), " scaffolds >500kb)"))
+           main = paste0("ROH painting -- ", species, " (", nrow(top_scaffolds), " chromosomes)"))
       axis(2, at = seq_len(nrow(top_scaffolds)), labels = rev(top_scaffolds$chrom),
            las = 2, cex.axis = 0.6)
       for (i in seq_len(nrow(top_scaffolds))) {
