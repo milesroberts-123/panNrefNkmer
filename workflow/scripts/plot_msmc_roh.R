@@ -1,0 +1,114 @@
+#!/usr/bin/env Rscript
+# Same-day progress plots for whatever ROH/MSMC2 samples have finished so far.
+# Base R only (no ggplot2/tidyverse) since no R conda env exists in this repo yet.
+#
+# Usage:
+#   Rscript plot_msmc_roh.R [results_dir] [mu] [generation_time]
+#   Rscript plot_msmc_roh.R results 1.25e-8 30
+
+args <- commandArgs(trailingOnly = TRUE)
+results_dir <- if (length(args) >= 1) args[1] else "results"
+mu  <- if (length(args) >= 2) as.numeric(args[2]) else 1.25e-8
+gen <- if (length(args) >= 3) as.numeric(args[3]) else 30.0
+
+dir.create("plots/msmc2", recursive = TRUE, showWarnings = FALSE)
+dir.create("plots/roh", recursive = TRUE, showWarnings = FALSE)
+
+# --- MSMC2 ---
+# Same conversion as msmc-tools' plot_utils.py popSizeStepPlot: x = left_time
+# boundary scaled to years via generation time / mu, y = Ne from the
+# coalescence rate (first lambda column). Read by position, not by column
+# name -- msmc2's single-sample output names that column "lambda", not
+# "lambda_00" (the "_00" naming only shows up for multi-population runs).
+read_msmc <- function(path, mu, gen) {
+  d <- read.table(path, header = TRUE, sep = "\t")
+  x <- d[[2]] * gen / mu       # column 2 = left_time_boundary
+  y <- (1 / d[[4]]) / (2 * mu) # column 4 = first lambda column
+  data.frame(x = x, y = y)
+}
+
+msmc_files <- Sys.glob(file.path(results_dir, "msmc2", "*", "msmc2.final.txt"))
+if (length(msmc_files) == 0) {
+  cat("No finished msmc2.final.txt files found.\n")
+} else {
+  srr_ids <- basename(dirname(msmc_files))
+  curves <- lapply(msmc_files, read_msmc, mu = mu, gen = gen)
+  names(curves) <- srr_ids
+
+  # individual plots
+  for (srr in srr_ids) {
+    d <- curves[[srr]]
+    png(file.path("plots/msmc2", paste0(srr, ".png")), width = 900, height = 700)
+    plot(d$x, d$y, type = "s", log = "xy",
+         xlab = "Years ago", ylab = "Effective population size (Ne)",
+         main = paste0("MSMC2 -- ", srr))
+    dev.off()
+  }
+
+  # overlay plot, all finished samples together
+  cols <- rainbow(length(curves))
+  xr <- range(unlist(lapply(curves, function(d) d$x[d$x > 0])))
+  yr <- range(unlist(lapply(curves, function(d) d$y)))
+  png("plots/msmc2/all_samples_overlay.png", width = 1100, height = 800)
+  plot(NA, xlim = xr, ylim = yr, log = "xy",
+       xlab = "Years ago", ylab = "Effective population size (Ne)",
+       main = paste0("MSMC2 -- ", length(curves), " sample(s) completed"))
+  for (i in seq_along(curves)) {
+    lines(curves[[i]]$x, curves[[i]]$y, type = "s", col = cols[i])
+  }
+  legend("topright", legend = names(curves), col = cols, lty = 1, cex = 0.6, ncol = 2)
+  dev.off()
+
+  cat("Wrote", length(msmc_files), "individual MSMC2 plots + 1 overlay to plots/msmc2/\n")
+}
+
+# --- ROH ---
+# bcftools roh output: "RG" data lines have columns
+# RG, Sample, Chromosome, Start, End, Length(bp), nMarkers, Quality
+roh_files <- Sys.glob(file.path(results_dir, "roh", "*_ROH.txt"))
+if (length(roh_files) == 0) {
+  cat("No finished *_ROH.txt files found.\n")
+} else {
+  all_roh <- do.call(rbind, lapply(roh_files, function(f) {
+    srr <- sub("_ROH.txt$", "", basename(f))
+    lines <- readLines(f)
+    rg <- lines[startsWith(lines, "RG")]
+    if (length(rg) == 0) return(NULL)
+    parts <- strsplit(rg, "\t")
+    data.frame(
+      srr = srr,
+      chrom = sapply(parts, `[`, 3),
+      length_bp = as.numeric(sapply(parts, `[`, 6))
+    )
+  }))
+
+  if (is.null(all_roh) || nrow(all_roh) == 0) {
+    cat("ROH files found but contained no RG segments.\n")
+  } else {
+    # top 30 scaffolds by total ROH length summed across all finished samples
+    by_chrom <- aggregate(length_bp ~ chrom, data = all_roh, sum)
+    by_chrom <- by_chrom[order(-by_chrom$length_bp), ]
+    top30 <- head(by_chrom, 30)
+
+    png("plots/roh/top30_scaffolds_total_roh.png", width = 1200, height = 700)
+    par(mar = c(8, 5, 4, 2))
+    barplot(top30$length_bp / 1e6, names.arg = top30$chrom, las = 2, cex.names = 0.7,
+            ylab = "Total ROH length (Mb)",
+            main = paste0("Top ", nrow(top30), " scaffolds by total ROH -- ",
+                           length(unique(all_roh$srr)), " sample(s)"))
+    dev.off()
+
+    # per-sample total ROH, for a quick sample-level overview
+    by_sample <- aggregate(length_bp ~ srr, data = all_roh, sum)
+    by_sample <- by_sample[order(-by_sample$length_bp), ]
+    png("plots/roh/total_roh_per_sample.png",
+        width = max(900, nrow(by_sample) * 40), height = 700)
+    par(mar = c(10, 5, 4, 2))
+    barplot(by_sample$length_bp / 1e6, names.arg = by_sample$srr, las = 2, cex.names = 0.7,
+            ylab = "Total ROH length (Mb)",
+            main = paste0("Total ROH per sample -- ", nrow(by_sample), " sample(s) completed"))
+    dev.off()
+
+    cat("Wrote plots/roh/top30_scaffolds_total_roh.png and plots/roh/total_roh_per_sample.png\n")
+  }
+}
