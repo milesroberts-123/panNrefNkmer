@@ -196,8 +196,7 @@ if (length(roh_files) == 0) {
       }
       fai <- read.table(fai_path, sep = "\t", stringsAsFactors = FALSE)
       colnames(fai)[1:2] <- c("chrom", "len")
-      fai <- fai[order(-fai$len), ]
-      top_scaffolds <- head(fai, 30)
+      top_scaffolds <- fai[order(-fai$len), ]
 
       sample_roh <- all_roh[all_roh$srr == srr, ]
 
@@ -208,7 +207,7 @@ if (length(roh_files) == 0) {
       par(mar = c(5, 10, 4, 2))
       plot(NA, xlim = c(0, max(top_scaffolds$len)), ylim = c(0, nrow(top_scaffolds) + 1),
            yaxt = "n", xlab = "Position (bp)", ylab = "",
-           main = paste0("ROH painting -- ", species, " (top ", nrow(top_scaffolds), " scaffolds)"))
+           main = paste0("ROH painting -- ", species, " (", nrow(top_scaffolds), " scaffolds)"))
       axis(2, at = seq_len(nrow(top_scaffolds)), labels = rev(top_scaffolds$chrom),
            las = 2, cex.axis = 0.6)
       for (i in seq_len(nrow(top_scaffolds))) {
