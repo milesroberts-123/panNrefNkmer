@@ -196,18 +196,30 @@ if (length(roh_files) == 0) {
       }
       fai <- read.table(fai_path, sep = "\t", stringsAsFactors = FALSE)
       colnames(fai)[1:2] <- c("chrom", "len")
-      top_scaffolds <- fai[order(-fai$len), ]
+      # >500000bp matches jules_msmc2_contigs' own real-chromosome cutoff --
+      # painting every scaffold (not just a fixed top-N) is what was asked
+      # for, but a raw .fai can carry thousands of tiny unplaced fragments,
+      # which is both unreadable and can blow past Cairo's ~32767px max PNG
+      # dimension (confirmed: this failed outright on a fragmented assembly
+      # before this filter was added).
+      top_scaffolds <- fai[fai$len > 500000, ]
+      top_scaffolds <- top_scaffolds[order(-top_scaffolds$len), ]
+      if (nrow(top_scaffolds) == 0) {
+        top_scaffolds <- fai[order(-fai$len), ][1, ]
+      }
 
       sample_roh <- all_roh[all_roh$srr == srr, ]
 
       # chromosome painting: one horizontal track per scaffold (grey = full
-      # length), red blocks = ROH segments drawn to scale within it
+      # length), red blocks = ROH segments drawn to scale within it.
+      # Height clamped to Cairo's device limit as a hard safety net even
+      # after the >500000bp filter above.
       png(file.path("plots/roh/painting", paste0(species, "_painting.png")),
-          width = 1200, height = max(400, nrow(top_scaffolds) * 25))
+          width = 1200, height = min(30000, max(400, nrow(top_scaffolds) * 25)))
       par(mar = c(5, 10, 4, 2))
       plot(NA, xlim = c(0, max(top_scaffolds$len)), ylim = c(0, nrow(top_scaffolds) + 1),
            yaxt = "n", xlab = "Position (bp)", ylab = "",
-           main = paste0("ROH painting -- ", species, " (", nrow(top_scaffolds), " scaffolds)"))
+           main = paste0("ROH painting -- ", species, " (", nrow(top_scaffolds), " scaffolds >500kb)"))
       axis(2, at = seq_len(nrow(top_scaffolds)), labels = rev(top_scaffolds$chrom),
            las = 2, cex.axis = 0.6)
       for (i in seq_len(nrow(top_scaffolds))) {
