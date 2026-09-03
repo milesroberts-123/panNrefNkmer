@@ -15,13 +15,19 @@
 # just those samples instead of every finished one found under results_dir.
 # Generate one for e.g. the first 10 samples in the sheet with:
 #   tail -n +2 ../config/samples_medium.tsv | cut -f1 | head -10 > top10_ids.txt
+#
+# ref_genome_path (optional): matches config.yaml's reference_genome_path --
+# needed for chromosome-painting/FROH, which read each species' .fasta.fai
+# for real scaffold lengths (bcftools roh output alone has no genome-length
+# info, only ROH segment coordinates).
 
 args <- commandArgs(trailingOnly = TRUE)
-results_dir <- if (length(args) >= 1) args[1] else "results"
+results_dir  <- if (length(args) >= 1) args[1] else "results"
 mu           <- if (length(args) >= 2) as.numeric(args[2]) else 1.25e-8
 gentime_csv  <- if (length(args) >= 3) args[3] else stop("gentime_csv is required (species,gentime columns)")
 sample_ids   <- if (length(args) >= 4) readLines(args[4]) else NULL
 samples_tsv  <- if (length(args) >= 5) args[5] else "../config/samples_medium.tsv"
+ref_genome_path <- if (length(args) >= 6) args[6] else "/global/scratch/projects/fc_moilab/julesperez/post_rot/new_refgenomes/"
 
 gentimes <- read.csv(gentime_csv, stringsAsFactors = FALSE)
 sample_sheet <- read.table(samples_tsv, header = TRUE, sep = "\t", stringsAsFactors = FALSE)
@@ -131,7 +137,10 @@ if (length(roh_files) == 0) {
     parts <- strsplit(rg, "\t")
     data.frame(
       srr = srr,
+      species = species_for_run(srr),
       chrom = sapply(parts, `[`, 3),
+      start = as.numeric(sapply(parts, `[`, 4)),
+      end = as.numeric(sapply(parts, `[`, 5)),
       length_bp = as.numeric(sapply(parts, `[`, 6))
     )
   }))
@@ -152,17 +161,89 @@ if (length(roh_files) == 0) {
                            length(unique(all_roh$srr)), " sample(s)"))
     dev.off()
 
-    # per-sample total ROH, for a quick sample-level overview
-    by_sample <- aggregate(length_bp ~ srr, data = all_roh, sum)
+    # per-sample total ROH, for a quick sample-level overview -- labeled by
+    # species name, not Run ID, same as the MSMC2 plots above
+    by_sample <- aggregate(length_bp ~ species, data = all_roh, sum)
     by_sample <- by_sample[order(-by_sample$length_bp), ]
     png("plots/roh/total_roh_per_sample.png",
         width = max(900, nrow(by_sample) * 40), height = 700)
     par(mar = c(10, 5, 4, 2))
-    barplot(by_sample$length_bp / 1e6, names.arg = by_sample$srr, las = 2, cex.names = 0.7,
+    barplot(by_sample$length_bp / 1e6, names.arg = by_sample$species, las = 2, cex.names = 0.7,
             ylab = "Total ROH length (Mb)",
             main = paste0("Total ROH per sample -- ", nrow(by_sample), " sample(s) completed"))
     dev.off()
 
     cat("Wrote plots/roh/top30_scaffolds_total_roh.png and plots/roh/total_roh_per_sample.png\n")
+
+    # --- Chromosome painting + genome-wide FROH ---
+    # bcftools roh's own output has no scaffold-length info, only ROH
+    # segment coordinates -- pull real lengths from each species' .fasta.fai
+    # (the same file jules_msmc2_contigs/jules_samtools_faidx already
+    # generate) so both plots are scaled to real genome size, not just
+    # segment counts.
+    dir.create("plots/roh/painting", recursive = TRUE, showWarnings = FALSE)
+    fai_for_species <- function(species) {
+      file.path(ref_genome_path, species, paste0(species, ".fasta.fai"))
+    }
+
+    froh_rows <- list()
+    for (srr in unique(all_roh$srr)) {
+      species <- unique(all_roh$species[all_roh$srr == srr])[1]
+      fai_path <- fai_for_species(species)
+      if (!file.exists(fai_path)) {
+        warning(paste0("No .fai found for species '", species, "' (sample ", srr, ") at ", fai_path))
+        next
+      }
+      fai <- read.table(fai_path, sep = "\t", stringsAsFactors = FALSE)
+      colnames(fai)[1:2] <- c("chrom", "len")
+      fai <- fai[order(-fai$len), ]
+      top_scaffolds <- head(fai, 30)
+
+      sample_roh <- all_roh[all_roh$srr == srr, ]
+
+      # chromosome painting: one horizontal track per scaffold (grey = full
+      # length), red blocks = ROH segments drawn to scale within it
+      png(file.path("plots/roh/painting", paste0(species, "_painting.png")),
+          width = 1200, height = max(400, nrow(top_scaffolds) * 25))
+      par(mar = c(5, 10, 4, 2))
+      plot(NA, xlim = c(0, max(top_scaffolds$len)), ylim = c(0, nrow(top_scaffolds) + 1),
+           yaxt = "n", xlab = "Position (bp)", ylab = "",
+           main = paste0("ROH painting -- ", species, " (top ", nrow(top_scaffolds), " scaffolds)"))
+      axis(2, at = seq_len(nrow(top_scaffolds)), labels = rev(top_scaffolds$chrom),
+           las = 2, cex.axis = 0.6)
+      for (i in seq_len(nrow(top_scaffolds))) {
+        y <- nrow(top_scaffolds) - i + 1
+        chrom <- top_scaffolds$chrom[i]
+        rect(0, y - 0.3, top_scaffolds$len[i], y + 0.3, col = "grey85", border = NA)
+        segs <- sample_roh[sample_roh$chrom == chrom, ]
+        if (nrow(segs) > 0) {
+          rect(segs$start, y - 0.3, segs$end, y + 0.3, col = "red", border = NA)
+        }
+      }
+      dev.off()
+
+      froh_rows[[srr]] <- data.frame(
+        species = species,
+        genome_len_bp = sum(fai$len),
+        roh_len_bp = sum(sample_roh$length_bp)
+      )
+    }
+
+    if (length(froh_rows) > 0) {
+      froh_df <- do.call(rbind, froh_rows)
+      froh_df$pct_genome_in_roh <- 100 * froh_df$roh_len_bp / froh_df$genome_len_bp
+      froh_df <- froh_df[order(-froh_df$pct_genome_in_roh), ]
+
+      png("plots/roh/froh_percent_genome.png",
+          width = max(900, nrow(froh_df) * 60), height = 700)
+      par(mar = c(10, 5, 4, 2))
+      barplot(froh_df$pct_genome_in_roh, names.arg = froh_df$species, las = 2, cex.names = 0.8,
+              ylab = "% of genome in ROH (FROH)",
+              main = paste0("Genome-wide FROH -- ", nrow(froh_df), " sample(s)"))
+      dev.off()
+
+      cat("Wrote", length(froh_rows), "chromosome-painting plots to plots/roh/painting/",
+          "and plots/roh/froh_percent_genome.png\n")
+    }
   }
 }
