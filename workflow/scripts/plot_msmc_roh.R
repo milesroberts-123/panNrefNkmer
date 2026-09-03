@@ -20,6 +20,16 @@
 # needed for chromosome-painting/FROH, which read each species' .fasta.fai
 # for real scaffold lengths (bcftools roh output alone has no genome-length
 # info, only ROH segment coordinates).
+#
+# chromosome_level_tsv (optional): "Species","SampleID" columns (e.g.
+# refs/chromosome_level_samples.tsv) -- the ground-truth list of species
+# with an actual chromosome-level assembly. jules_bcftools_mpileup has no
+# chromosome restriction of its own (confirmed in workflow/rules/
+# jules_v2.smk), so ROH/MSMC2 get computed across every scaffold regardless
+# of assembly quality -- this filter is applied to every plot (MSMC2
+# individual/overlay, ROH top-N/per-sample/painting/FROH) so a
+# scaffold-level species never silently ends up presented as if it were
+# chromosome-level. When omitted, no species filtering happens.
 
 args <- commandArgs(trailingOnly = TRUE)
 results_dir  <- if (length(args) >= 1) args[1] else "results"
@@ -28,6 +38,16 @@ gentime_csv  <- if (length(args) >= 3) args[3] else stop("gentime_csv is require
 sample_ids   <- if (length(args) >= 4) readLines(args[4]) else NULL
 samples_tsv  <- if (length(args) >= 5) args[5] else "../config/samples_medium.tsv"
 ref_genome_path <- if (length(args) >= 6) args[6] else "/global/scratch/projects/fc_moilab/julesperez/post_rot/new_refgenomes/"
+chromosome_level_tsv <- if (length(args) >= 7) args[7] else NULL
+
+chrom_level_species <- if (!is.null(chromosome_level_tsv)) {
+  read.table(chromosome_level_tsv, header = TRUE, sep = "\t", stringsAsFactors = FALSE)$Species
+} else {
+  NULL
+}
+is_chrom_level_species <- function(species) {
+  if (is.null(chrom_level_species)) TRUE else species %in% chrom_level_species
+}
 
 gentimes <- read.csv(gentime_csv, stringsAsFactors = FALSE)
 sample_sheet <- read.table(samples_tsv, header = TRUE, sep = "\t", stringsAsFactors = FALSE)
@@ -72,6 +92,11 @@ msmc_files <- Sys.glob(file.path(results_dir, "msmc2", "*", "msmc2.final.txt"))
 if (!is.null(sample_ids)) {
   msmc_files <- msmc_files[basename(dirname(msmc_files)) %in% sample_ids]
 }
+not_chrom_level <- msmc_files[!sapply(basename(dirname(msmc_files)), function(s) is_chrom_level_species(species_for_run(s)))]
+if (length(not_chrom_level) > 0) {
+  cat("Excluding (not chromosome-level assembly):", paste(basename(dirname(not_chrom_level)), collapse = ", "), "\n")
+}
+msmc_files <- msmc_files[sapply(basename(dirname(msmc_files)), function(s) is_chrom_level_species(species_for_run(s)))]
 if (length(msmc_files) == 0) {
   cat("No finished msmc2.final.txt files found.\n")
 } else {
@@ -126,6 +151,11 @@ roh_files <- Sys.glob(file.path(results_dir, "roh", "*_ROH.txt"))
 if (!is.null(sample_ids)) {
   roh_files <- roh_files[sub("_ROH.txt$", "", basename(roh_files)) %in% sample_ids]
 }
+not_chrom_level_roh <- roh_files[!sapply(sub("_ROH.txt$", "", basename(roh_files)), function(s) is_chrom_level_species(species_for_run(s)))]
+if (length(not_chrom_level_roh) > 0) {
+  cat("Excluding (not chromosome-level assembly):", paste(sub("_ROH.txt$", "", basename(not_chrom_level_roh)), collapse = ", "), "\n")
+}
+roh_files <- roh_files[sapply(sub("_ROH.txt$", "", basename(roh_files)), function(s) is_chrom_level_species(species_for_run(s)))]
 if (length(roh_files) == 0) {
   cat("No finished *_ROH.txt files found.\n")
 } else {
