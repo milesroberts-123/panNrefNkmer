@@ -186,6 +186,16 @@ if (length(roh_files) == 0) {
       file.path(ref_genome_path, species, paste0(species, ".fasta.fai"))
     }
 
+    # NCBI GenBank accession convention: "CM" prefix (e.g. CM017761.1) marks
+    # an assembled chromosome; WGS scaffolds/contigs carry a longer 4-6
+    # letter project prefix instead (e.g. VAHF01000047.1). jules_bcftools_
+    # mpileup runs against the whole reference with no chromosome
+    # restriction (confirmed in workflow/rules/jules_v2.smk), so ROH itself
+    # was called across every scaffold -- this is the only way to separate
+    # real chromosomes from scaffold fragments after the fact, for both
+    # painting and the FROH calculation below.
+    is_chromosome <- function(chrom) grepl("^CM[0-9]+(\\.[0-9]+)?$", chrom)
+
     froh_rows <- list()
     for (srr in unique(all_roh$srr)) {
       species <- unique(all_roh$species[all_roh$srr == srr])[1]
@@ -196,14 +206,12 @@ if (length(roh_files) == 0) {
       }
       fai <- read.table(fai_path, sep = "\t", stringsAsFactors = FALSE)
       colnames(fai)[1:2] <- c("chrom", "len")
+      fai <- fai[is_chromosome(fai$chrom), ]
 
-      sample_roh <- all_roh[all_roh$srr == srr, ]
+      sample_roh <- all_roh[all_roh$srr == srr & is_chromosome(all_roh$chrom), ]
 
-      # ROH itself was only ever called on chromosome-level scaffolds (see
-      # jules_bcftools_mpileup's own restriction upstream) -- paint exactly
-      # that set, looked up in the .fai for real lengths, rather than an
-      # independent size cutoff on the .fai that can pull in large
-      # non-chromosome scaffolds ROH was never actually run on.
+      # paint exactly the chromosome set present in this sample's
+      # chromosome-only ROH output, looked up in the chromosome-only .fai
       called_chroms <- unique(sample_roh$chrom)
       top_scaffolds <- fai[fai$chrom %in% called_chroms, ]
       top_scaffolds <- top_scaffolds[order(-top_scaffolds$len), ]
