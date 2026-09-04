@@ -124,7 +124,7 @@ set-resources:
         runtime: "int(min(max(2*input.size_mb/(1024*threads), 30), 1440))"
     subset_kmer_distances_nofilt:
         cpus_per_task: 8
-        runtime: "int(min(max(2*input.size_mb/(1024*threads), 30), 1440))"
+        runtime: "int(min(max(20*input.size_mb/(1024*threads), 180), 1440))"
     subset_kmer_distances_kraken:
         cpus_per_task: 8
         runtime: "int(min(max(2*input.size_mb/(1024*threads), 30), 1440))"
