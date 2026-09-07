@@ -85,7 +85,7 @@ set-resources:
     prejoin_nofilt:
         slurm_partition: "savio4_htc"
         slurm_qos: "moilab_htc4_normal"
-        runtime: "600m"
+        runtime: "1440m"
     prejoin_kraken:
         slurm_partition: "savio4_htc"
         slurm_qos: "moilab_htc4_normal"
@@ -116,7 +116,7 @@ set-resources:
         cpus_per_task: 1
         slurm_partition: "savio3_xlmem"
         slurm_mem: "300G"
-        runtime: 720
+        runtime: 1440
     subset_kmer_table_kraken:
         runtime: 180
     subset_kmer_distances:

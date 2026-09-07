@@ -11,7 +11,7 @@ configfile: "../config/config.yaml"
 
 # load samples
 reads = pd.read_table(
-    "../config/samples_medium.tsv", sep="\t", dtype={"Run": str}
+    "../config/samples_large.tsv", sep="\t", dtype={"Run": str}
 ).set_index(["Run"], drop=False)
 
 # jules_* track only -- restricted to species with an actual chromosome-
@@ -23,8 +23,8 @@ reads = pd.read_table(
 # itself) so the kmer-counting branch, which still wants every species
 # regardless of assembly level, is unaffected.
 jules_reads = pd.read_table(
-    "../config/samples_medium_chromosome.tsv", sep="\t", dtype={"Run": str}
-).set_index(["Run"], drop=False)
+        "../config/samples_medium.tsv", sep="\t", dtype={"Run": str}
+    ).set_index(["Run"], drop=False)
 
 # Define rules too fast to bother with cluster submission
 localrules: all, batch_per_sample
