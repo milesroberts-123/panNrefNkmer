@@ -435,6 +435,38 @@ summary(pgls_mod_pi_height)
 summary(pgls_mod_bray_curtis_height)
 ```
 
+# plot old k-mer distance script vs new script
+```{r}
+
+old_kmer_distances <- list.files(path = "../results/nofilt/subset/kmer_distances", 
+                        pattern = ".*dist.txt", 
+                        full.names = TRUE)
+
+old_kmer_distances <- old_kmer_distances %>% 
+  set_names() %>% 
+  map_dfr(~fread(.x, col.names = c("bray_curtis", "cosine")), .id = "source_file") %>%
+  mutate(phylo_name = gsub(".*kmer_distances/|_dist.txt","",source_file))
+
+new_kmer_distances <- list.files(path = "../results/nofilt/kmer_distances", 
+                        pattern = ".*dist.txt", 
+                        full.names = TRUE)
+
+new_kmer_distances <- new_kmer_distances %>% 
+  set_names() %>% 
+  map_dfr(~fread(.x, col.names = c("bray_curtis", "cosine")), .id = "source_file") %>%
+  mutate(phylo_name = gsub(".*kmer_distances/|_dist.txt","",source_file))
+
+new_vs_old_dist <- new_kmer_distances %>% 
+  left_join(old_kmer_distances, by = "phylo_name")
+
+ggplot(new_vs_old_dist, aes(x = bray_curtis.y, y = bray_curtis.x)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0) +
+  labs(x = "Bray-Curtis distance (slow method)", y = "Bray-Curtis distance (fast method)", title = paste0("Validate better distance calculation\nn = ", sum(complete.cases(new_vs_old_dist))))
+
+ggsave(paste0("../../results/by-date/", today, "/new_vs_old_bray_curtis.pdf"), width = 5, height = 5)
+```
+
 # k-mer mar
 ```{r}
 

@@ -12,6 +12,8 @@ import pandas as pd
 from joblib import Parallel, delayed
 import gzip
 from pathlib import Path
+import random
+import mmh3
 
 #CHUNK_ROWS = 100000
 
@@ -36,6 +38,19 @@ def process_chunk(values, col_sums):
     return bc, dot, sq
 
 
+import heapq
+
+def add_heap(heap, hash_value, index_value, n):
+    """
+    Maintain a max-heap of size n containing the n smallest values seen.
+    heap is a list used as a max-heap (store negated values).
+    """
+    if len(heap) < n:
+        heapq.heappush(heap, -index_value)  # negate for max-heap behavior
+    elif hash_value < -heap[0]:  # -heap[0] is the current max
+        heapq.heapreplace(heap, -index_value)  # pop max, push new value
+    return heap
+
 @click.command(context_settings={"show_default": True})
 @click.option("-i", "--input", required=True, help="Path to k-mer count matrix")
 @click.option("-p", "--prefix", required=True, help="Path to prefix file")
@@ -43,9 +58,12 @@ def process_chunk(values, col_sums):
 @click.option("-c", "--chunk-size", default=100000, help="Number of rows per chunk (lower means less memory is required)")
 @click.option("-v", "--print-freq", default=100, help="Print a message every v chunks to indicate progress.")
 @click.option("--ignore-first/--no-ignore-first", default=True, help="Toggle whether to ignore first column of text file (e.g. k-mer sequence column)")
+@click.option("--subset-columns", type=click.IntRange(min=2), default=None, help="Randomly subset to this many columns before calculating distances. Must be an integer.")
+@click.option("--subset-rows", type=click.IntRange(min=2), default=None, help="Randomly subset to this many rows before calculating distances. --no-ignore-first must be set to allow for subsetting to by minhashing k-mers.")
 @click.option("-s", "--seperator", default=" ", help="Separator between columns")
 
-def main(input, prefix, threads, chunk_size, print_freq, ignore_first, seperator):
+
+def main(input, prefix, threads, chunk_size, print_freq, ignore_first, subset_columns, subset_rows, seperator):
     """Average Bray-Curtis and cosine distances over all column pairs."""
     # Interpret escape sequences like '\t' (single quotes in bash pass the
     # literal two characters backslash+t) so both --seperator '\t' and
@@ -73,12 +91,42 @@ def main(input, prefix, threads, chunk_size, print_freq, ignore_first, seperator
     print(f"Number of columns is: {ncols}")
 
     if ignore_first:
+        print("Ignoring first column...")
         cols_kept=range(1,ncols)
     else:
+        print("Not ignoring first column...")
         cols_kept=range(0,ncols)
 
+    if subset_columns is None:
+        print("Not subsetting columns...")
+    else:
+        print(f"Subsetting to {subset_columns} columns...")
+        cols_kept = random.sample(cols_kept, subset_columns)
+        print(f"Kept columns are: {cols_kept}")
+
+    # Min-hash k-mer subsetting if needed
     print("Loading k-mer count matrix by chunk...")
-    reader = pd.read_csv(input, sep=seperator, header=None, chunksize=chunk_size, dtype=np.float64, usecols=cols_kept)
+    if subset_rows is None:
+        print("Not subsetting rows by min-hash...")
+        reader = pd.read_csv(input, sep=seperator, header=None, chunksize=chunk_size, dtype=np.float64, usecols=cols_kept)
+    elif subset_rows is not None and ignore_first:
+        raise click.ClickException("If subset_rows is set, then ignore_first should not be set because the first column needs to be a k-mer string.")
+    elif subset_rows is not None and not ignore_first:
+        print("Pass 0: subseting columns based on min-hash...")
+        rows_kept = []
+        reader = pd.read_csv(input, sep=seperator, header=None, chunksize=1, usecols=[0])
+        index_value = 0
+        for chunk in reader:
+            #print(chunk)
+            kmer = str(chunk.items())
+            #kmer = chunk.astype(str)
+            hash_value = mmh3.hash(kmer, 1, signed=False)
+            add_heap(rows_kept, hash_value, index_value, subset_rows)
+            index_value += 1
+        reader = pd.read_csv(input, sep=seperator, header=None, chunksize=chunk_size, dtype=np.float64, usecols=cols_kept, skiprows=lambda i: i != 0 and (i - 1) not in rows_kept)
+        
+    #print("Loading k-mer count matrix by chunk...")
+    #reader = pd.read_csv(input, sep=seperator, header=None, chunksize=chunk_size, dtype=np.float64, usecols=cols_kept)
 
     print("Pass 1: column sums...")
     col_sums = None
