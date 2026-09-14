@@ -70,15 +70,31 @@ rule jules_fastq_dump:
                 exit 1
             fi
 
+            # Some BioSamples mix platforms and/or layouts (e.g. an Illumina
+            # short-read assembly plus an Oxford Nanopore long-read run
+            # submitted under the same BioSample; or a paired-end population
+            # run alongside an unrelated single-end pilot/control lane). This
+            # pipeline is built for Illumina short-read PAIRED data -- bwa
+            # mapping, mpileup, ROH, PSMC, MSMC2 all assume it -- so runs are
+            # filtered on both the runinfo CSV's Platform and LibraryLayout
+            # columns rather than relying on read-layout heuristics
+            # downstream. Confirmed two distinct real cases: SAMN18024572
+            # (Acanthochlamys bracteata) was entirely OXFORD_NANOPORE/
+            # PromethION (caught by the Platform check); a broad sweep of
+            # other BioSamples' staging dirs turned up single, unsuffixed
+            # fastq.gz files (no _1/_2) even though Platform=="ILLUMINA" --
+            # i.e. genuinely single-end Illumina runs mixed into otherwise
+            # paired-end BioSamples (caught only by the LibraryLayout check).
             runs=$(curl -s --max-time 120 \\
                 "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&id=${{uids}}&rettype=runinfo&retmode=text" \\
-                | cut -d',' -f1 | grep -E '^[SED]RR' || true)
+                | awk -F',' 'NR==1{{for(i=1;i<=NF;i++){{if($i=="Run")rcol=i; if($i=="Platform")pcol=i; if($i=="LibraryLayout")lcol=i}} next}} $pcol=="ILLUMINA" && $lcol=="PAIRED"{{print $rcol}}' \\
+                | grep -E '^[SED]RR' || true)
 
             if [[ -z "$runs" ]]; then
-                echo "Error: no SRA runs found for BioSample {wildcards.ID}" >&2
+                echo "Error: no paired-end Illumina SRA runs found for BioSample {wildcards.ID} (other platforms/layouts may exist but are filtered out)" >&2
                 exit 1
             fi
-            echo "Found runs for {wildcards.ID}: ${{runs}}"
+            echo "Found paired-end Illumina runs for {wildcards.ID}: ${{runs}}"
 
             # Stable, resumable staging dir on shared scratch (not mktemp'd
             # /tmp, which wouldn't survive a retry on a different node).
