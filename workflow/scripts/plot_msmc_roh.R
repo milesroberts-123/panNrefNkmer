@@ -35,11 +35,12 @@ args <- commandArgs(trailingOnly = TRUE)
 results_dir  <- if (length(args) >= 1) args[1] else "results"
 mu           <- if (length(args) >= 2) as.numeric(args[2]) else 1.25e-8
 gentime_csv  <- if (length(args) >= 3) args[3] else stop("gentime_csv is required (species,gentime columns)")
-sample_ids   <- if (length(args) >= 4) readLines(args[4]) else NULL
-samples_tsv  <- if (length(args) >= 5) args[5] else "../config/samples_medium.tsv"
-ref_genome_path <- if (length(args) >= 6) args[6] else "/global/scratch/projects/fc_moilab/julesperez/post_rot/new_refgenomes/"
-chromosome_level_tsv <- if (length(args) >= 7) args[7] else NULL
-iucn_csv     <- if (length(args) >= 8) args[8] else NULL
+arg_or_null <- function(i) if (length(args) >= i && nzchar(args[i])) args[i] else NULL
+sample_ids   <- { f <- arg_or_null(4); if (!is.null(f)) readLines(f) else NULL }
+samples_tsv  <- if (length(args) >= 5 && nzchar(args[5])) args[5] else "../config/samples_medium.tsv"
+ref_genome_path <- if (length(args) >= 6 && nzchar(args[6])) args[6] else "/global/scratch/projects/fc_moilab/julesperez/post_rot/new_refgenomes/"
+chromosome_level_tsv <- arg_or_null(7)
+iucn_csv     <- arg_or_null(8)
 
 # --- Tufte-ish shared style ---------------------------------------------
 IUCN_ORDER  <- c("CR", "EN", "VU", "NT", "LC")
