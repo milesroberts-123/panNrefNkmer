@@ -539,78 +539,12 @@ if (length(roh_files) == 0) {
         }
       }
 
-      # --- Compare the two FROH cutoff implementations ---
-      # Tufte-style slopegraph: one dot per species per cutoff, connected by
-      # a line, species named directly at both ends instead of a legend --
-      # the two vertical dot columns plus their slopes ARE the comparison.
-      cmp <- froh_df[order(-froh_df$pct_genome_in_roh_1mb), ]
-      x1 <- 1; x2 <- 2
-      yr_cmp <- range(c(cmp$pct_genome_in_roh_1pctchrom, cmp$pct_genome_in_roh_1mb), na.rm = TRUE)
-      label_ok <- nrow(cmp) <= 30
-      png("plots/roh/froh_cutoff_comparison.png",
-          width = if (label_ok) 1100 else 700, height = max(500, nrow(cmp) * 16))
-      tufte_par(mar = c(3, 3, 4, 3))
-      plot(NA, xlim = c(if (label_ok) 0.3 else 0.8, if (label_ok) 2.7 else 2.2), ylim = yr_cmp,
-           xaxt = "n", yaxt = "n", xlab = "", ylab = "", main = "")
-      axis(2, lwd = 0.6)
-      axis(1, at = c(x1, x2), labels = c("ROH >= 1% of chromosome", "ROH >= 1 Mb"),
-           lwd = 0, cex.axis = 0.9, padj = -1)
-      tufte_title(paste0("FROH -- relative (1% of chromosome) vs absolute (1 Mb) segment cutoff, ",
-                          nrow(cmp), " sample(s)"))
-      for (i in seq_len(nrow(cmp))) {
-        y1 <- cmp$pct_genome_in_roh_1pctchrom[i]
-        y2 <- cmp$pct_genome_in_roh_1mb[i]
-        segments(x1, y1, x2, y2, col = adjustcolor(MUTED_PALETTE[1], alpha.f = 0.45), lwd = 1)
-        points(c(x1, x2), c(y1, y2), pch = 16, col = MUTED_PALETTE[1], cex = 0.8)
-      }
-      if (label_ok) {
-        text(x1 - 0.05, cmp$pct_genome_in_roh_1pctchrom, cmp$species, adj = 1, cex = 0.55, col = "grey30")
-        text(x2 + 0.05, cmp$pct_genome_in_roh_1mb, cmp$species, adj = 0, cex = 0.55, col = "grey30")
-      }
-      dev.off()
-      cat("Wrote plots/roh/froh_cutoff_comparison.png and plots/roh/froh_comparison.csv\n")
-
-      # --- FROH cutoff comparison, dot-strip/range/box style ---
-      # Same visual grammar as the "Bray-Curtis k-mer dissimilarity" style
-      # reference: one row per group, a full min-max range line, an IQR box
-      # with median tick, and jittered raw points on top -- deliberately
-      # different green/orange palette from the IUCN red/green used
-      # elsewhere so the two plot families are never visually confused.
-      CUTOFF_ORANGE <- "#D97B29"
-      CUTOFF_GREEN  <- "#4E8B3B"
-      rangebox_row <- function(y_center, values, color, height = 0.32) {
-        values <- values[is.finite(values)]
-        if (length(values) == 0) return(invisible())
-        rng <- range(values)
-        segments(rng[1], y_center, rng[2], y_center, col = color, lwd = 1)
-        if (length(values) >= 2) {
-          qs <- quantile(values, c(0.25, 0.5, 0.75))
-          rect(qs[1], y_center - height, qs[3], y_center + height,
-               col = adjustcolor(color, alpha.f = 0.18), border = color, lwd = 1.2)
-          segments(qs[2], y_center - height, qs[2], y_center + height, col = color, lwd = 2.2)
-        }
-        yj <- y_center + (stats::runif(length(values)) - 0.5) * height * 1.7
-        points(values, yj, pch = 21, bg = adjustcolor(color, alpha.f = 0.55),
-               col = adjustcolor("black", alpha.f = 0.5), cex = 1.15, lwd = 0.6)
-      }
-
-      v_1mb <- froh_df$pct_genome_in_roh_1mb
-      v_1pctgenome <- froh_df$pct_genome_in_roh_1pctgenome
-      xr_rb <- range(c(v_1mb, v_1pctgenome), na.rm = TRUE)
-      xr_rb <- c(0, xr_rb[2] + 0.05 * diff(xr_rb))
-      set.seed(1)
-      png("plots/roh/froh_cutoff_rangebox.png", width = 950, height = 560)
-      tufte_par(mar = c(5, 9, 2, 2))
-      plot(NA, xlim = xr_rb, ylim = c(0.4, 2.6), xaxt = "n", yaxt = "n",
-           xlab = "", ylab = "", main = "")
-      rangebox_row(2, v_1pctgenome, CUTOFF_GREEN)
-      rangebox_row(1, v_1mb, CUTOFF_ORANGE)
-      axis(2, at = c(2, 1), labels = c("ROH ≥ 1% of genome", "ROH ≥ 1 Mb"),
-           lwd = 0, cex.axis = 1, las = 1)
-      axis(1, at = pretty(xr_rb), lwd = 0.6, cex.axis = 0.85)
-      mtext("% of genome in ROH (FROH)", side = 1, line = 3, font = 2, cex = 1, col = "grey20")
-      dev.off()
-      cat("Wrote plots/roh/froh_cutoff_rangebox.png\n")
+      # Comparison figures derived purely from froh_comparison.csv (slopegraph,
+      # LC-vs-threatened range-box, etc.) live in the separate
+      # plot_froh_comparisons.R script -- it reads this CSV directly, so
+      # iterating on THOSE plots' style never requires re-running this
+      # expensive per-sample scan (painting, contig detection, .fai reads)
+      # again. See that script's header for usage.
     }
   }
 }
