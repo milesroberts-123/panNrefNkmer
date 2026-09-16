@@ -243,8 +243,16 @@ if (length(common_ids) == 0) {
     md <- curves[[srr]]
     if (is.null(pd) || is.null(md)) next
 
-    xr <- range(c(pd$x[pd$x > 0], md$x[md$x > 0]))
-    yr <- range(c(pd$y, md$y))
+    x_vals <- c(pd$x[pd$x > 0], md$x[md$x > 0])
+    y_vals <- c(pd$y[pd$y > 0], md$y[md$y > 0])
+    x_vals <- x_vals[is.finite(x_vals)]
+    y_vals <- y_vals[is.finite(y_vals)]
+    if (length(x_vals) == 0 || length(y_vals) == 0) {
+      cat("Skipping comparison plot for", label, "-- non-finite/empty PSMC or MSMC2 values (degenerate fit, e.g. theta0=0)\n")
+      next
+    }
+    xr <- range(x_vals)
+    yr <- range(y_vals)
     png(file.path("plots/comparison", paste0(label, "_psmc_vs_msmc2.png")), width = 950, height = 700)
     tufte_par()
     plot(NA, xlim = xr, ylim = yr, log = "xy",
