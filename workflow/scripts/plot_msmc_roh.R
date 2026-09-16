@@ -267,14 +267,19 @@ if (length(common_ids) == 0) {
       next
     }
     xr <- range(x_vals)
-    # PSMC's earliest/latest time bins are known boundary artifacts that can
-    # blow up Ne by 1-2 orders of magnitude -- left uncorrected, that alone
-    # sets the axis scale and squashes the actual informative part of the
-    # curve into a sliver at the bottom. Clip to the 1st-99th percentile of
-    # observed Ne instead of the raw min/max; the underlying data points are
-    # still drawn (and can run past the frame), only the axis range is robust.
-    yr <- quantile(y_vals, c(0.01, 0.99), na.rm = TRUE)
-    if (!is.finite(diff(yr)) || diff(yr) <= 0) yr <- range(y_vals)
+    # Both methods' FIRST and LAST time bin are known boundary artifacts
+    # (PSMC's earliest bin, and MSMC2's open-ended oldest bin) that can blow
+    # Ne up by 1-2 orders of magnitude -- left in, either one alone sets the
+    # axis scale and squashes the actual informative part of the curve into
+    # a sliver. Drop each curve's own first/last row before computing the
+    # axis range (a quantile trim alone isn't enough -- with as few as ~30
+    # points per curve, one boundary bin can still survive a 1st/99th
+    # percentile cut). The full curves are still drawn and can run past the
+    # frame; only the axis range is robust.
+    trim_boundary <- function(d) if (nrow(d) > 2) d[-c(1, nrow(d)), ] else d
+    y_trimmed <- c(trim_boundary(pd)$y, trim_boundary(md)$y)
+    y_trimmed <- y_trimmed[is.finite(y_trimmed) & y_trimmed > 0]
+    yr <- if (length(y_trimmed) > 0) range(y_trimmed) else range(y_vals)
     png(file.path("plots/comparison", paste0(label, "_psmc_vs_msmc2.png")), width = 950, height = 700)
     tufte_par()
     plot(NA, xlim = xr, ylim = yr, log = "xy",
@@ -451,16 +456,19 @@ if (length(roh_files) == 0) {
       # conservation genomics literature, independent of scaffold size).
       chrom_len_lookup <- setNames(fai$len, fai$chrom)
       sample_roh$chrom_len <- chrom_len_lookup[sample_roh$chrom]
+      genome_len_bp_srr <- sum(fai$len)
       qualifying_pct1chrom <- sample_roh[!is.na(sample_roh$chrom_len) &
                                             sample_roh$length_bp >= 0.01 * sample_roh$chrom_len, ]
       qualifying_1mb <- sample_roh[sample_roh$length_bp >= 1e6, ]
+      qualifying_1pctgenome <- sample_roh[sample_roh$length_bp >= 0.01 * genome_len_bp_srr, ]
 
       froh_rows[[srr]] <- data.frame(
         species = species,
-        genome_len_bp = sum(fai$len),
+        genome_len_bp = genome_len_bp_srr,
         roh_len_bp = sum(sample_roh$length_bp),
         roh_len_bp_1pctchrom = sum(qualifying_pct1chrom$length_bp),
-        roh_len_bp_1mb = sum(qualifying_1mb$length_bp)
+        roh_len_bp_1mb = sum(qualifying_1mb$length_bp),
+        roh_len_bp_1pctgenome = sum(qualifying_1pctgenome$length_bp)
       )
     }
 
@@ -469,6 +477,7 @@ if (length(roh_files) == 0) {
       froh_df$pct_genome_in_roh <- 100 * froh_df$roh_len_bp / froh_df$genome_len_bp
       froh_df$pct_genome_in_roh_1pctchrom <- 100 * froh_df$roh_len_bp_1pctchrom / froh_df$genome_len_bp
       froh_df$pct_genome_in_roh_1mb <- 100 * froh_df$roh_len_bp_1mb / froh_df$genome_len_bp
+      froh_df$pct_genome_in_roh_1pctgenome <- 100 * froh_df$roh_len_bp_1pctgenome / froh_df$genome_len_bp
       froh_df <- froh_df[order(-froh_df$pct_genome_in_roh), ]
       write.csv(froh_df, "plots/roh/froh_comparison.csv", row.names = FALSE)
 
@@ -560,6 +569,48 @@ if (length(roh_files) == 0) {
       }
       dev.off()
       cat("Wrote plots/roh/froh_cutoff_comparison.png and plots/roh/froh_comparison.csv\n")
+
+      # --- FROH cutoff comparison, dot-strip/range/box style ---
+      # Same visual grammar as the "Bray-Curtis k-mer dissimilarity" style
+      # reference: one row per group, a full min-max range line, an IQR box
+      # with median tick, and jittered raw points on top -- deliberately
+      # different green/orange palette from the IUCN red/green used
+      # elsewhere so the two plot families are never visually confused.
+      CUTOFF_ORANGE <- "#D97B29"
+      CUTOFF_GREEN  <- "#4E8B3B"
+      rangebox_row <- function(y_center, values, color, height = 0.32) {
+        values <- values[is.finite(values)]
+        if (length(values) == 0) return(invisible())
+        rng <- range(values)
+        segments(rng[1], y_center, rng[2], y_center, col = color, lwd = 1)
+        if (length(values) >= 2) {
+          qs <- quantile(values, c(0.25, 0.5, 0.75))
+          rect(qs[1], y_center - height, qs[3], y_center + height,
+               col = adjustcolor(color, alpha.f = 0.18), border = color, lwd = 1.2)
+          segments(qs[2], y_center - height, qs[2], y_center + height, col = color, lwd = 2.2)
+        }
+        yj <- y_center + (stats::runif(length(values)) - 0.5) * height * 1.7
+        points(values, yj, pch = 21, bg = adjustcolor(color, alpha.f = 0.55),
+               col = adjustcolor("black", alpha.f = 0.5), cex = 1.15, lwd = 0.6)
+      }
+
+      v_1mb <- froh_df$pct_genome_in_roh_1mb
+      v_1pctgenome <- froh_df$pct_genome_in_roh_1pctgenome
+      xr_rb <- range(c(v_1mb, v_1pctgenome), na.rm = TRUE)
+      xr_rb <- c(0, xr_rb[2] + 0.05 * diff(xr_rb))
+      set.seed(1)
+      png("plots/roh/froh_cutoff_rangebox.png", width = 950, height = 560)
+      tufte_par(mar = c(5, 9, 2, 2))
+      plot(NA, xlim = xr_rb, ylim = c(0.4, 2.6), xaxt = "n", yaxt = "n",
+           xlab = "", ylab = "", main = "")
+      rangebox_row(2, v_1pctgenome, CUTOFF_GREEN)
+      rangebox_row(1, v_1mb, CUTOFF_ORANGE)
+      axis(2, at = c(2, 1), labels = c("ROH ≥ 1% of genome", "ROH ≥ 1 Mb"),
+           lwd = 0, cex.axis = 1, las = 1)
+      axis(1, at = pretty(xr_rb), lwd = 0.6, cex.axis = 0.85)
+      mtext("% of genome in ROH (FROH)", side = 1, line = 3, font = 2, cex = 1, col = "grey20")
+      dev.off()
+      cat("Wrote plots/roh/froh_cutoff_rangebox.png\n")
     }
   }
 }
