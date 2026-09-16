@@ -362,8 +362,31 @@ if (length(roh_files) == 0) {
     # it incorrectly excluded species (e.g. Arabidopsis) whose reference
     # uses a different chromosome-naming convention. No single naming
     # pattern reliably separates real chromosomes from scaffolds across
-    # every species' source here, so this paints whatever ROH was actually
-    # called on.
+    # every species' source here.
+    #
+    # Instead, detect the split by SIZE: a chromosome-level assembly's
+    # unplaced leftover contigs cluster far smaller than its real
+    # chromosomes, with a sharp drop-off between the two groups (confirmed
+    # visually in Aesculus_hippocastanum_painting.png -- ~19 large
+    # OZ-accession chromosomes vs ~30 near-invisible CBDARO-accession
+    # contigs). Find the single largest size ratio between consecutive
+    # scaffolds (sorted descending, largest first) and cut there. Only
+    # consider drops within the first `search_n` scaffolds -- real
+    # chromosome counts are essentially always well under that, so this
+    # keeps the search from latching onto some huge ratio deep in the
+    # contig tail where near-zero-length differences produce enormous
+    # ratios that mean nothing. If no drop clears MIN_GAP_RATIO, there's no
+    # detectable contig tail (e.g. Arabidopsis, whose .fai is just 5
+    # chromosomes) -- keep every scaffold rather than force a cut.
+    detect_chromosome_scaffolds <- function(fai, search_n = 200, min_gap_ratio = 3) {
+      lens <- sort(fai$len, decreasing = TRUE)
+      if (length(lens) <= 1) return(fai$chrom)
+      n <- min(length(lens) - 1, search_n)
+      ratios <- lens[seq_len(n)] / lens[seq_len(n) + 1]
+      split_idx <- which.max(ratios)
+      if (ratios[split_idx] < min_gap_ratio) return(fai$chrom)
+      fai$chrom[fai$len >= lens[split_idx]]
+    }
 
     froh_rows <- list()
     for (srr in unique(all_roh$srr)) {
@@ -373,13 +396,24 @@ if (length(roh_files) == 0) {
         warning(paste0("No .fai found for species '", species, "' (sample ", srr, ") at ", fai_path))
         next
       }
-      fai <- read.table(fai_path, sep = "\t", stringsAsFactors = FALSE)
-      colnames(fai)[1:2] <- c("chrom", "len")
+      fai_full <- read.table(fai_path, sep = "\t", stringsAsFactors = FALSE)
+      colnames(fai_full)[1:2] <- c("chrom", "len")
 
-      sample_roh <- all_roh[all_roh$srr == srr, ]
+      real_chroms <- detect_chromosome_scaffolds(fai_full)
+      excluded_n <- nrow(fai_full) - length(real_chroms)
+      if (excluded_n > 0) {
+        cat("  ", species, ": excluding", excluded_n, "unplaced contig(s)/scaffold(s) below the detected chromosome-size cutoff\n")
+      }
+      fai <- fai_full[fai_full$chrom %in% real_chroms, ]
+
+      sample_roh <- all_roh[all_roh$srr == srr & all_roh$chrom %in% real_chroms, ]
+      if (nrow(sample_roh) == 0) {
+        warning(paste0("No ROH segments on a real chromosome for ", srr, " -- skipping"))
+        next
+      }
 
       # paint exactly the chromosome set present in this sample's own
-      # ROH output, looked up in its .fai for real lengths
+      # ROH output (now contig-free), looked up in its .fai for real lengths
       called_chroms <- unique(sample_roh$chrom)
       top_scaffolds <- fai[fai$chrom %in% called_chroms, ]
       top_scaffolds <- top_scaffolds[order(-top_scaffolds$len), ]
