@@ -203,9 +203,14 @@ if (length(msmc_files) == 0) {
     dev.off()
   }
 
-  # overlay plot, all finished samples together -- muted palette + frameless
-  # legend instead of a boxed one.
-  cols <- muted_colors(length(curves))
+  # overlay plot, all finished samples together. A per-species legend only
+  # stays legible up to ~15 curves -- past that, individually identifying a
+  # species by line color is a lost cause regardless of palette, so instead
+  # show the ensemble as a thin translucent "cloud" (the actual informative
+  # signal at this n is the shape of the bundle, not any one species' line)
+  # and point the reader to the per-species small multiples already in
+  # plots/msmc2/ for individual identification.
+  LEGEND_MAX <- 15
   xr <- range(unlist(lapply(curves, function(d) d$x[d$x > 0])))
   yr <- range(unlist(lapply(curves, function(d) d$y)))
   png("plots/msmc2/all_samples_overlay.png", width = 1100, height = 800)
@@ -213,12 +218,22 @@ if (length(msmc_files) == 0) {
   plot(NA, xlim = xr, ylim = yr, log = "xy",
        xlab = "Years ago", ylab = expression(N[e]), main = "", axes = FALSE)
   axis(1, lwd = 0.6); axis(2, lwd = 0.6)
-  tufte_title(paste0("MSMC2 -- ", length(curves), " sample(s) completed"))
-  for (i in seq_along(curves)) {
-    lines(curves[[i]]$x, curves[[i]]$y, type = "s", col = cols[i], lwd = 1.4)
+  if (length(curves) <= LEGEND_MAX) {
+    cols <- muted_colors(length(curves))
+    tufte_title(paste0("MSMC2 -- ", length(curves), " sample(s) completed"))
+    for (i in seq_along(curves)) {
+      lines(curves[[i]]$x, curves[[i]]$y, type = "s", col = cols[i], lwd = 1.4)
+    }
+    legend("topright", legend = species_labels, col = cols, lty = 1, lwd = 1.4,
+           cex = 0.6, ncol = 2, bty = "n")
+  } else {
+    tufte_title(paste0("MSMC2 -- ", length(curves),
+                        " samples (individual plots in plots/msmc2/)"))
+    for (i in seq_along(curves)) {
+      lines(curves[[i]]$x, curves[[i]]$y, type = "s",
+            col = adjustcolor(MUTED_PALETTE[1], alpha.f = 0.25), lwd = 1)
+    }
   }
-  legend("topright", legend = species_labels, col = cols, lty = 1, lwd = 1.4,
-         cex = 0.6, ncol = 2, bty = "n")
   dev.off()
 
   cat("Wrote", length(msmc_files), "individual MSMC2 plots + 1 overlay to plots/msmc2/\n")
@@ -252,7 +267,14 @@ if (length(common_ids) == 0) {
       next
     }
     xr <- range(x_vals)
-    yr <- range(y_vals)
+    # PSMC's earliest/latest time bins are known boundary artifacts that can
+    # blow up Ne by 1-2 orders of magnitude -- left uncorrected, that alone
+    # sets the axis scale and squashes the actual informative part of the
+    # curve into a sliver at the bottom. Clip to the 1st-99th percentile of
+    # observed Ne instead of the raw min/max; the underlying data points are
+    # still drawn (and can run past the frame), only the axis range is robust.
+    yr <- quantile(y_vals, c(0.01, 0.99), na.rm = TRUE)
+    if (!is.finite(diff(yr)) || diff(yr) <= 0) yr <- range(y_vals)
     png(file.path("plots/comparison", paste0(label, "_psmc_vs_msmc2.png")), width = 950, height = 700)
     tufte_par()
     plot(NA, xlim = xr, ylim = yr, log = "xy",
@@ -386,17 +408,35 @@ if (length(roh_files) == 0) {
       }
       dev.off()
 
+      # Two alternative ROH-segment inclusion criteria for FROH, compared
+      # side by side below: a RELATIVE cutoff (segment >= 1% of the length
+      # of the chromosome/scaffold it's on -- scales with assembly, so a
+      # tiny unplaced scaffold's near-zero-length ROH calls mostly fail it
+      # too) and an ABSOLUTE cutoff (segment >= 1 Mb, the standard
+      # "long ROH" threshold used to flag recent/close inbreeding in the
+      # conservation genomics literature, independent of scaffold size).
+      chrom_len_lookup <- setNames(fai$len, fai$chrom)
+      sample_roh$chrom_len <- chrom_len_lookup[sample_roh$chrom]
+      qualifying_pct1chrom <- sample_roh[!is.na(sample_roh$chrom_len) &
+                                            sample_roh$length_bp >= 0.01 * sample_roh$chrom_len, ]
+      qualifying_1mb <- sample_roh[sample_roh$length_bp >= 1e6, ]
+
       froh_rows[[srr]] <- data.frame(
         species = species,
         genome_len_bp = sum(fai$len),
-        roh_len_bp = sum(sample_roh$length_bp)
+        roh_len_bp = sum(sample_roh$length_bp),
+        roh_len_bp_1pctchrom = sum(qualifying_pct1chrom$length_bp),
+        roh_len_bp_1mb = sum(qualifying_1mb$length_bp)
       )
     }
 
     if (length(froh_rows) > 0) {
       froh_df <- do.call(rbind, froh_rows)
       froh_df$pct_genome_in_roh <- 100 * froh_df$roh_len_bp / froh_df$genome_len_bp
+      froh_df$pct_genome_in_roh_1pctchrom <- 100 * froh_df$roh_len_bp_1pctchrom / froh_df$genome_len_bp
+      froh_df$pct_genome_in_roh_1mb <- 100 * froh_df$roh_len_bp_1mb / froh_df$genome_len_bp
       froh_df <- froh_df[order(-froh_df$pct_genome_in_roh), ]
+      write.csv(froh_df, "plots/roh/froh_comparison.csv", row.names = FALSE)
 
       png("plots/roh/froh_percent_genome.png",
           width = max(900, nrow(froh_df) * 60), height = 700)
@@ -455,6 +495,37 @@ if (length(roh_files) == 0) {
           cat("No samples matched an IUCN status -- skipping froh_by_iucn_status.png\n")
         }
       }
+
+      # --- Compare the two FROH cutoff implementations ---
+      # Tufte-style slopegraph: one dot per species per cutoff, connected by
+      # a line, species named directly at both ends instead of a legend --
+      # the two vertical dot columns plus their slopes ARE the comparison.
+      cmp <- froh_df[order(-froh_df$pct_genome_in_roh_1mb), ]
+      x1 <- 1; x2 <- 2
+      yr_cmp <- range(c(cmp$pct_genome_in_roh_1pctchrom, cmp$pct_genome_in_roh_1mb), na.rm = TRUE)
+      label_ok <- nrow(cmp) <= 30
+      png("plots/roh/froh_cutoff_comparison.png",
+          width = if (label_ok) 1100 else 700, height = max(500, nrow(cmp) * 16))
+      tufte_par(mar = c(3, 3, 4, 3))
+      plot(NA, xlim = c(if (label_ok) 0.3 else 0.8, if (label_ok) 2.7 else 2.2), ylim = yr_cmp,
+           xaxt = "n", yaxt = "n", xlab = "", ylab = "", main = "")
+      axis(2, lwd = 0.6)
+      axis(1, at = c(x1, x2), labels = c("ROH >= 1% of chromosome", "ROH >= 1 Mb"),
+           lwd = 0, cex.axis = 0.9, padj = -1)
+      tufte_title(paste0("FROH -- relative (1% of chromosome) vs absolute (1 Mb) segment cutoff, ",
+                          nrow(cmp), " sample(s)"))
+      for (i in seq_len(nrow(cmp))) {
+        y1 <- cmp$pct_genome_in_roh_1pctchrom[i]
+        y2 <- cmp$pct_genome_in_roh_1mb[i]
+        segments(x1, y1, x2, y2, col = adjustcolor(MUTED_PALETTE[1], alpha.f = 0.45), lwd = 1)
+        points(c(x1, x2), c(y1, y2), pch = 16, col = MUTED_PALETTE[1], cex = 0.8)
+      }
+      if (label_ok) {
+        text(x1 - 0.05, cmp$pct_genome_in_roh_1pctchrom, cmp$species, adj = 1, cex = 0.55, col = "grey30")
+        text(x2 + 0.05, cmp$pct_genome_in_roh_1mb, cmp$species, adj = 0, cex = 0.55, col = "grey30")
+      }
+      dev.off()
+      cat("Wrote plots/roh/froh_cutoff_comparison.png and plots/roh/froh_comparison.csv\n")
     }
   }
 }
