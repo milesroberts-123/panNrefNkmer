@@ -1,10 +1,13 @@
 #!/usr/bin/env Rscript
-# Same-day progress plots for whatever ROH/MSMC2 samples have finished so far.
-# Base R only (no ggplot2/tidyverse) since no R conda env exists in this repo yet.
+# Same-day progress plots for whatever ROH/MSMC2/PSMC samples have finished
+# so far. Base R only (no ggplot2/tidyverse) since no R conda env exists in
+# this repo yet. Styled loosely after Tufte's "Visual Display of Quantitative
+# Information": no chart box, minimal sparse ticks, direct labeling instead
+# of legends where practical, muted (not rainbow) color, ink kept
+# proportional to information.
 #
 # Usage:
-#   Rscript plot_msmc_roh.R [results_dir] [mu] [gentime_csv] [sample_ids_file] [samples_tsv]
-#   Rscript plot_msmc_roh.R results 1.25e-8 gentimes.csv top10_ids.txt ../config/samples_medium.tsv
+#   Rscript plot_msmc_roh.R [results_dir] [mu] [gentime_csv] [sample_ids_file] [samples_tsv] [ref_genome_path] [chromosome_level_tsv] [iucn_csv]
 #
 # gentime_csv: expects "phylo_name","gen_time" columns (e.g.
 # gen_time_estimates.csv) -- generation time varies per species, so each
@@ -13,23 +16,20 @@
 #
 # sample_ids_file (optional): one Run ID per line -- restricts plotting to
 # just those samples instead of every finished one found under results_dir.
-# Generate one for e.g. the first 10 samples in the sheet with:
-#   tail -n +2 ../config/samples_medium.tsv | cut -f1 | head -10 > top10_ids.txt
 #
 # ref_genome_path (optional): matches config.yaml's reference_genome_path --
 # needed for chromosome-painting/FROH, which read each species' .fasta.fai
-# for real scaffold lengths (bcftools roh output alone has no genome-length
-# info, only ROH segment coordinates).
+# for real scaffold lengths.
 #
-# chromosome_level_tsv (optional): "Species","SampleID" columns (e.g.
-# refs/chromosome_level_samples.tsv) -- the ground-truth list of species
-# with an actual chromosome-level assembly. jules_bcftools_mpileup has no
-# chromosome restriction of its own (confirmed in workflow/rules/
-# jules_v2.smk), so ROH/MSMC2 get computed across every scaffold regardless
-# of assembly quality -- this filter is applied to every plot (MSMC2
-# individual/overlay, ROH top-N/per-sample/painting/FROH) so a
-# scaffold-level species never silently ends up presented as if it were
-# chromosome-level. When omitted, no species filtering happens.
+# chromosome_level_tsv (optional): "Species","SampleID" columns -- the
+# ground-truth list of species with an actual chromosome-level assembly.
+# Applied to every plot so a scaffold-level species never silently ends up
+# presented as if it were chromosome-level.
+#
+# iucn_csv (optional): "scientificName","redlistCategory" columns (e.g.
+# complete_2026.csv). redlistCategory is free text ("Endangered",
+# "Lower Risk/least concern", etc.) and gets normalized to the standard
+# CR/EN/VU/NT/LC/EW/EX/DD codes. Needed for the FROH-by-IUCN-status plot.
 
 args <- commandArgs(trailingOnly = TRUE)
 results_dir  <- if (length(args) >= 1) args[1] else "results"
@@ -39,6 +39,25 @@ sample_ids   <- if (length(args) >= 4) readLines(args[4]) else NULL
 samples_tsv  <- if (length(args) >= 5) args[5] else "../config/samples_medium.tsv"
 ref_genome_path <- if (length(args) >= 6) args[6] else "/global/scratch/projects/fc_moilab/julesperez/post_rot/new_refgenomes/"
 chromosome_level_tsv <- if (length(args) >= 7) args[7] else NULL
+iucn_csv     <- if (length(args) >= 8) args[8] else NULL
+
+# --- Tufte-ish shared style ---------------------------------------------
+IUCN_ORDER  <- c("CR", "EN", "VU", "NT", "LC")
+IUCN_COLORS <- c(CR = "#B72E3C", EN = "#D9772E", VU = "#C9A227",
+                  NT = "#7A9D54", LC = "#2F6B4F")
+MUTED_PALETTE <- c("#2F6B4F", "#7A9D54", "#C9A227", "#D9772E", "#B72E3C",
+                    "#3D6B94", "#6B4C7A", "#8C8C8C")
+muted_colors <- function(n) {
+  if (n <= length(MUTED_PALETTE)) return(MUTED_PALETTE[seq_len(n)])
+  colorRampPalette(MUTED_PALETTE)(n)
+}
+tufte_par <- function(mar = c(3, 4, 3, 2)) {
+  par(bty = "n", family = "sans", las = 1, mar = mar,
+      tck = -0.015, cex.axis = 0.85, col.axis = "grey30", col.lab = "grey20")
+}
+tufte_title <- function(main) {
+  mtext(main, side = 3, line = 1, adj = 0, cex = 1.05, font = 2, col = "grey15")
+}
 
 chrom_level_species <- if (!is.null(chromosome_level_tsv)) {
   read.table(chromosome_level_tsv, header = TRUE, sep = "\t", stringsAsFactors = FALSE)$Species
@@ -72,8 +91,35 @@ species_for_run <- function(run_id) {
   if (length(species) == 0) run_id else species[1]
 }
 
+# --- IUCN status lookup ---------------------------------------------------
+# redlistCategory is free text -- normalize "Lower Risk/least concern" etc.
+# (older IUCN category names) down to the standard 5-letter codes.
+normalize_iucn <- function(cat) {
+  if (is.na(cat) || !nzchar(cat)) return(NA_character_)
+  cl <- tolower(cat)
+  if (grepl("critically endangered", cl)) return("CR")
+  if (grepl("endangered", cl))            return("EN")
+  if (grepl("vulnerable", cl))            return("VU")
+  if (grepl("near threatened", cl))       return("NT")
+  if (grepl("least concern", cl))         return("LC")
+  if (grepl("extinct in the wild", cl))   return("EW")
+  if (grepl("extinct", cl))               return("EX")
+  if (grepl("data deficient", cl))        return("DD")
+  NA_character_
+}
+
+iucn_lookup_df <- if (!is.null(iucn_csv)) read.csv(iucn_csv, stringsAsFactors = FALSE) else NULL
+iucn_for_species <- function(species) {
+  if (is.null(iucn_lookup_df)) return(NA_character_)
+  sci <- gsub("_", " ", species)
+  row <- iucn_lookup_df[tolower(iucn_lookup_df$scientificName) == tolower(sci), ]
+  if (nrow(row) == 0) return(NA_character_)
+  normalize_iucn(row$redlistCategory[1])
+}
+
 dir.create("plots/msmc2", recursive = TRUE, showWarnings = FALSE)
 dir.create("plots/roh", recursive = TRUE, showWarnings = FALSE)
+dir.create("plots/comparison", recursive = TRUE, showWarnings = FALSE)
 
 # --- MSMC2 ---
 # Same conversion as msmc-tools' plot_utils.py popSizeStepPlot: x = left_time
@@ -88,6 +134,29 @@ read_msmc <- function(path, mu, gen) {
   data.frame(x = x, y = y)
 }
 
+# --- PSMC ---
+# Standard psmc_plot.pl conversion: N0 = theta0 / (4 * mu * bin_size), using
+# the LAST restart ("RD") block's TR (theta0) and RS (t_k, lambda_k) lines.
+# bin_size matches jules_psmc_run_psmc's default -s100 (unset in the rule ->
+# psmc's own default of 100bp bins). Time/Ne are rescaled to real units the
+# same way psmc_plot.pl does: t (years) = 2*N0*t_k*gen, Ne = N0*lambda_k.
+read_psmc <- function(path, mu, gen, bin_size = 100) {
+  lines <- readLines(path)
+  rd_idx <- grep("^RD", lines)
+  if (length(rd_idx) == 0) return(NULL)
+  block <- lines[rd_idx[length(rd_idx)]:length(lines)]
+  tr_line <- block[grepl("^TR", block)][1]
+  if (is.na(tr_line)) return(NULL)
+  theta0 <- as.numeric(strsplit(tr_line, "\t")[[1]][2])
+  rs_lines <- block[grepl("^RS", block)]
+  if (length(rs_lines) == 0) return(NULL)
+  parts <- strsplit(rs_lines, "\t")
+  t_k <- sapply(parts, function(p) as.numeric(p[3]))
+  lambda_k <- sapply(parts, function(p) as.numeric(p[4]))
+  N0 <- theta0 / (4 * mu * bin_size)
+  data.frame(x = 2 * N0 * t_k * gen, y = N0 * lambda_k)
+}
+
 msmc_files <- Sys.glob(file.path(results_dir, "msmc2", "*", "msmc2.final.txt"))
 if (!is.null(sample_ids)) {
   msmc_files <- msmc_files[basename(dirname(msmc_files)) %in% sample_ids]
@@ -97,6 +166,12 @@ if (length(not_chrom_level) > 0) {
   cat("Excluding (not chromosome-level assembly):", paste(basename(dirname(not_chrom_level)), collapse = ", "), "\n")
 }
 msmc_files <- msmc_files[sapply(basename(dirname(msmc_files)), function(s) is_chrom_level_species(species_for_run(s)))]
+
+curves <- list()
+srr_ids <- character(0)
+species_labels <- character(0)
+gens <- numeric(0)
+
 if (length(msmc_files) == 0) {
   cat("No finished msmc2.final.txt files found.\n")
 } else {
@@ -114,34 +189,74 @@ if (length(msmc_files) == 0) {
   curves <- Map(function(f, g) read_msmc(f, mu = mu, gen = g), msmc_files, gens)
   names(curves) <- srr_ids
 
-  # individual plots -- filenames/titles/legend all use species name, not
-  # the Run ID, per request. Falls back to srr_id only if a species somehow
-  # maps to itself (see species_for_run).
+  # individual plots -- filenames/titles use species name, not the Run ID.
   for (srr in srr_ids) {
     d <- curves[[srr]]
     label <- species_labels[[srr]]
-    png(file.path("plots/msmc2", paste0(label, ".png")), width = 900, height = 700)
-    plot(d$x, d$y, type = "s", log = "xy",
-         xlab = "Years ago", ylab = "Effective population size (Ne)",
-         main = paste0("MSMC2 -- ", label, " (gen=", gens[[srr]], ")"))
+    png(file.path("plots/msmc2", paste0(label, ".png")), width = 900, height = 650)
+    tufte_par()
+    plot(d$x, d$y, type = "s", log = "xy", lwd = 1.6, col = MUTED_PALETTE[1],
+         xlab = "Years ago", ylab = expression(N[e]), main = "", axes = FALSE)
+    axis(1, lwd = 0.6); axis(2, lwd = 0.6)
+    tufte_title(paste0(label, "  (MSMC2, generation time = ", round(gens[[srr]], 1), "y)"))
     dev.off()
   }
 
-  # overlay plot, all finished samples together
-  cols <- rainbow(length(curves))
+  # overlay plot, all finished samples together -- muted palette + frameless
+  # legend instead of a boxed one.
+  cols <- muted_colors(length(curves))
   xr <- range(unlist(lapply(curves, function(d) d$x[d$x > 0])))
   yr <- range(unlist(lapply(curves, function(d) d$y)))
   png("plots/msmc2/all_samples_overlay.png", width = 1100, height = 800)
+  tufte_par()
   plot(NA, xlim = xr, ylim = yr, log = "xy",
-       xlab = "Years ago", ylab = "Effective population size (Ne)",
-       main = paste0("MSMC2 -- ", length(curves), " sample(s) completed"))
+       xlab = "Years ago", ylab = expression(N[e]), main = "", axes = FALSE)
+  axis(1, lwd = 0.6); axis(2, lwd = 0.6)
+  tufte_title(paste0("MSMC2 -- ", length(curves), " sample(s) completed"))
   for (i in seq_along(curves)) {
-    lines(curves[[i]]$x, curves[[i]]$y, type = "s", col = cols[i])
+    lines(curves[[i]]$x, curves[[i]]$y, type = "s", col = cols[i], lwd = 1.4)
   }
-  legend("topright", legend = species_labels, col = cols, lty = 1, cex = 0.6, ncol = 2)
+  legend("topright", legend = species_labels, col = cols, lty = 1, lwd = 1.4,
+         cex = 0.6, ncol = 2, bty = "n")
   dev.off()
 
   cat("Wrote", length(msmc_files), "individual MSMC2 plots + 1 overlay to plots/msmc2/\n")
+}
+
+# --- PSMC vs MSMC2 comparison ---
+# Only for samples where both a finished .psmc and msmc2.final.txt exist --
+# auto-discovered, no need to hand-pick a sample.
+psmc_files <- Sys.glob(file.path(results_dir, "psmc", "*.psmc"))
+psmc_ids <- sub("\\.psmc$", "", basename(psmc_files))
+if (!is.null(sample_ids)) psmc_ids <- psmc_ids[psmc_ids %in% sample_ids]
+psmc_ids <- psmc_ids[sapply(psmc_ids, function(s) is_chrom_level_species(species_for_run(s)))]
+
+common_ids <- intersect(srr_ids, psmc_ids)
+if (length(common_ids) == 0) {
+  cat("No samples with both finished PSMC and MSMC2 output yet -- skipping comparison plots.\n")
+} else {
+  for (srr in common_ids) {
+    label <- species_labels[[srr]]
+    psmc_path <- file.path(results_dir, "psmc", paste0(srr, ".psmc"))
+    pd <- read_psmc(psmc_path, mu = mu, gen = gens[[srr]])
+    md <- curves[[srr]]
+    if (is.null(pd) || is.null(md)) next
+
+    xr <- range(c(pd$x[pd$x > 0], md$x[md$x > 0]))
+    yr <- range(c(pd$y, md$y))
+    png(file.path("plots/comparison", paste0(label, "_psmc_vs_msmc2.png")), width = 950, height = 700)
+    tufte_par()
+    plot(NA, xlim = xr, ylim = yr, log = "xy",
+         xlab = "Years ago", ylab = expression(N[e]), main = "", axes = FALSE)
+    axis(1, lwd = 0.6); axis(2, lwd = 0.6)
+    tufte_title(paste0(label, " -- PSMC vs MSMC2"))
+    lines(pd$x, pd$y, type = "s", col = MUTED_PALETTE[5], lwd = 1.6, lty = 2)
+    lines(md$x, md$y, type = "s", col = MUTED_PALETTE[1], lwd = 1.6, lty = 1)
+    legend("topright", legend = c("PSMC", "MSMC2"), col = c(MUTED_PALETTE[5], MUTED_PALETTE[1]),
+           lty = c(2, 1), lwd = 1.6, bty = "n", cex = 0.85)
+    dev.off()
+  }
+  cat("Wrote", length(common_ids), "PSMC-vs-MSMC2 comparison plots to plots/comparison/\n")
 }
 
 # --- ROH ---
@@ -184,33 +299,29 @@ if (length(roh_files) == 0) {
     top30 <- head(by_chrom, 30)
 
     png("plots/roh/top30_scaffolds_total_roh.png", width = 1200, height = 700)
-    par(mar = c(8, 5, 4, 2))
+    tufte_par(mar = c(8, 5, 3, 2))
     barplot(top30$length_bp / 1e6, names.arg = top30$chrom, las = 2, cex.names = 0.7,
-            ylab = "Total ROH length (Mb)",
-            main = paste0("Top ", nrow(top30), " scaffolds by total ROH -- ",
-                           length(unique(all_roh$srr)), " sample(s)"))
+            col = MUTED_PALETTE[1], border = NA,
+            ylab = "Total ROH length (Mb)", main = "")
+    tufte_title(paste0("Top ", nrow(top30), " scaffolds by total ROH -- ",
+                        length(unique(all_roh$srr)), " sample(s)"))
     dev.off()
 
-    # per-sample total ROH, for a quick sample-level overview -- labeled by
-    # species name, not Run ID, same as the MSMC2 plots above
+    # per-sample total ROH -- labeled by species name, not Run ID
     by_sample <- aggregate(length_bp ~ species, data = all_roh, sum)
     by_sample <- by_sample[order(-by_sample$length_bp), ]
     png("plots/roh/total_roh_per_sample.png",
         width = max(900, nrow(by_sample) * 40), height = 700)
-    par(mar = c(10, 5, 4, 2))
+    tufte_par(mar = c(10, 5, 3, 2))
     barplot(by_sample$length_bp / 1e6, names.arg = by_sample$species, las = 2, cex.names = 0.7,
-            ylab = "Total ROH length (Mb)",
-            main = paste0("Total ROH per sample -- ", nrow(by_sample), " sample(s) completed"))
+            col = MUTED_PALETTE[1], border = NA,
+            ylab = "Total ROH length (Mb)", main = "")
+    tufte_title(paste0("Total ROH per sample -- ", nrow(by_sample), " sample(s) completed"))
     dev.off()
 
     cat("Wrote plots/roh/top30_scaffolds_total_roh.png and plots/roh/total_roh_per_sample.png\n")
 
     # --- Chromosome painting + genome-wide FROH ---
-    # bcftools roh's own output has no scaffold-length info, only ROH
-    # segment coordinates -- pull real lengths from each species' .fasta.fai
-    # (the same file jules_msmc2_contigs/jules_samtools_faidx already
-    # generate) so both plots are scaled to real genome size, not just
-    # segment counts.
     dir.create("plots/roh/painting", recursive = TRUE, showWarnings = FALSE)
     fai_for_species <- function(species) {
       file.path(ref_genome_path, species, paste0(species, ".fasta.fai"))
@@ -218,14 +329,10 @@ if (length(roh_files) == 0) {
 
     # NOTE: a "CM" GenBank-accession filter was tried here and reverted --
     # it incorrectly excluded species (e.g. Arabidopsis) whose reference
-    # uses a different chromosome-naming convention (plain numbers/Chr-style
-    # instead of GenBank CM accessions). No single naming pattern reliably
-    # separates real chromosomes from scaffolds across every species' source
-    # here, so for now this paints whatever ROH was actually called on
-    # (jules_bcftools_mpileup runs against the whole reference with no
-    # chromosome restriction -- confirmed in workflow/rules/jules_v2.smk).
-    # Revisit with a size-based or per-species cutoff once we've checked
-    # for a natural large-chromosome-vs-small-scaffold gap in the data.
+    # uses a different chromosome-naming convention. No single naming
+    # pattern reliably separates real chromosomes from scaffolds across
+    # every species' source here, so this paints whatever ROH was actually
+    # called on.
 
     froh_rows <- list()
     for (srr in unique(all_roh$srr)) {
@@ -240,8 +347,8 @@ if (length(roh_files) == 0) {
 
       sample_roh <- all_roh[all_roh$srr == srr, ]
 
-      # paint exactly the chromosome set present in this sample's
-      # chromosome-only ROH output, looked up in the chromosome-only .fai
+      # paint exactly the chromosome set present in this sample's own
+      # ROH output, looked up in its .fai for real lengths
       called_chroms <- unique(sample_roh$chrom)
       top_scaffolds <- fai[fai$chrom %in% called_chroms, ]
       top_scaffolds <- top_scaffolds[order(-top_scaffolds$len), ]
@@ -250,26 +357,22 @@ if (length(roh_files) == 0) {
         next
       }
 
-      # chromosome painting: one horizontal track per scaffold (grey = full
-      # length), red blocks = ROH segments drawn to scale within it.
-      # Height clamped to Cairo's device limit as a hard safety net (only
-      # matters if ROH was somehow called on an unusually large number of
-      # chromosomes).
       png(file.path("plots/roh/painting", paste0(species, "_painting.png")),
           width = 1200, height = min(30000, max(400, nrow(top_scaffolds) * 25)))
-      par(mar = c(5, 10, 4, 2))
+      tufte_par(mar = c(4, 10, 3, 2))
       plot(NA, xlim = c(0, max(top_scaffolds$len)), ylim = c(0, nrow(top_scaffolds) + 1),
-           yaxt = "n", xlab = "Position (bp)", ylab = "",
-           main = paste0("ROH painting -- ", species, " (", nrow(top_scaffolds), " chromosomes)"))
+           yaxt = "n", xaxt = "n", xlab = "Position (bp)", ylab = "", main = "")
+      axis(1, lwd = 0.6)
       axis(2, at = seq_len(nrow(top_scaffolds)), labels = rev(top_scaffolds$chrom),
-           las = 2, cex.axis = 0.6)
+           las = 2, cex.axis = 0.6, lwd = 0)
+      tufte_title(paste0(species, " -- ROH painting (", nrow(top_scaffolds), " chromosomes)"))
       for (i in seq_len(nrow(top_scaffolds))) {
         y <- nrow(top_scaffolds) - i + 1
         chrom <- top_scaffolds$chrom[i]
-        rect(0, y - 0.3, top_scaffolds$len[i], y + 0.3, col = "grey85", border = NA)
+        rect(0, y - 0.3, top_scaffolds$len[i], y + 0.3, col = "grey88", border = NA)
         segs <- sample_roh[sample_roh$chrom == chrom, ]
         if (nrow(segs) > 0) {
-          rect(segs$start, y - 0.3, segs$end, y + 0.3, col = "red", border = NA)
+          rect(segs$start, y - 0.3, segs$end, y + 0.3, col = IUCN_COLORS[["CR"]], border = NA)
         }
       }
       dev.off()
@@ -288,14 +391,61 @@ if (length(roh_files) == 0) {
 
       png("plots/roh/froh_percent_genome.png",
           width = max(900, nrow(froh_df) * 60), height = 700)
-      par(mar = c(10, 5, 4, 2))
+      tufte_par(mar = c(10, 5, 3, 2))
       barplot(froh_df$pct_genome_in_roh, names.arg = froh_df$species, las = 2, cex.names = 0.8,
-              ylab = "% of genome in ROH (FROH)",
-              main = paste0("Genome-wide FROH -- ", nrow(froh_df), " sample(s)"))
+              col = MUTED_PALETTE[1], border = NA,
+              ylab = "% of genome in ROH (FROH)", main = "")
+      tufte_title(paste0("Genome-wide FROH -- ", nrow(froh_df), " sample(s)"))
       dev.off()
 
       cat("Wrote", length(froh_rows), "chromosome-painting plots to plots/roh/painting/",
           "and plots/roh/froh_percent_genome.png\n")
+
+      # --- FROH by IUCN status ---
+      # Styled after the "Raw genetic diversity by threat status" panel:
+      # top-mounted numeric axis, IQR box + median tick + jittered raw
+      # points per category, colored directly by IUCN status (no separate
+      # legend needed since the category IS the row label).
+      if (!is.null(iucn_lookup_df)) {
+        froh_df$iucn <- sapply(froh_df$species, iucn_for_species)
+        missing_iucn <- unique(froh_df$species[is.na(froh_df$iucn)])
+        if (length(missing_iucn) > 0) {
+          cat("No IUCN status found for:", paste(missing_iucn, collapse = ", "), "\n")
+        }
+        froh_iucn <- froh_df[!is.na(froh_df$iucn) & froh_df$iucn %in% IUCN_ORDER, ]
+
+        if (nrow(froh_iucn) > 0) {
+          present_order <- IUCN_ORDER[IUCN_ORDER %in% froh_iucn$iucn]
+          n <- length(present_order)
+          set.seed(1) # stable jitter across reruns
+          png("plots/roh/froh_by_iucn_status.png", width = 950, height = 550)
+          tufte_par(mar = c(2, 5, 4, 2))
+          xr <- range(froh_iucn$pct_genome_in_roh, na.rm = TRUE)
+          xr <- c(max(0, xr[1] - 0.02 * diff(xr)), xr[2] + 0.05 * diff(xr))
+          plot(NA, xlim = xr, ylim = c(0.3, n + 0.7), xaxt = "n", yaxt = "n",
+               xlab = "", ylab = "", main = "")
+          axis(3, at = pretty(xr), lwd = 0.6, cex.axis = 0.85)
+          mtext("% of genome in ROH (FROH)", side = 3, line = 2.2, cex = 0.95, col = "grey20")
+          for (i in seq_len(n)) {
+            cat_code <- present_order[i]
+            y <- n - i + 1
+            v <- froh_iucn$pct_genome_in_roh[froh_iucn$iucn == cat_code]
+            col <- IUCN_COLORS[[cat_code]]
+            if (length(v) >= 2) {
+              qs <- quantile(v, c(0.25, 0.5, 0.75), na.rm = TRUE)
+              rect(qs[1], y - 0.22, qs[3], y + 0.22, col = adjustcolor(col, alpha.f = 0.15), border = col, lwd = 1)
+              segments(qs[2], y - 0.22, qs[2], y + 0.22, col = col, lwd = 2)
+            }
+            yj <- y + (stats::runif(length(v)) - 0.5) * 0.32
+            points(v, yj, pch = 16, col = adjustcolor(col, alpha.f = 0.75), cex = 1.1)
+          }
+          axis(2, at = seq_len(n), labels = rev(present_order), lwd = 0, cex.axis = 0.95, font = 2)
+          dev.off()
+          cat("Wrote plots/roh/froh_by_iucn_status.png (", nrow(froh_iucn), "of", nrow(froh_df), "samples had an IUCN match)\n")
+        } else {
+          cat("No samples matched an IUCN status -- skipping froh_by_iucn_status.png\n")
+        }
+      }
     }
   }
 }
