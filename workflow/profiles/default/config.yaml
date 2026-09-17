@@ -39,12 +39,12 @@ default-resources:
 set-resources:
     sra:
         cpus_per_task: 4
-        runtime: "1440m"
+        runtime: "2880m"
     biosample:
         runtime: "20m"
     fastp:
-        runtime: "int(min(max(3*input.size_mb/(1024*threads), 10), 1440))"
-        cpus_per_task: 16
+        runtime: "int(min(max(3*input.size_mb/(1024*threads), 30), 1440))"
+        cpus_per_task: 4
     qc_post_rm_contam:
         runtime: "int(min(max(3*input.size_mb/(1024*threads), 10), 1440))"
         cpus_per_task: 8
@@ -70,7 +70,7 @@ set-resources:
         runtime: "120m"
         cpus_per_task: 8
     kmc_combine_dbs_nofilt:
-        runtime: "240m"
+        runtime: "480m"
         slurm_partition: "savio3_xlmem"
         slurm_nodes: 1
         slurm_mem: "1000G"
@@ -325,7 +325,7 @@ set-resources:
 # threads and cpus_per_task are supposed to be synonymous for this plugin, but for some reason I need to specify them separately
 set-threads:
     sra: 4
-    fastp: 6
+    fastp: 4
     qc_post_rm_contam: 8
     kmc: 8
     kmc_nofilt: 8
