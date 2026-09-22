@@ -543,3 +543,251 @@ ggplot(kmer_cov, aes(x = kmer_sum, y = kmer_num_unique)) +
 print(running_sums)
 print(running_num_non_zeros)
 ```
+
+# k-mer mar (mutations-area relationship)
+
+Input: the subsetted k-mer tables from the `kmers_nofilt_only` branch
+(`results/nofilt/subset/kmer_tables/{species}.txt`). These are space-delimited
+matrices with one row per sampled k-mer, one column per sample, k-mer names
+already stripped (see `workflow/rules/kmc_nofilt.smk:120`).
+
+Encoding: counts are binarized to 0/1 for k-mer absence/presence per sample,
+which is a valid ploidy-1 allele-count matrix for `mar`'s `text_parser()`
+(values in {0, ploidy}).
+
+Caveat: `mar`'s theory assumes rows are independent biallelic SNP sites. K-mers
+violate this (one SNP generates k overlapping k-mers), so the fitted z is a
+heuristic "k-mer-area" exponent, not a true MAR exponent. Coordinates are not
+required: we fit the theoretical MAR (`MARtheory()`) against sample size
+(`Atype = "N"`), which needs no map.
+
+## install mar (one-time; run interactively, not knit)
+
+```{r, eval = FALSE}
+# install mar and its dependencies (README: github.com/meixilin/mar).
+# terra pulls in gdal; if conda is preferred instead:
+#   mamba create --name mar r-base r-terra r-matrixstats r-sars gdal
+# then remotes::install_github("meixilin/mar") inside that env.
+install.packages(c("sars", "matrixStats", "terra"))
+if (!requireNamespace("remotes", quietly = TRUE)) install.packages("remotes")
+remotes::install_github("meixilin/mar")
+```
+
+## load mar and choose species
+
+```{r}
+if (!requireNamespace("mar", quietly = TRUE)) {
+  stop("Package 'mar' is not installed. Run the install chunk above first.")
+}
+suppressPackageStartupMessages(library(mar))
+
+# directory holding the subsetted k-mer tables (paths relative to workflow/)
+mar_kmer_dir <- "../results/nofilt/subset/kmer_tables"
+
+# all species with a subset table available
+mar_species <- list.files(mar_kmer_dir, pattern = "\\.txt$", full.names = FALSE) %>%
+  tools::file_path_sans_ext() %>%
+  sort()
+
+# species to analyze in the single-species chunks below
+mar_species_sel <- mar_species[1]
+cat("Available species:", paste(mar_species, collapse = ", "), "\n")
+cat("Selected for single-species run:", mar_species_sel, "\n")
+
+# results go under results/by-date/{today}/ (same convention as other chunks)
+mar_out_dir <- file.path("../../results/by-date", as.character(today), "mar")
+dir.create(mar_out_dir, recursive = TRUE, showWarnings = FALSE)
+```
+
+## binarize count table and format for mar
+
+```{r}
+# function: read a space-delimited subset k-mer table (no header, no k-mer
+# column), binarize to 0/1 presence/absence, write a tab-delimited copy for
+# text_parser() (its delimiter guesser only accepts tab or comma), and return
+# the output path
+mar_prep_input <- function(species, kmer_dir = mar_kmer_dir, out_dir = mar_out_dir) {
+  in_path <- file.path(kmer_dir, paste0(species, ".txt"))
+  stopifnot("subset k-mer table not found" = file.exists(in_path))
+
+  # read full matrix; fread handles large files and spaces as separator
+  geno_mat <- fread(in_path, sep = " ", header = FALSE) %>%
+    as.matrix()
+
+  # binarize: any nonzero count -> present (1); ploidy = 1
+  geno_mat[geno_mat > 0] <- 1
+  storage.mode(geno_mat) <- "integer"
+
+  # mar's text_parser reads txt/csv/tsv with tab or comma delimiters and no
+  # header/row names -- write a tab-delimited copy
+  out_path <- file.path(out_dir, paste0("mar_input_", species, ".txt"))
+  write.table(
+    geno_mat,
+    file = out_path,
+    sep = "\t",
+    quote = FALSE,
+    row.names = FALSE,
+    col.names = FALSE
+  )
+  cat("prepped:", out_path, "|", nrow(geno_mat), "k-mers x", ncol(geno_mat), "samples\n")
+  out_path
+}
+```
+
+## import genotypes into mar
+
+```{r}
+# text_parser() reads the binarized matrix as alternative-allele counts with
+# ploidy = 1: 0 = k-mer absent, 1 = k-mer present. Sample IDs are optional; if
+# omitted, samples are numbered 1..N. Chromosome/position files are omitted --
+# they only annotate variant.id, which the theoretical workflow does not use.
+mar_geno <- text_parser(
+  geno.fn = mar_prep_input(mar_species_sel),
+  ploidy = 1
+)
+print(mar_geno)
+```
+
+## build the genomaps object (technicality, no spatial meaning)
+
+```{r}
+# MARtheory() requires a genomaps object whose maps$sample.id length matches
+# the genotype columns. The empirical sampling functions (MARsampling,
+# MARextinction) are not used here, so the coordinates are dummies placed on an
+# arbitrary plane (incrs = "", mapcrs = "") with no projection applied.
+mar_dummy_coords <- data.frame(
+  ID = paste0("s", seq_len(ncol(mar_geno$genotype))),
+  LON = seq_len(ncol(mar_geno$genotype)),
+  LAT = seq_len(ncol(mar_geno$genotype))
+)
+
+mar_maps <- marmaps(lonlatdf = mar_dummy_coords, mapcrs = "", incrs = "")
+
+mar_gm <- genomaps(mar_geno, mar_maps)
+print(mar_gm)
+```
+
+## site-frequency spectrum: observed vs neutral expectation
+
+```{r}
+# The SFS here is a histogram of k-mer presence counts: how many k-mers are
+# present in exactly k of the N samples (k = 0..N at ploidy 1).
+mar_obs_sfs <- sfs(mar_gm)
+mar_exp_sfs <- expsfs(mar_gm)
+
+plot(mar_obs_sfs, expected = mar_exp_sfs, log = "x",
+     main = paste0("K-mer frequency spectrum: ", mar_species_sel))
+
+# folded spectrum, useful when "ancestral state" (which sample is the reference)
+# is arbitrary -- as it is here
+plot(sfs(mar_gm, folded = TRUE), expected = expsfs(mar_gm, folded = TRUE), log = "x")
+```
+
+## theoretical mutations(k-mers)-area relationship
+
+```{r}
+# MARtheory() predicts the expected number of "mutations" (k-mers present in at
+# least one sampled individual) as a function of subsample size n, given the
+# full SFS. Assumptions: random mating, random spatial distribution,
+# unlinked sites -- none strictly hold for k-mers, hence heuristic.
+mar_theory_df <- MARtheory(mar_gm)
+head(mar_theory_df)
+
+plot(mar_theory_df, fit = TRUE,
+     main = paste0("Theoretical k-mer MAR: ", mar_species_sel))
+```
+
+## fit the power-law model M = cA^z against sample size
+
+```{r}
+# Atype = "N" fits diversity against the number of sampled individuals -- this
+# is what makes the coordinate-free workflow possible. Mtype = "M" is the
+# number of mutations (unique k-mers captured).
+mar_fit <- MARcalc(mar_theory_df, Mtype = "M", Atype = "N")
+summary(mar_fit)
+
+plot(mar_theory_df, fit = mar_fit$par, Mtype = "M", Atype = "N",
+     main = paste0("K-mer MAR fit: ", mar_species_sel))
+
+# export fit summary (c, z, p-values, R2)
+mar_fit_out <- capture.output(summary(mar_fit))
+writeLines(mar_fit_out,
+           file.path(mar_out_dir, paste0("mar_fit_", mar_species_sel, ".txt")))
+```
+
+## loop: theoretical k-mer MAR for all species
+
+```{r}
+# Repeat the binarize -> import -> theory -> fit workflow for every species with
+# a subset table, collecting a species-level summary of the scaling exponent z.
+# Requires >= 4 samples per species for a meaningful z fit; species below that
+# threshold are skipped with a warning.
+mar_run_species <- function(species, kmer_dir = mar_kmer_dir, out_dir = mar_out_dir) {
+  cat("=== ", species, " ===\n")
+  geno_path <- tryCatch(
+    mar_prep_input(species, kmer_dir = kmer_dir, out_dir = out_dir),
+    error = function(e) {
+      warning("skipping ", species, ": ", conditionMessage(e))
+      NULL
+    }
+  )
+  if (is.null(geno_path)) return(NULL)
+
+  geno <- tryCatch(text_parser(geno.fn = geno_path, ploidy = 1),
+                   error = function(e) {
+                     warning("text_parser failed for ", species, ": ", conditionMessage(e))
+                     NULL
+                   })
+  if (is.null(geno)) return(NULL)
+
+  coords <- data.frame(
+    ID = paste0("s", seq_len(ncol(geno$genotype))),
+    LON = seq_len(ncol(geno$genotype)),
+    LAT = seq_len(ncol(geno$genotype))
+  )
+  maps <- marmaps(coords, mapcrs = "", incrs = "")
+  gm <- genomaps(geno, maps)
+
+  if (length(maps$sample.id) < 4) {
+    warning("skipping ", species, ": only ", length(maps$sample.id),
+            " samples; need >= 4 for a stable z fit")
+    return(NULL)
+  }
+
+  theory_df <- MARtheory(gm)
+  fit <- MARcalc(theory_df, Mtype = "M", Atype = "N")
+  if (is.null(fit)) {
+    warning("MARcalc returned NULL for ", species)
+    return(NULL)
+  }
+
+  fit_sum <- summary(fit)
+  writeLines(capture.output(fit_sum),
+             file.path(out_dir, paste0("mar_fit_", species, ".txt")))
+
+  data.frame(
+    species = species,
+    n_samples = length(maps$sample.id),
+    n_kmers = length(gm$geno$variant.id),
+    c = fit_sum$Parameters[[1, "Estimate"]],
+    z = fit_sum$Parameters[[2, "Estimate"]],
+    z_p = fit_sum$Parameters[[2, "Pr(>|t|)"]],
+    R2_adj = fit_sum$R2a
+  )
+}
+
+mar_z_table <- set_names(mar_species, mar_species) %>%
+  map_dfr(mar_run_species)
+
+# one row per species: the k-mer-area scaling exponent z for downstream
+# comparisons (e.g. join to the threat-status / range-size analysis chunks)
+mar_z_table
+
+write.table(
+  mar_z_table,
+  file.path(mar_out_dir, "mar_z_summary.txt"),
+  quote = FALSE,
+  row.names = FALSE,
+  sep = "\t"
+)
+```
