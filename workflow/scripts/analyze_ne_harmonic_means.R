@@ -39,6 +39,14 @@ dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
 MUTED_PALETTE <- c("#2F6B4F", "#7A9D54", "#C9A227", "#D9772E", "#B72E3C",
                     "#3D6B94", "#6B4C7A", "#8C8C8C")
+# 300 DPI instead of R's default 72 -- scale pixel dimensions up
+# proportionally to res so physical layout (margins, font size relative to
+# plot) stays identical, only pixel density increases.
+open_png <- function(path, width, height, res = 300) {
+  scale <- res / 72
+  png(path, width = width * scale, height = height * scale, res = res)
+}
+
 tufte_par <- function(mar = c(3, 4, 3, 2)) {
   par(bty = "n", family = "sans", las = 1, mar = mar,
       tck = -0.015, cex.axis = 0.85, col.axis = "grey30", col.lab = "grey20")
@@ -183,7 +191,7 @@ plot_periods <- function(tbl, out_path, title) {
   }
   xr <- range(v_all)
   n <- length(row_order)
-  png(out_path, width = 950, height = 560)
+  open_png(out_path, width = 950, height = 560)
   tufte_par(mar = c(4, 11, 3, 2))
   plot(NA, xlim = xr, ylim = c(0.4, n + 0.6), log = "x", xaxt = "n", yaxt = "n",
        xlab = "", ylab = "", main = "")

@@ -27,6 +27,14 @@ out_dir  <- if (length(args) >= 3 && nzchar(args[3])) args[3] else "plots/roh"
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 froh_df <- read.csv(froh_csv, stringsAsFactors = FALSE)
 
+# 300 DPI instead of R's default 72 -- scale pixel dimensions up
+# proportionally to res so physical layout (margins, font size relative to
+# plot) stays identical, only pixel density increases.
+open_png <- function(path, width, height, res = 300) {
+  scale <- res / 72
+  png(path, width = width * scale, height = height * scale, res = res)
+}
+
 tufte_par <- function(mar = c(3, 4, 3, 2)) {
   par(bty = "n", family = "sans", las = 1, mar = mar,
       tck = -0.015, cex.axis = 0.85, col.axis = "grey30", col.lab = "grey20")
@@ -85,7 +93,7 @@ plot_lc_vs_threatened <- function(values, out_path, x_label) {
   xr_rb <- range(v, na.rm = TRUE)
   xr_rb <- c(0, xr_rb[2] + 0.05 * diff(xr_rb))
   set.seed(1)
-  png(out_path, width = 950, height = 560)
+  open_png(out_path, width = 950, height = 560)
   tufte_par(mar = c(5, 11, 2, 2))
   plot(NA, xlim = xr_rb, ylim = c(0.4, 2.6), xaxt = "n", yaxt = "n",
        xlab = "", ylab = "", main = "")

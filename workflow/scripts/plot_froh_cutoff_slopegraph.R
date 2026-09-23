@@ -18,6 +18,14 @@ froh_df <- read.csv(froh_csv, stringsAsFactors = FALSE)
 
 MUTED_PALETTE <- c("#2F6B4F", "#7A9D54", "#C9A227", "#D9772E", "#B72E3C",
                     "#3D6B94", "#6B4C7A", "#8C8C8C")
+# 300 DPI instead of R's default 72 -- scale pixel dimensions up
+# proportionally to res so physical layout (margins, font size relative to
+# plot) stays identical, only pixel density increases.
+open_png <- function(path, width, height, res = 300) {
+  scale <- res / 72
+  png(path, width = width * scale, height = height * scale, res = res)
+}
+
 tufte_par <- function(mar = c(3, 4, 3, 2)) {
   par(bty = "n", family = "sans", las = 1, mar = mar,
       tck = -0.015, cex.axis = 0.85, col.axis = "grey30", col.lab = "grey20")
@@ -35,7 +43,7 @@ cmp <- froh_df[order(-froh_df$pct_genome_in_roh_1mb), ]
 x1 <- 1; x2 <- 2
 yr_cmp <- range(c(cmp$pct_genome_in_roh_1pctchrom, cmp$pct_genome_in_roh_1mb), na.rm = TRUE)
 label_ok <- nrow(cmp) <= 30
-png(file.path(out_dir, "froh_cutoff_comparison.png"),
+open_png(file.path(out_dir, "froh_cutoff_comparison.png"),
     width = if (label_ok) 1100 else 700, height = max(500, nrow(cmp) * 16))
 tufte_par(mar = c(3, 3, 4, 3))
 plot(NA, xlim = c(if (label_ok) 0.3 else 0.8, if (label_ok) 2.7 else 2.2), ylim = yr_cmp,

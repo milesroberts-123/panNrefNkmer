@@ -24,6 +24,14 @@ froh_df <- read.csv(froh_csv, stringsAsFactors = FALSE)
 IUCN_ORDER  <- c("CR", "EN", "VU", "NT", "LC")
 IUCN_COLORS <- c(CR = "#B72E3C", EN = "#D9772E", VU = "#C9A227",
                   NT = "#7A9D54", LC = "#2F6B4F")
+# 300 DPI instead of R's default 72 -- scale pixel dimensions up
+# proportionally to res so physical layout (margins, font size relative to
+# plot) stays identical, only pixel density increases.
+open_png <- function(path, width, height, res = 300) {
+  scale <- res / 72
+  png(path, width = width * scale, height = height * scale, res = res)
+}
+
 tufte_par <- function(mar = c(2, 5, 4, 2)) {
   par(bty = "n", family = "sans", las = 1, mar = mar,
       tck = -0.015, cex.axis = 0.85, col.axis = "grey30", col.lab = "grey20")
@@ -61,7 +69,7 @@ plot_by_iucn <- function(values, out_path, x_label) {
   present_order <- IUCN_ORDER[IUCN_ORDER %in% iucn_all]
   n <- length(present_order)
   set.seed(1)
-  png(out_path, width = 950, height = 550)
+  open_png(out_path, width = 950, height = 550)
   tufte_par()
   xr <- range(v_all)
   xr <- c(max(0, xr[1] - 0.02 * diff(xr)), xr[2] + 0.05 * diff(xr))

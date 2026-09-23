@@ -52,6 +52,14 @@ muted_colors <- function(n) {
   if (n <= length(MUTED_PALETTE)) return(MUTED_PALETTE[seq_len(n)])
   colorRampPalette(MUTED_PALETTE)(n)
 }
+# 300 DPI instead of R's default 72 -- scale pixel dimensions up
+# proportionally to res so physical layout (margins, font size relative to
+# plot) stays identical, only pixel density increases.
+open_png <- function(path, width, height, res = 300) {
+  scale <- res / 72
+  png(path, width = width * scale, height = height * scale, res = res)
+}
+
 tufte_par <- function(mar = c(3, 4, 3, 2)) {
   par(bty = "n", family = "sans", las = 1, mar = mar,
       tck = -0.015, cex.axis = 0.85, col.axis = "grey30", col.lab = "grey20")
@@ -194,7 +202,7 @@ if (length(msmc_files) == 0) {
   for (srr in srr_ids) {
     d <- curves[[srr]]
     label <- species_labels[[srr]]
-    png(file.path("plots/msmc2", paste0(label, ".png")), width = 900, height = 650)
+    open_png(file.path("plots/msmc2", paste0(label, ".png")), width = 900, height = 650)
     tufte_par()
     plot(d$x, d$y, type = "s", log = "xy", lwd = 1.6, col = MUTED_PALETTE[1],
          xlab = "Years ago", ylab = expression(N[e]), main = "", axes = FALSE)
@@ -213,7 +221,7 @@ if (length(msmc_files) == 0) {
   LEGEND_MAX <- 15
   xr <- range(unlist(lapply(curves, function(d) d$x[d$x > 0])))
   yr <- range(unlist(lapply(curves, function(d) d$y)))
-  png("plots/msmc2/all_samples_overlay.png", width = 1100, height = 800)
+  open_png("plots/msmc2/all_samples_overlay.png", width = 1100, height = 800)
   tufte_par()
   plot(NA, xlim = xr, ylim = yr, log = "xy",
        xlab = "Years ago", ylab = expression(N[e]), main = "", axes = FALSE)
@@ -280,7 +288,7 @@ if (length(common_ids) == 0) {
     y_trimmed <- c(trim_boundary(pd)$y, trim_boundary(md)$y)
     y_trimmed <- y_trimmed[is.finite(y_trimmed) & y_trimmed > 0]
     yr <- if (length(y_trimmed) > 0) range(y_trimmed) else range(y_vals)
-    png(file.path("plots/comparison", paste0(label, "_psmc_vs_msmc2.png")), width = 950, height = 700)
+    open_png(file.path("plots/comparison", paste0(label, "_psmc_vs_msmc2.png")), width = 950, height = 700)
     tufte_par()
     plot(NA, xlim = xr, ylim = yr, log = "xy",
          xlab = "Years ago", ylab = expression(N[e]), main = "", axes = FALSE)
@@ -335,7 +343,7 @@ if (length(roh_files) == 0) {
     by_chrom <- by_chrom[order(-by_chrom$length_bp), ]
     top30 <- head(by_chrom, 30)
 
-    png("plots/roh/top30_scaffolds_total_roh.png", width = 1200, height = 700)
+    open_png("plots/roh/top30_scaffolds_total_roh.png", width = 1200, height = 700)
     tufte_par(mar = c(8, 5, 3, 2))
     barplot(top30$length_bp / 1e6, names.arg = top30$chrom, las = 2, cex.names = 0.7,
             col = MUTED_PALETTE[1], border = NA,
@@ -347,8 +355,10 @@ if (length(roh_files) == 0) {
     # per-sample total ROH -- labeled by species name, not Run ID
     by_sample <- aggregate(length_bp ~ species, data = all_roh, sum)
     by_sample <- by_sample[order(-by_sample$length_bp), ]
-    png("plots/roh/total_roh_per_sample.png",
-        width = max(900, nrow(by_sample) * 40), height = 700)
+    # Capped so width * (300/72 DPI scale in open_png) can't exceed Cairo's
+    # ~32767px device limit.
+    open_png("plots/roh/total_roh_per_sample.png",
+        width = min(7500, max(900, nrow(by_sample) * 40)), height = 700)
     tufte_par(mar = c(10, 5, 3, 2))
     barplot(by_sample$length_bp / 1e6, names.arg = by_sample$species, las = 2, cex.names = 0.7,
             col = MUTED_PALETTE[1], border = NA,
@@ -428,8 +438,11 @@ if (length(roh_files) == 0) {
         next
       }
 
-      png(file.path("plots/roh/painting", paste0(species, "_painting.png")),
-          width = 1200, height = min(30000, max(400, nrow(top_scaffolds) * 25)))
+      # Cairo's device limit is ~32767px -- open_png() scales height up by
+      # 300/72 (~4.17x) for DPI, so the pre-scale cap here must leave room
+      # for that (32767 / 4.17 =~ 7800), not the old 72-DPI-era 30000 value.
+      open_png(file.path("plots/roh/painting", paste0(species, "_painting.png")),
+          width = 1200, height = min(7500, max(400, nrow(top_scaffolds) * 25)))
       tufte_par(mar = c(4, 10, 3, 2))
       plot(NA, xlim = c(0, max(top_scaffolds$len)), ylim = c(0, nrow(top_scaffolds) + 1),
            yaxt = "n", xaxt = "n", xlab = "Position (bp)", ylab = "", main = "")
@@ -495,8 +508,8 @@ if (length(roh_files) == 0) {
       froh_df <- froh_df[order(-froh_df$pct_genome_in_roh), ]
       write.csv(froh_df, "plots/roh/froh_comparison.csv", row.names = FALSE)
 
-      png("plots/roh/froh_percent_genome.png",
-          width = max(900, nrow(froh_df) * 60), height = 700)
+      open_png("plots/roh/froh_percent_genome.png",
+          width = min(7500, max(900, nrow(froh_df) * 60)), height = 700)
       tufte_par(mar = c(10, 5, 3, 2))
       barplot(froh_df$pct_genome_in_roh, names.arg = froh_df$species, las = 2, cex.names = 0.8,
               col = MUTED_PALETTE[1], border = NA,
@@ -524,7 +537,7 @@ if (length(roh_files) == 0) {
           present_order <- IUCN_ORDER[IUCN_ORDER %in% froh_iucn$iucn]
           n <- length(present_order)
           set.seed(1) # stable jitter across reruns
-          png("plots/roh/froh_by_iucn_status.png", width = 950, height = 550)
+          open_png("plots/roh/froh_by_iucn_status.png", width = 950, height = 550)
           tufte_par(mar = c(2, 5, 4, 2))
           xr <- range(froh_iucn$pct_genome_in_roh, na.rm = TRUE)
           xr <- c(max(0, xr[1] - 0.02 * diff(xr)), xr[2] + 0.05 * diff(xr))
