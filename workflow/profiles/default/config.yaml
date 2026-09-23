@@ -58,7 +58,7 @@ set-resources:
         runtime: "int(min(max(4*input.size_mb/(1024*threads), 30), 1440))"
         cpus_per_task: 8
     kmc_nofilt: 
-        runtime: "int(min(max(6*input.size_mb/(1024*threads), 30), 1440))"
+        runtime: "int(min(max(6*input.size_mb/(1024*threads), 120), 1440))"
         cpus_per_task: 8
     kmc_kraken:
         runtime: "int(min(max(4*input.size_mb/(1024*threads), 30), 1440))"
@@ -73,7 +73,7 @@ set-resources:
         runtime: "480m"
         slurm_partition: "savio3_xlmem"
         slurm_nodes: 1
-        slurm_mem: "1000G"
+        slurm_mem: "str(int(min(max(2*input.size_mb/1024, 10), 1000))) + 'G'"
         cpus_per_task: 4
     kmc_combine_dbs_kraken:
         runtime: "120m"

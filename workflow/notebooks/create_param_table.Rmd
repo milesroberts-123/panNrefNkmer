@@ -149,15 +149,16 @@ names(runinfo_sorted) = c("Run", "BioSample", "Species")
 # sort species by number of runs (analyze species with less data first)
 runinfo_filtered <- runinfo_sorted %>%
   group_by(Species) %>%
-  filter(n_distinct(BioSample) > 1) %>%
+  #filter(n_distinct(BioSample) > 1) %>%
   ungroup() %>%
   droplevels() %>%
   filter(Species %in% (all_sam$Species)) %>% 
   arrange(Species)
-  #group_by(Species) %>%
-  #mutate(n_runs = n()) %>% 
-  #arrange(n_runs, Species)%>%
-  #dplyr::select(Run, BioSample, Species)
+
+write.table(runinfo_filtered, "../../config/samples_gte1Biosample.tsv", quote = F, row.names = F, col.names = T, sep = "\t")
+
+runinfo_filtered <- runinfo_filtered %>%
+  filter(n_distinct(BioSample) > 1)
 
 # summary statistics
 cat("Number of Species:", n_distinct(runinfo_filtered$Species), "\n")
@@ -175,7 +176,6 @@ write.table(runinfo_filtered, "../../config/samples_all.tsv", quote = F, row.nam
 
 # partition species into groups with a small, medium, and large amount of data
 # will process species with very little data first
-
 runinfo_partitioned <- runinfo_filtered %>%
   group_by(Species) %>%
   mutate(num_runs = n(),
