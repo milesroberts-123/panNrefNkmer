@@ -94,7 +94,9 @@ plot_lc_vs_threatened <- function(values, out_path, x_label) {
   xr_rb <- c(0, xr_rb[2] + 0.05 * diff(xr_rb))
   set.seed(1)
   open_png(out_path, width = 950, height = 560)
-  tufte_par(mar = c(5, 11, 2, 2))
+  # mar left = 13 (not 11) -- "Threatened (NT/VU/EN/CR/EW)" was clipping
+  # against the plot edge at the 300 DPI scale.
+  tufte_par(mar = c(5, 13, 2, 2))
   plot(NA, xlim = xr_rb, ylim = c(0.4, 2.6), xaxt = "n", yaxt = "n",
        xlab = "", ylab = "", main = "")
   rangebox_row(2, v[g == "Threatened (NT/VU/EN/CR/EW)"], CUTOFF_ORANGE)

@@ -68,7 +68,7 @@ rangebox_row <- function(y_center, values, color, height = 0.32) {
          col = adjustcolor("black", alpha.f = 0.5), cex = 1.15, lwd = 0.6)
 }
 
-plot_lc_vs_threatened <- function(values, group, out_path, x_label) {
+plot_lc_vs_threatened <- function(values, group, out_path, x_label, log_scale = TRUE) {
   keep <- !is.na(group) & is.finite(values) & values > 0
   v <- values[keep]; g <- group[keep]
   if (length(v) == 0 || length(unique(g)) < 2) {
@@ -78,14 +78,20 @@ plot_lc_vs_threatened <- function(values, group, out_path, x_label) {
   xr <- range(v, na.rm = TRUE)
   set.seed(1)
   open_png(out_path, width = 950, height = 560)
-  tufte_par(mar = c(5, 11, 2, 2))
-  plot(NA, xlim = xr, ylim = c(0.4, 2.6), log = "x", xaxt = "n", yaxt = "n",
-       xlab = "", ylab = "", main = "")
+  # mar left = 13 (not 11) -- "Threatened (NT/VU/EN/CR/EW)" was clipping
+  # against the plot edge at the 300 DPI scale.
+  tufte_par(mar = c(5, 13, 2, 2))
+  plot(NA, xlim = xr, ylim = c(0.4, 2.6), log = if (log_scale) "x" else "",
+       xaxt = "n", yaxt = "n", xlab = "", ylab = "", main = "")
   rangebox_row(2, v[g == "Threatened (NT/VU/EN/CR/EW)"], CUTOFF_ORANGE)
   rangebox_row(1, v[g == "Non-threatened (LC)"], CUTOFF_GREEN)
   axis(2, at = c(2, 1), labels = c("Threatened (NT/VU/EN/CR/EW)", "Non-threatened (LC)"),
        lwd = 0, cex.axis = 1, las = 1)
-  axis(1, at = 10^pretty(log10(xr), n = 5), lwd = 0.6, cex.axis = 0.85)
+  if (log_scale) {
+    axis(1, at = 10^pretty(log10(xr), n = 5), lwd = 0.6, cex.axis = 0.85)
+  } else {
+    axis(1, at = pretty(xr, n = 5), lwd = 0.6, cex.axis = 0.85)
+  }
   mtext(x_label, side = 1, line = 3, font = 2, cex = 1, col = "grey20")
   dev.off()
   cat("Wrote", out_path, "\n")
@@ -103,9 +109,12 @@ run_method <- function(method_name, csv_path) {
   for (p in unique(tbl$period)) {
     sub <- tbl[tbl$period == p, ]
     period_slug <- gsub("[^A-Za-z0-9]+", "_", tolower(p))
-    out_path <- file.path(out_dir, paste0("ne_harmonic_lc_vs_threatened_", tolower(method_name), "_", period_slug, ".png"))
-    plot_lc_vs_threatened(sub$harmonic_mean_ne, sub$threat_group, out_path,
-                           paste0(method_name, " Ne (harmonic mean), ", p))
+    base_name <- paste0("ne_harmonic_lc_vs_threatened_", tolower(method_name), "_", period_slug)
+    label <- paste0(method_name, " Ne (harmonic mean), ", p)
+    plot_lc_vs_threatened(sub$harmonic_mean_ne, sub$threat_group,
+                           file.path(out_dir, paste0(base_name, ".png")), label, log_scale = TRUE)
+    plot_lc_vs_threatened(sub$harmonic_mean_ne, sub$threat_group,
+                           file.path(out_dir, paste0(base_name, "_linear.png")), label, log_scale = FALSE)
   }
 }
 
