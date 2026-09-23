@@ -65,8 +65,8 @@ froh_df$iucn <- sapply(froh_df$species, iucn_for_species)
 threat_group <- ifelse(froh_df$iucn == "LC", "Non-threatened (LC)",
                         ifelse(is.na(froh_df$iucn), NA, "Threatened (NT/VU/EN/CR/EW)"))
 
-CUTOFF_ORANGE <- "#D97B29"
-CUTOFF_GREEN  <- "#4E8B3B"
+CUTOFF_ORANGE <- "#E8A33D"
+CUTOFF_GREEN  <- "#2D5A34"
 rangebox_row <- function(y_center, values, color, height = 0.32) {
   values <- values[is.finite(values)]
   if (length(values) == 0) return(invisible())
@@ -107,6 +107,16 @@ plot_lc_vs_threatened <- function(values, out_path, x_label) {
   cat("Wrote", out_path, "\n")
 }
 
+if ("pct_genome_in_roh" %in% names(froh_df)) {
+  plot_lc_vs_threatened(froh_df$pct_genome_in_roh,
+                         file.path(out_dir, "froh_lc_vs_threatened_nofilter.png"),
+                         "% of genome in ROH (FROH), no length cutoff")
+}
+if ("pct_genome_in_roh_1pctchrom" %in% names(froh_df)) {
+  plot_lc_vs_threatened(froh_df$pct_genome_in_roh_1pctchrom,
+                         file.path(out_dir, "froh_lc_vs_threatened_1pctchrom.png"),
+                         "% of genome in ROH (FROH), ROH >= 1% of chromosome")
+}
 if ("pct_genome_in_roh_1mb" %in% names(froh_df)) {
   plot_lc_vs_threatened(froh_df$pct_genome_in_roh_1mb,
                          file.path(out_dir, "froh_lc_vs_threatened_1mb.png"),
