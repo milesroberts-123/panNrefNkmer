@@ -322,7 +322,8 @@ if (length(roh_files) == 0) {
       chrom = sapply(parts, `[`, 3),
       start = as.numeric(sapply(parts, `[`, 4)),
       end = as.numeric(sapply(parts, `[`, 5)),
-      length_bp = as.numeric(sapply(parts, `[`, 6))
+      length_bp = as.numeric(sapply(parts, `[`, 6)),
+      quality = as.numeric(sapply(parts, `[`, 8))
     )
   }))
 
@@ -451,16 +452,27 @@ if (length(roh_files) == 0) {
       # side by side below: a RELATIVE cutoff (segment >= 1% of the length
       # of the chromosome/scaffold it's on -- scales with assembly, so a
       # tiny unplaced scaffold's near-zero-length ROH calls mostly fail it
-      # too) and an ABSOLUTE cutoff (segment >= 1 Mb, the standard
-      # "long ROH" threshold used to flag recent/close inbreeding in the
+      # too) and an ABSOLUTE cutoff (segment >= 1 Mb / 2.5 Mb, the standard
+      # "long ROH" thresholds used to flag recent/close inbreeding in the
       # conservation genomics literature, independent of scaffold size).
+      # All of them also require bcftools roh's own quality score >= 30 --
+      # the same -G30 genotype-quality threshold already used when calling
+      # ROH in jules_bcftools_roh, kept consistent here rather than
+      # introducing a second, unrelated quality number. Length alone
+      # doesn't catch this: a segment can be genuinely long in bp while
+      # still spanning a low-marker-density stretch the HMM wasn't very
+      # confident about (the same low-depth failure mode the 10x depth
+      # floor in jules_bcftools_filter already guards against upstream).
+      MIN_ROH_QUALITY <- 30
+      sample_roh_hq <- sample_roh[!is.na(sample_roh$quality) & sample_roh$quality >= MIN_ROH_QUALITY, ]
       chrom_len_lookup <- setNames(fai$len, fai$chrom)
-      sample_roh$chrom_len <- chrom_len_lookup[sample_roh$chrom]
+      sample_roh_hq$chrom_len <- chrom_len_lookup[sample_roh_hq$chrom]
       genome_len_bp_srr <- sum(fai$len)
-      qualifying_pct1chrom <- sample_roh[!is.na(sample_roh$chrom_len) &
-                                            sample_roh$length_bp >= 0.01 * sample_roh$chrom_len, ]
-      qualifying_1mb <- sample_roh[sample_roh$length_bp >= 1e6, ]
-      qualifying_1pctgenome <- sample_roh[sample_roh$length_bp >= 0.01 * genome_len_bp_srr, ]
+      qualifying_pct1chrom <- sample_roh_hq[!is.na(sample_roh_hq$chrom_len) &
+                                            sample_roh_hq$length_bp >= 0.01 * sample_roh_hq$chrom_len, ]
+      qualifying_1mb <- sample_roh_hq[sample_roh_hq$length_bp >= 1e6, ]
+      qualifying_2_5mb <- sample_roh_hq[sample_roh_hq$length_bp >= 2.5e6, ]
+      qualifying_1pctgenome <- sample_roh_hq[sample_roh_hq$length_bp >= 0.01 * genome_len_bp_srr, ]
 
       froh_rows[[srr]] <- data.frame(
         species = species,
@@ -468,6 +480,7 @@ if (length(roh_files) == 0) {
         roh_len_bp = sum(sample_roh$length_bp),
         roh_len_bp_1pctchrom = sum(qualifying_pct1chrom$length_bp),
         roh_len_bp_1mb = sum(qualifying_1mb$length_bp),
+        roh_len_bp_2_5mb = sum(qualifying_2_5mb$length_bp),
         roh_len_bp_1pctgenome = sum(qualifying_1pctgenome$length_bp)
       )
     }
@@ -476,6 +489,7 @@ if (length(roh_files) == 0) {
       froh_df <- do.call(rbind, froh_rows)
       froh_df$pct_genome_in_roh <- 100 * froh_df$roh_len_bp / froh_df$genome_len_bp
       froh_df$pct_genome_in_roh_1pctchrom <- 100 * froh_df$roh_len_bp_1pctchrom / froh_df$genome_len_bp
+      froh_df$pct_genome_in_roh_2_5mb <- 100 * froh_df$roh_len_bp_2_5mb / froh_df$genome_len_bp
       froh_df$pct_genome_in_roh_1mb <- 100 * froh_df$roh_len_bp_1mb / froh_df$genome_len_bp
       froh_df$pct_genome_in_roh_1pctgenome <- 100 * froh_df$roh_len_bp_1pctgenome / froh_df$genome_len_bp
       froh_df <- froh_df[order(-froh_df$pct_genome_in_roh), ]

@@ -109,3 +109,8 @@ if ("pct_genome_in_roh_1pctgenome" %in% names(froh_df)) {
                          file.path(out_dir, "froh_lc_vs_threatened_1pctgenome.png"),
                          "% of genome in ROH (FROH), ROH >= 1% of genome")
 }
+if ("pct_genome_in_roh_2_5mb" %in% names(froh_df)) {
+  plot_lc_vs_threatened(froh_df$pct_genome_in_roh_2_5mb,
+                         file.path(out_dir, "froh_lc_vs_threatened_2_5mb.png"),
+                         "% of genome in ROH (FROH), ROH >= 2.5 Mb")
+}
