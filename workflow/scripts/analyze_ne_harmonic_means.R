@@ -127,6 +127,13 @@ periods_for_curve <- function(curve) {
     data.frame(period = PERIOD_LABELS[i],
                harmonic_mean_ne = harmonic_mean_ne(curve$x, curve$y, edges[i], edges[i + 1]))
   })
+  # Coarser split matching the Zoonomia paper's own PSMC/MSMC2 treatment:
+  # a single pooled ">10kya" period (everything older than the most recent
+  # bin, i.e. 10k-100kya + 100k-1Mya + >1Mya combined) alongside the finer
+  # 4-bin breakdown above -- lets a signal that's diluted across three
+  # separate bins show up as one stronger, more directly comparable test.
+  rows[[length(rows) + 1]] <- data.frame(period = ">10kya",
+                                          harmonic_mean_ne = harmonic_mean_ne(curve$x, curve$y, 1e4, x_max))
   rows[[length(rows) + 1]] <- data.frame(period = "Overall",
                                           harmonic_mean_ne = harmonic_mean_ne(curve$x, curve$y, 0, x_max))
   do.call(rbind, rows)
@@ -182,7 +189,7 @@ plot_periods <- function(tbl, out_path, title) {
     cat("Skipping", out_path, "-- no data\n")
     return(invisible())
   }
-  row_order <- c("Overall", rev(PERIOD_LABELS))
+  row_order <- c("Overall", ">10kya", rev(PERIOD_LABELS))
   cols <- setNames(muted <- colorRampPalette(MUTED_PALETTE)(length(row_order)), row_order)
   v_all <- tbl$harmonic_mean_ne[is.finite(tbl$harmonic_mean_ne) & tbl$harmonic_mean_ne > 0]
   if (length(v_all) == 0) {
