@@ -267,8 +267,14 @@ set-resources:
         # inflation risk already flagged for jules_bwa_mem/jules_picard_mark_dup/
         # jules_bcftools_mpileup elsewhere in this file, just not previously
         # applied here too.
+        # runtime raised again 1440m -> 10080m (7d): 5 more samples still timed
+        # out at 24h during the full chromosome-level batch run (2026-09-21/22)
+        # -- matches the same generous, "don't time out" 7-day convention
+        # already used for jules_fastq_dump/jules_bwa_mem/jules_verify_raw_reads
+        # (co_moilab's condo QOS has no MaxWall, confirmed via `sacctmgr show
+        # qos`), rather than continuing to guess at a tighter finite bound.
         cpus_per_task: 4
-        runtime: "1440m"
+        runtime: "10080m"
         mem_mb: 16000
     jules_psmc_gen_input:
         cpus_per_task: 1
