@@ -1,5 +1,5 @@
 ---
-title: "R Notebook"
+title: "Red list genomics"
 output: html_notebook
 ---
 
@@ -590,7 +590,7 @@ mar_species <- list.files(mar_kmer_dir, pattern = "\\.txt$", full.names = FALSE)
   sort()
 
 # species to analyze in the single-species chunks below
-mar_species_sel <- mar_species[1]
+mar_species_sel <- mar_species[4]
 cat("Available species:", paste(mar_species, collapse = ", "), "\n")
 cat("Selected for single-species run:", mar_species_sel, "\n")
 
@@ -606,16 +606,16 @@ dir.create(mar_out_dir, recursive = TRUE, showWarnings = FALSE)
 # column), binarize to 0/1 presence/absence, write a tab-delimited copy for
 # text_parser() (its delimiter guesser only accepts tab or comma), and return
 # the output path
-mar_prep_input <- function(species, kmer_dir = mar_kmer_dir, out_dir = mar_out_dir) {
+mar_prep_input <- function(species, kmer_dir = mar_kmer_dir, out_dir = mar_out_dir, nrows=Inf, count_thresh=0) {
   in_path <- file.path(kmer_dir, paste0(species, ".txt"))
   stopifnot("subset k-mer table not found" = file.exists(in_path))
 
   # read full matrix; fread handles large files and spaces as separator
-  geno_mat <- fread(in_path, sep = " ", header = FALSE) %>%
+  geno_mat <- fread(in_path, sep = " ", header = FALSE, nrows=nrows) %>%
     as.matrix()
 
   # binarize: any nonzero count -> present (1); ploidy = 1
-  geno_mat[geno_mat > 0] <- 1
+  geno_mat[geno_mat > count_thresh] <- 1
   storage.mode(geno_mat) <- "integer"
 
   # mar's text_parser reads txt/csv/tsv with tab or comma delimiters and no
@@ -642,7 +642,7 @@ mar_prep_input <- function(species, kmer_dir = mar_kmer_dir, out_dir = mar_out_d
 # omitted, samples are numbered 1..N. Chromosome/position files are omitted --
 # they only annotate variant.id, which the theoretical workflow does not use.
 mar_geno <- text_parser(
-  geno.fn = mar_prep_input(mar_species_sel),
+  geno.fn = mar_prep_input(mar_species_sel,nrows=1000, count_thresh=0),
   ploidy = 1
 )
 print(mar_geno)
@@ -656,7 +656,7 @@ print(mar_geno)
 # MARextinction) are not used here, so the coordinates are dummies placed on an
 # arbitrary plane (incrs = "", mapcrs = "") with no projection applied.
 mar_dummy_coords <- data.frame(
-  ID = paste0("s", seq_len(ncol(mar_geno$genotype))),
+  ID = seq_len(ncol(mar_geno$genotype)),
   LON = seq_len(ncol(mar_geno$genotype)),
   LAT = seq_len(ncol(mar_geno$genotype))
 )
@@ -722,10 +722,10 @@ writeLines(mar_fit_out,
 # a subset table, collecting a species-level summary of the scaling exponent z.
 # Requires >= 4 samples per species for a meaningful z fit; species below that
 # threshold are skipped with a warning.
-mar_run_species <- function(species, kmer_dir = mar_kmer_dir, out_dir = mar_out_dir) {
+mar_run_species <- function(species, kmer_dir = mar_kmer_dir, out_dir = mar_out_dir, nrows=Inf, count_thresh=0, min_sample_number=4) {
   cat("=== ", species, " ===\n")
   geno_path <- tryCatch(
-    mar_prep_input(species, kmer_dir = kmer_dir, out_dir = out_dir),
+    mar_prep_input(species, kmer_dir = kmer_dir, out_dir = out_dir, nrows = nrows, count_thresh = count_thresh),
     error = function(e) {
       warning("skipping ", species, ": ", conditionMessage(e))
       NULL
@@ -738,21 +738,35 @@ mar_run_species <- function(species, kmer_dir = mar_kmer_dir, out_dir = mar_out_
                      warning("text_parser failed for ", species, ": ", conditionMessage(e))
                      NULL
                    })
+  
   if (is.null(geno)) return(NULL)
 
+  if(min_sample_number == 3 & length(geno$sample.id) == 3){
+    warning(paste0("Though it is technically possible to fit a power law with 3 samples, a stable z estimation will only occur with 4 or more samples."))
+  }
+  
+  if (length(geno$sample.id) < min_sample_number) {
+    msg <- paste0("skipping ", species, "because there are only ", length(geno$sample.id), " samples")
+    warning(msg)
+    return(data.frame(
+      species = species,
+      n_samples = length(geno$sample.id),
+      n_kmers = length(geno$variant.id),
+      c = NA,
+      z = NA,
+      z_p = NA,
+      R2_adj = NA,
+      note = msg
+    ))
+  }
+  
   coords <- data.frame(
-    ID = paste0("s", seq_len(ncol(geno$genotype))),
+    ID = seq_len(ncol(geno$genotype)),
     LON = seq_len(ncol(geno$genotype)),
     LAT = seq_len(ncol(geno$genotype))
   )
   maps <- marmaps(coords, mapcrs = "", incrs = "")
   gm <- genomaps(geno, maps)
-
-  if (length(maps$sample.id) < 4) {
-    warning("skipping ", species, ": only ", length(maps$sample.id),
-            " samples; need >= 4 for a stable z fit")
-    return(NULL)
-  }
 
   theory_df <- MARtheory(gm)
   fit <- MARcalc(theory_df, Mtype = "M", Atype = "N")
@@ -760,7 +774,13 @@ mar_run_species <- function(species, kmer_dir = mar_kmer_dir, out_dir = mar_out_
     warning("MARcalc returned NULL for ", species)
     return(NULL)
   }
-
+  
+  # save plot of kmer MAR fit
+  pdf(file.path(out_dir, paste0("mar_fit_", species, "_", length(geno$variant.id), ".pdf")))
+  plot(theory_df, fit = fit$par, Mtype = "M", Atype = "N",
+     main = paste0("K-mer MAR fit: ", gsub("_", " ", species)))
+  dev.off()
+  
   fit_sum <- summary(fit)
   writeLines(capture.output(fit_sum),
              file.path(out_dir, paste0("mar_fit_", species, ".txt")))
@@ -772,22 +792,73 @@ mar_run_species <- function(species, kmer_dir = mar_kmer_dir, out_dir = mar_out_
     c = fit_sum$Parameters[[1, "Estimate"]],
     z = fit_sum$Parameters[[2, "Estimate"]],
     z_p = fit_sum$Parameters[[2, "Pr(>|t|)"]],
-    R2_adj = fit_sum$R2a
+    R2_adj = fit_sum$R2a,
+    note = NA
   )
 }
 
-mar_z_table <- set_names(mar_species, mar_species) %>%
-  map_dfr(mar_run_species)
 
-# one row per species: the k-mer-area scaling exponent z for downstream
-# comparisons (e.g. join to the threat-status / range-size analysis chunks)
-mar_z_table
+params <- expand_grid(species = mar_species, nk = 10^c(2:5))
 
+mar_z_table <- map2_dfr(
+  params$species, params$nk,
+  function(sp, nk) {
+    mar_run_species(sp, nrows = nk, min_sample_number = 3) %>%
+      mutate(species = sp)
+  }
+)
+
+# one row per species per kmer number: the k-mer-area scaling exponent z for downstream
 write.table(
-  mar_z_table,
-  file.path(mar_out_dir, "mar_z_summary.txt"),
+  mar_z_table %>% dplyr::select(-nk),
+  file.path(mar_out_dir, "kmer_mar_z_summary.txt"),
   quote = FALSE,
   row.names = FALSE,
   sep = "\t"
 )
+```
+
+# Summary plots of z-values by species
+
+```{r}
+
+mar_z_table <- fread("../../results/by-date/2026-09-24/mar/kmer_mar_z_summary.txt")
+
+mar_vs_threat <- mar_z_table %>%
+  rename(phylo_name = species) %>%
+  left_join(align_div, by = "phylo_name")
+
+
+
+#
+ggplot(mar_vs_threat, aes(x = factor(redlistCategory), y = z)) +
+  geom_violin(draw_quantiles = c(0.25, 0.5, 0.75)) +
+  geom_sina(alpha = 0.5) +
+  facet_grid(~n_kmers) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(x = "Threat status", y = "z MAR parameter")
+
+ggsave("../../results/by-date/2026-09-24/kmer_mar_z_summary.pdf", height = 4, width = 9)
+
+# How does increasing the number of k-mers affect z?
+ggplot(mar_z_table, aes(x = factor(n_kmers), y = z)) +
+  geom_violin(draw_quantiles = c(0.25, 0.5, 0.75)) +
+  geom_sina(alpha = 0.5) +
+  labs(x = "Number of k-mers", y = "z MAR parameter")
+
+ggsave(file.path(mar_out_dir, "z_by_number_of_kmers.pdf"))
+
+ggplot(mar_z_table, aes(x = factor(n_kmers), y = c)) +
+  geom_violin(draw_quantiles = c(0.25, 0.5, 0.75)) +
+  geom_sina(alpha = 0.5) +
+  scale_y_log10() +
+  labs(x = "Number of k-mers", y = "c MAR parameter")
+
+ggsave(file.path(mar_out_dir, "c_by_number_of_kmers.pdf"))
+
+# phylogeny vs z values
+
+# z values vs k-mer distance
+
 ```
