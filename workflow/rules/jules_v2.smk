@@ -61,12 +61,35 @@ rule jules_fastq_dump:
             # dependency, and --max-time bounds it so a stalled request
             # can't silently burn the whole job walltime.
             echo "{wildcards.ID} is a BioSample -- resolving constituent SRA runs..."
-            uids=$(curl -s --max-time 120 \\
-                "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=sra&term={wildcards.ID}&retmax=500" \\
-                | grep -oE "<Id>[0-9]+</Id>" | sed 's/<[^>]*>//g' | paste -sd, -)
 
-            if [[ -z "$uids" ]]; then
-                echo "Error: no SRA records found for BioSample {wildcards.ID}" >&2
+            # Fetch the run metadata with retries. A rate-limited or failed
+            # eutils reply (NCBI allows ~3 requests/s; a restart launches many
+            # of these jobs at once) is NOT valid runinfo CSV, and used to be
+            # indistinguishable from "this BioSample has no WGS runs" -- it
+            # wrongly rejected SAMN43038876, which has two NovaSeq WGS runs.
+            # A real runinfo reply starts with the header "Run,"; anything
+            # else is retried with a jittered, growing delay. `|| true` keeps
+            # a failed grep/curl from killing the script under pipefail.
+            runinfo=""
+            for attempt in 1 2 3 4 5; do
+                sleep $(( (RANDOM % 10) + 1 ))
+                uids=$(curl -s --max-time 120 \\
+                    "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=sra&term={wildcards.ID}&retmax=500" \\
+                    | grep -oE "<Id>[0-9]+</Id>" | sed 's/<[^>]*>//g' | paste -sd, - || true)
+                if [[ -n "$uids" ]]; then
+                    sleep 1
+                    runinfo=$(curl -s --max-time 120 \\
+                        "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&id=${{uids}}&rettype=runinfo&retmode=text" || true)
+                    if [[ "$runinfo" == Run,* ]]; then
+                        break
+                    fi
+                fi
+                runinfo=""
+                echo "NCBI metadata for {wildcards.ID} unavailable or invalid (attempt $attempt of 5) -- retrying" >&2
+                sleep $(( attempt * 10 ))
+            done
+            if [[ -z "$runinfo" ]]; then
+                echo "Error: could not retrieve NCBI run metadata for BioSample {wildcards.ID} after 5 attempts (NCBI rate limiting or outage?) -- this says nothing about the data itself; rerun to retry" >&2
                 exit 1
             fi
 
@@ -89,8 +112,6 @@ rule jules_fastq_dump:
             # paired-end Illumina short-read WGS, and a BioSample can also
             # carry RNA-seq/amplicon/ATAC runs that are Illumina and paired
             # but would make ROH/PSMC/MSMC2 meaningless if concatenated in.
-            runinfo=$(curl -s --max-time 120 \\
-                "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&id=${{uids}}&rettype=runinfo&retmode=text")
             runs=$(echo "$runinfo" \\
                 | awk -F',' 'NR==1{{for(i=1;i<=NF;i++){{if($i=="Run")rcol=i; if($i=="Platform")pcol=i; if($i=="LibraryLayout")lcol=i; if($i=="LibraryStrategy")scol=i}} next}} $pcol=="ILLUMINA" && $lcol=="PAIRED" && $scol=="WGS"{{print $rcol}}' \\
                 | grep -E '^[SED]RR' || true)
