@@ -85,16 +85,20 @@ rule jules_fastq_dump:
             # fastq.gz files (no _1/_2) even though Platform=="ILLUMINA" --
             # i.e. genuinely single-end Illumina runs mixed into otherwise
             # paired-end BioSamples (caught only by the LibraryLayout check).
+            # LibraryStrategy == WGS is required too: the input criteria are
+            # paired-end Illumina short-read WGS, and a BioSample can also
+            # carry RNA-seq/amplicon/ATAC runs that are Illumina and paired
+            # but would make ROH/PSMC/MSMC2 meaningless if concatenated in.
             runs=$(curl -s --max-time 120 \\
                 "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&id=${{uids}}&rettype=runinfo&retmode=text" \\
-                | awk -F',' 'NR==1{{for(i=1;i<=NF;i++){{if($i=="Run")rcol=i; if($i=="Platform")pcol=i; if($i=="LibraryLayout")lcol=i}} next}} $pcol=="ILLUMINA" && $lcol=="PAIRED"{{print $rcol}}' \\
+                | awk -F',' 'NR==1{{for(i=1;i<=NF;i++){{if($i=="Run")rcol=i; if($i=="Platform")pcol=i; if($i=="LibraryLayout")lcol=i; if($i=="LibraryStrategy")scol=i}} next}} $pcol=="ILLUMINA" && $lcol=="PAIRED" && $scol=="WGS"{{print $rcol}}' \\
                 | grep -E '^[SED]RR' || true)
 
             if [[ -z "$runs" ]]; then
-                echo "Error: no paired-end Illumina SRA runs found for BioSample {wildcards.ID} (other platforms/layouts may exist but are filtered out)" >&2
+                echo "Error: no paired-end Illumina WGS SRA runs found for BioSample {wildcards.ID} (other platforms/layouts/library strategies may exist but are filtered out)" >&2
                 exit 1
             fi
-            echo "Found paired-end Illumina runs for {wildcards.ID}: ${{runs}}"
+            echo "Found paired-end Illumina WGS runs for {wildcards.ID}: ${{runs}}"
 
             # Stable, resumable staging dir on shared scratch (not mktemp'd
             # /tmp, which wouldn't survive a retry on a different node).
@@ -199,6 +203,40 @@ rule jules_fastq_dump:
         else
             # Plain Run accession (SRR/ERR/DRR) -- single download.
             #
+            # Same input criteria as the BioSample branch (paired-end
+            # Illumina short-read WGS), checked BEFORE downloading so a
+            # non-conforming run is rejected up front with a clear message
+            # instead of downloading hundreds of GB first. Previously this
+            # branch relied on the R1/R2 check below, which catches
+            # single-end/long-read data but not paired-end non-Illumina
+            # (e.g. DNBSEQ) or non-WGS (e.g. RNA-seq) runs.
+            # Fails closed: if NCBI metadata can't be retrieved after 3
+            # tries the job exits rather than download unverified data (a
+            # rerun just retries). The 3 tries are jittered so a batch of
+            # jobs starting together doesn't hammer eutils in lockstep.
+            meta=""
+            for attempt in 1 2 3; do
+                uid=$(curl -s --max-time 120 \\
+                    "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=sra&term={wildcards.ID}&retmax=500" \\
+                    | grep -oE "<Id>[0-9]+</Id>" | sed 's/<[^>]*>//g' | paste -sd, - || true)
+                if [[ -n "$uid" ]]; then
+                    meta=$(curl -s --max-time 120 \\
+                        "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&id=${{uid}}&rettype=runinfo&retmode=text" \\
+                        | awk -F',' -v want="{wildcards.ID}" 'NR==1{{for(i=1;i<=NF;i++){{if($i=="Run")rcol=i; if($i=="Platform")pcol=i; if($i=="LibraryLayout")lcol=i; if($i=="LibraryStrategy")scol=i}} next}} $rcol==want {{print $pcol "/" $lcol "/" $scol; exit}}' || true)
+                fi
+                [[ -n "$meta" ]] && break
+                sleep $(( (RANDOM % 5) + 3 ))
+            done
+            if [[ -z "$meta" ]]; then
+                echo "Error: could not retrieve NCBI run metadata for {wildcards.ID} after 3 attempts -- refusing to download unverified data (rerun to retry)" >&2
+                exit 1
+            fi
+            if [[ "$meta" != "ILLUMINA/PAIRED/WGS" ]]; then
+                echo "Error: {wildcards.ID} is $meta (platform/layout/strategy), not ILLUMINA/PAIRED/WGS -- excluded by the pipeline's input criteria" >&2
+                exit 1
+            fi
+            echo "{wildcards.ID} verified as ILLUMINA/PAIRED/WGS"
+
             # If a prior attempt got killed mid-download (walltime, node
             # failure, etc.), prefetch leaves its own
             # {wildcards.ID}/{wildcards.ID}.sra.lock file behind and refuses
