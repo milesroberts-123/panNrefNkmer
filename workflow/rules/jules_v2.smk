@@ -89,10 +89,20 @@ rule jules_fastq_dump:
             # paired-end Illumina short-read WGS, and a BioSample can also
             # carry RNA-seq/amplicon/ATAC runs that are Illumina and paired
             # but would make ROH/PSMC/MSMC2 meaningless if concatenated in.
-            runs=$(curl -s --max-time 120 \\
-                "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&id=${{uids}}&rettype=runinfo&retmode=text" \\
+            runinfo=$(curl -s --max-time 120 \\
+                "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&id=${{uids}}&rettype=runinfo&retmode=text")
+            runs=$(echo "$runinfo" \\
                 | awk -F',' 'NR==1{{for(i=1;i<=NF;i++){{if($i=="Run")rcol=i; if($i=="Platform")pcol=i; if($i=="LibraryLayout")lcol=i; if($i=="LibraryStrategy")scol=i}} next}} $pcol=="ILLUMINA" && $lcol=="PAIRED" && $scol=="WGS"{{print $rcol}}' \\
                 | grep -E '^[SED]RR' || true)
+
+            # Say explicitly, in the job log, which runs were dropped and
+            # which of the three criteria (platform/layout/strategy) each one
+            # failed, so a rebuilt sample's composition can be verified.
+            excluded=$(echo "$runinfo" \\
+                | awk -F',' 'NR==1{{for(i=1;i<=NF;i++){{if($i=="Run")rcol=i; if($i=="Platform")pcol=i; if($i=="LibraryLayout")lcol=i; if($i=="LibraryStrategy")scol=i}} next}} $rcol ~ /^[SED]RR/ && !($pcol=="ILLUMINA" && $lcol=="PAIRED" && $scol=="WGS"){{print $rcol ":" $pcol "/" $lcol "/" $scol}}' || true)
+            if [[ -n "$excluded" ]]; then
+                echo "Excluded from {wildcards.ID} (not ILLUMINA/PAIRED/WGS) -- run:platform/layout/strategy: $(echo "$excluded" | paste -sd' ' -)"
+            fi
 
             if [[ -z "$runs" ]]; then
                 echo "Error: no paired-end Illumina WGS SRA runs found for BioSample {wildcards.ID} (other platforms/layouts/library strategies may exist but are filtered out)" >&2
@@ -114,6 +124,15 @@ rule jules_fastq_dump:
                 local dir="$2"
                 local r1="${{dir}}/${{run}}_1.fastq.gz"
                 local r2="${{dir}}/${{run}}_2.fastq.gz"
+
+                # A run already found unusable on a previous attempt (it
+                # downloaded fine but never produced a valid R1/R2 pair) stays
+                # skipped on retry -- don't re-download hundreds of GB to
+                # reach the same conclusion.
+                if [[ -e "${{dir}}/${{run}}.skip" ]]; then
+                    echo "--- run ${{run}} previously marked unusable (no valid R1/R2 pair), skipping ---"
+                    return 0
+                fi
 
                 if [[ -s "$r1" && -s "$r2" ]] && gzip -t "$r1" 2>/dev/null && gzip -t "$r2" 2>/dev/null; then
                     echo "--- run ${{run}} already downloaded (from a prior attempt), skipping ---"
@@ -140,12 +159,26 @@ rule jules_fastq_dump:
                 fi
 
                 echo "--- downloading run ${{run}} (part of BioSample {wildcards.ID}) ---"
-                prefetch --max-size 5000G -O "$dir" "$run" \\
-                    && fastq-dump --gzip --clip --outdir "$dir" --split-3 --skip-technical "${{dir}}/${{run}}/${{run}}.sra"
-
-                if [[ ! -s "$r1" || ! -s "$r2" ]]; then
-                    echo "Error: run ${{run}} finished without producing both non-empty R1/R2 files" >&2
+                # A failing prefetch/fastq-dump is a DOWNLOAD problem (network,
+                # disk, killed job) -- fail the whole BioSample so a retry
+                # picks it up, rather than silently shrinking the sample.
+                if ! {{ prefetch --max-size 5000G -O "$dir" "$run" \\
+                        && fastq-dump --gzip --clip --outdir "$dir" --split-3 --skip-technical "${{dir}}/${{run}}/${{run}}.sra"; }}; then
+                    echo "Error: prefetch/fastq-dump failed for run ${{run}} (download problem, not skipped)" >&2
                     return 1
+                fi
+
+                # Tools succeeded but there is no valid pair: the run's
+                # metadata says PAIRED but the data are not (e.g. unpaired
+                # spots), so fastq-dump --split-3 wrote a single unsuffixed
+                # file. That is a permanent property of the run, so skip just
+                # this run (loudly) instead of failing the whole BioSample.
+                if [[ ! -s "$r1" || ! -s "$r2" ]]; then
+                    echo "WARNING: run ${{run}} downloaded but did not produce both non-empty R1/R2 files -- marking it unusable and skipping it; the rest of {wildcards.ID} continues" >&2
+                    rm -f "$r1" "$r2" "${{dir}}/${{run}}.fastq.gz"
+                    rm -rf "${{dir}}/${{run}}"
+                    touch "${{dir}}/${{run}}.skip"
+                    return 0
                 fi
                 if ! gzip -t "$r1" 2>/dev/null || ! gzip -t "$r2" 2>/dev/null; then
                     echo "Error: run ${{run}} produced a truncated/corrupt gzip file (likely killed mid-download, e.g. by a SLURM walltime limit) -- deleting partial output so a retry starts clean" >&2
@@ -158,32 +191,52 @@ rule jules_fastq_dump:
             echo "$runs" | xargs -P 4 -I{{}} bash -c 'download_one_run "$@"' _ {{}} "$staging_dir" \\
                 || {{ echo "Error: one or more constituent SRA run downloads failed for BioSample {wildcards.ID} -- staging dir left in place at ${{staging_dir}} for the next retry to resume from" >&2; exit 1; }}
 
-            # Every run must have produced both R1 and R2 -- catches a run
-            # turning out to be single-end, which would otherwise silently
-            # desync R1/R2 pairing downstream.
-            n_r1=$(find "$staging_dir" -maxdepth 1 -name "*_1.fastq.gz" | wc -l)
-            n_r2=$(find "$staging_dir" -maxdepth 1 -name "*_2.fastq.gz" | wc -l)
-            if [[ "$n_r1" -ne "$n_r2" ]]; then
-                echo "Error: mismatched R1 (${{n_r1}}) vs R2 (${{n_r2}}) file counts in ${{staging_dir}} for BioSample {wildcards.ID} -- likely a single-end run mixed into paired-end data. Staging dir left in place for inspection." >&2
+            # Build the merge list from ONLY the runs selected above -- never
+            # glob the staging dir. It can hold stale per-run files from
+            # earlier attempts made under a different filter (including runs
+            # the current filter excludes, e.g. RNA-seq/Hi-C), which a glob
+            # would silently merge into the sample or trip the corruption
+            # check on. Runs marked .skip (downloaded but no valid R1/R2
+            # pair) are dropped here, loudly.
+            good_runs=()
+            skipped_runs=()
+            for run in $runs; do
+                if [[ -e "${{staging_dir}}/${{run}}.skip" ]]; then
+                    skipped_runs+=("$run")
+                else
+                    good_runs+=("$run")
+                fi
+            done
+            if [[ ${{#skipped_runs[@]}} -gt 0 ]]; then
+                echo "WARNING: {wildcards.ID}: skipped ${{#skipped_runs[@]}} unusable run(s) (no valid R1/R2 pair): ${{skipped_runs[*]}}"
+            fi
+            if [[ ${{#good_runs[@]}} -eq 0 ]]; then
+                echo "Error: no usable paired-end WGS runs left for BioSample {wildcards.ID} after skipping unusable ones. Staging dir left in place for inspection." >&2
                 exit 1
             fi
 
-            # Re-validate every staged per-run file immediately before merging,
-            # independent of download_one_run's own check. `cat` has no way to
-            # tell a truncated gzip member from a complete one -- it just
-            # concatenates bytes -- so this is the last point before the merge
-            # where a corrupt run can still be caught and named individually,
-            # rather than surfacing later as an unexplained coverage/read-count
-            # shortfall on the merged {wildcards.ID} file.
-            for f in "${{staging_dir}}"/*_1.fastq.gz "${{staging_dir}}"/*_2.fastq.gz; do
-                if ! gzip -t "$f" 2>/dev/null; then
-                    echo "Error: ${{f}} is a truncated/corrupt gzip file -- refusing to merge into {wildcards.ID}. Staging dir left in place for inspection." >&2
-                    exit 1
-                fi
+            # Re-validate every selected per-run file immediately before
+            # merging, independent of download_one_run's own check. `cat` has
+            # no way to tell a truncated gzip member from a complete one, so
+            # this is the last point where a corrupt run can be named
+            # individually, rather than surfacing later as an unexplained
+            # coverage/read-count shortfall on the merged {wildcards.ID} file.
+            r1_list=()
+            r2_list=()
+            for run in "${{good_runs[@]}}"; do
+                for f in "${{staging_dir}}/${{run}}_1.fastq.gz" "${{staging_dir}}/${{run}}_2.fastq.gz"; do
+                    if [[ ! -s "$f" ]] || ! gzip -t "$f" 2>/dev/null; then
+                        echo "Error: ${{f}} is missing or a truncated/corrupt gzip file -- refusing to merge into {wildcards.ID}. Staging dir left in place for inspection." >&2
+                        exit 1
+                    fi
+                done
+                r1_list+=("${{staging_dir}}/${{run}}_1.fastq.gz")
+                r2_list+=("${{staging_dir}}/${{run}}_2.fastq.gz")
             done
 
-            cat "${{staging_dir}}"/*_1.fastq.gz > results/raw_reads/{wildcards.ID}_1.fastq.gz
-            cat "${{staging_dir}}"/*_2.fastq.gz > results/raw_reads/{wildcards.ID}_2.fastq.gz
+            cat "${{r1_list[@]}}" > results/raw_reads/{wildcards.ID}_1.fastq.gz
+            cat "${{r2_list[@]}}" > results/raw_reads/{wildcards.ID}_2.fastq.gz
+            echo "Merged ${{#good_runs[@]}} run(s) into {wildcards.ID}: ${{good_runs[*]}}"
 
             # Verify the combined output before deleting the only copies of
             # the source data. gzip -t on a `cat`-concatenated multi-member
