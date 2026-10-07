@@ -18,7 +18,7 @@
 #
 # Usage:
 #   Rscript test_lc_vs_threatened_significance.R [froh_csv] [ne_summary_dir] [iucn_csv] [out_csv]
-#   Rscript test_lc_vs_threatened_significance.R plots/roh/froh_comparison.csv plots/ne_summary /global/scratch/users/julesperez/snakemake_pipeline/metadata/complete_2026.csv plots/lc_vs_threatened_significance.csv
+#   Rscript test_lc_vs_threatened_significance.R plots/roh/froh_comparison.csv plots/ne_summary /global/scratch/projects/fc_moilab/julesperez/snakemake_pipeline/metadata/complete_2026.csv plots/lc_vs_threatened_significance.csv
 
 args <- commandArgs(trailingOnly = TRUE)
 froh_csv <- if (length(args) >= 1 && nzchar(args[1])) args[1] else "plots/roh/froh_comparison.csv"

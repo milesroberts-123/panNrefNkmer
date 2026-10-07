@@ -11,7 +11,7 @@
 #
 # Usage:
 #   Rscript plot_froh_by_iucn_all_cutoffs.R [froh_csv] [iucn_csv] [out_dir]
-#   Rscript plot_froh_by_iucn_all_cutoffs.R plots/roh/froh_comparison.csv /global/scratch/users/julesperez/snakemake_pipeline/metadata/complete_2026.csv plots/roh
+#   Rscript plot_froh_by_iucn_all_cutoffs.R plots/roh/froh_comparison.csv /global/scratch/projects/fc_moilab/julesperez/snakemake_pipeline/metadata/complete_2026.csv plots/roh
 
 args <- commandArgs(trailingOnly = TRUE)
 froh_csv <- if (length(args) >= 1 && nzchar(args[1])) args[1] else "plots/roh/froh_comparison.csv"

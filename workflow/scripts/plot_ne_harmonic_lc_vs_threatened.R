@@ -11,7 +11,7 @@
 #
 # Usage:
 #   Rscript plot_ne_harmonic_lc_vs_threatened.R [ne_summary_dir] [iucn_csv] [out_dir]
-#   Rscript plot_ne_harmonic_lc_vs_threatened.R plots/ne_summary /global/scratch/users/julesperez/snakemake_pipeline/metadata/complete_2026.csv plots/ne_summary
+#   Rscript plot_ne_harmonic_lc_vs_threatened.R plots/ne_summary /global/scratch/projects/fc_moilab/julesperez/snakemake_pipeline/metadata/complete_2026.csv plots/ne_summary
 
 args <- commandArgs(trailingOnly = TRUE)
 ne_summary_dir <- if (length(args) >= 1 && nzchar(args[1])) args[1] else "plots/ne_summary"

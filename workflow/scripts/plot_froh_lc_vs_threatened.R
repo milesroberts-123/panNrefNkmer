@@ -15,7 +15,7 @@
 #
 # Usage:
 #   Rscript plot_froh_lc_vs_threatened.R [froh_csv] [iucn_csv] [out_dir]
-#   Rscript plot_froh_lc_vs_threatened.R plots/roh/froh_comparison.csv /global/scratch/users/julesperez/snakemake_pipeline/metadata/complete_2026.csv plots/roh
+#   Rscript plot_froh_lc_vs_threatened.R plots/roh/froh_comparison.csv /global/scratch/projects/fc_moilab/julesperez/snakemake_pipeline/metadata/complete_2026.csv plots/roh
 #
 # iucn_csv: "scientificName","redlistCategory" columns (e.g. complete_2026.csv).
 

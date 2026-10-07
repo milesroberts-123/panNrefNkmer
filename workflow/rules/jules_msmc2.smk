@@ -53,11 +53,17 @@ checkpoint jules_msmc2_contigs:
         # 500000bp) -- if a species somehow has zero contigs that large,
         # take its single biggest contig instead of silently producing an
         # empty list and leaving jules_msmc2_run with no input files.
+        # The fallback is a single awk, NOT `sort | head -1`: Snakemake runs
+        # shell blocks under `set -o pipefail`, and on a large .fai (e.g.
+        # Phaseolus_coccineus, ~6.6MB / >100k scaffolds, none >500kb) head
+        # exits after one line while sort is still writing, sort dies of
+        # SIGPIPE (exit 141), and pipefail turns that into a silent job
+        # failure with no error message.
         """
         mkdir -p results/msmc2
         awk '$2>500000 {{print $1}}' {input.fai} > {output}
         if [ ! -s {output} ]; then
-            sort -k2,2nr {input.fai} | head -1 | cut -f1 > {output}
+            awk 'BEGIN {{m=-1}} $2>m {{m=$2; c=$1}} END {{print c}}' {input.fai} > {output}
         fi
         """
 
