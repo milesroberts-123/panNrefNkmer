@@ -33,9 +33,15 @@ checkpoint jules_msmc2_contigs:
             "{path_start}{ref}/{ref}.fasta.fai",
             path_start=config["reference_genome_path"],
             ref=lookup(query="Run == '{srr}'", within=reads, cols="Species"),
-        )
+        ),
+        # Needed for the depth gate below. This checkpoint runs once per
+        # sample, so gating here fails a too-shallow sample once, up front,
+        # instead of once per chromosome in jules_msmc2_call.
+        cov="results/coverages/{srr}.50k.coverage.txt"
     output:
         "results/msmc2/{srr}_contigs.txt"
+    params:
+        min_depth=MIN_ACCEPTABLE_AVG_DEPTH
     shell:
         # Raised from the >50000bp floor jules_psmc_50k_bed uses --
         # confirmed on a real reference (SRR28361932's species, 795.7Mb
@@ -61,6 +67,20 @@ checkpoint jules_msmc2_contigs:
         # failure with no error message.
         """
         mkdir -p results/msmc2
+
+        # Same 10x depth floor as ROH (jules_bcftools_filter) and PSMC
+        # (jules_psmc_gen_consensus): one threshold across all three
+        # analyses. Fails closed if the coverage file is unreadable.
+        avg_depth=$(awk '{{print int($3)}}' {input.cov})
+        if [[ -z "$avg_depth" ]]; then
+            echo "Error: could not read average depth for {wildcards.srr} from {input.cov}" >&2
+            exit 1
+        fi
+        if [[ "$avg_depth" -lt {params.min_depth} ]]; then
+            echo "Sample {wildcards.srr} has average depth ${{avg_depth}}x, below the {params.min_depth}x floor -- too shallow to trust for MSMC2." >&2
+            exit 1
+        fi
+
         awk '$2>500000 {{print $1}}' {input.fai} > {output}
         if [ ! -s {output} ]; then
             awk 'BEGIN {{m=-1}} $2>m {{m=$2; c=$1}} END {{print c}}' {input.fai} > {output}

@@ -7,7 +7,7 @@
 # proportional to information.
 #
 # Usage:
-#   Rscript plot_msmc_roh.R [results_dir] [mu] [gentime_csv] [sample_ids_file] [samples_tsv] [ref_genome_path] [chromosome_level_tsv] [iucn_csv]
+#   Rscript plot_msmc_roh.R [results_dir] [mu] [gentime_csv] [sample_ids_file] [samples_tsv] [ref_genome_path] [chromosome_level_tsv] [iucn_csv] [min_depth=10]
 #
 # gentime_csv: expects "phylo_name","gen_time" columns (e.g.
 # gen_time_estimates.csv) -- generation time varies per species, so each
@@ -41,6 +41,15 @@ samples_tsv  <- if (length(args) >= 5 && nzchar(args[5])) args[5] else "../confi
 ref_genome_path <- if (length(args) >= 6 && nzchar(args[6])) args[6] else "/global/scratch/projects/fc_moilab/julesperez/post_rot/new_refgenomes/"
 chromosome_level_tsv <- arg_or_null(7)
 iucn_csv     <- arg_or_null(8)
+# Same depth floor the pipeline enforces for ROH, PSMC and MSMC2; applied to
+# MSMC2/PSMC outputs here because ones finished before the gate existed remain.
+min_depth    <- if (length(args) >= 9 && nzchar(args[9])) as.numeric(args[9]) else 10
+depth_of <- function(srr) {
+  f <- file.path(results_dir, "coverages", paste0(srr, ".50k.coverage.txt"))
+  if (!file.exists(f)) return(NA_real_)
+  suppressWarnings(as.numeric(strsplit(trimws(readLines(f, n = 1)), "[[:space:]]+")[[1]][3]))
+}
+passes_depth <- function(srr) { d <- depth_of(srr); !is.na(d) && floor(d) >= min_depth }
 
 # --- Tufte-ish shared style ---------------------------------------------
 IUCN_ORDER  <- c("CR", "EN", "VU", "NT", "LC")
@@ -175,6 +184,9 @@ if (length(not_chrom_level) > 0) {
   cat("Excluding (not chromosome-level assembly):", paste(basename(dirname(not_chrom_level)), collapse = ", "), "\n")
 }
 msmc_files <- msmc_files[sapply(basename(dirname(msmc_files)), function(s) is_chrom_level_species(species_for_run(s)))]
+low <- !sapply(basename(dirname(msmc_files)), passes_depth)
+if (any(low)) cat("Excluding MSMC2 (depth <", min_depth, "x or unknown):", paste(basename(dirname(msmc_files))[low], collapse = ", "), "\n")
+msmc_files <- msmc_files[!low]
 
 curves <- list()
 srr_ids <- character(0)
@@ -254,6 +266,7 @@ psmc_files <- Sys.glob(file.path(results_dir, "psmc", "*.psmc"))
 psmc_ids <- sub("\\.psmc$", "", basename(psmc_files))
 if (!is.null(sample_ids)) psmc_ids <- psmc_ids[psmc_ids %in% sample_ids]
 psmc_ids <- psmc_ids[sapply(psmc_ids, function(s) is_chrom_level_species(species_for_run(s)))]
+psmc_ids <- psmc_ids[sapply(psmc_ids, passes_depth)]
 
 common_ids <- intersect(srr_ids, psmc_ids)
 if (length(common_ids) == 0) {

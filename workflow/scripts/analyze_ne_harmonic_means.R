@@ -15,7 +15,7 @@
 # fast enough to run standalone.
 #
 # Usage:
-#   Rscript analyze_ne_harmonic_means.R [results_dir] [mu] [gentime_csv] [samples_tsv] [chromosome_level_tsv] [sample_ids_file] [out_dir]
+#   Rscript analyze_ne_harmonic_means.R [results_dir] [mu] [gentime_csv] [samples_tsv] [chromosome_level_tsv] [sample_ids_file] [out_dir] [min_depth=10]
 #
 # Time periods (fixed calendar-year bins, same edges for every species):
 #   0-10kya, 10k-100kya, 100k-1Mya, >1Mya -- plus "Overall" (full observed
@@ -34,6 +34,10 @@ arg_or_null <- function(i) if (length(args) >= i && nzchar(args[i])) args[i] els
 chromosome_level_tsv <- arg_or_null(5)
 sample_ids <- { f <- arg_or_null(6); if (!is.null(f)) readLines(f) else NULL }
 out_dir <- if (length(args) >= 7 && nzchar(args[7])) args[7] else "plots/ne_summary"
+# Minimum average depth (same floor the pipeline now enforces for ROH, PSMC and
+# MSMC2). Applied here too because PSMC/MSMC2 outputs finished BEFORE the gate
+# existed are still on disk and would otherwise be included.
+min_depth <- if (length(args) >= 8 && nzchar(args[8])) as.numeric(args[8]) else 10
 
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
@@ -139,9 +143,17 @@ periods_for_curve <- function(curve) {
   do.call(rbind, rows)
 }
 
+# Average depth from results/coverages/<id>.50k.coverage.txt ("Average = X").
+depth_of <- function(srr) {
+  f <- file.path(results_dir, "coverages", paste0(srr, ".50k.coverage.txt"))
+  if (!file.exists(f)) return(NA_real_)
+  suppressWarnings(as.numeric(strsplit(trimws(readLines(f, n = 1)), "[[:space:]]+")[[1]][3]))
+}
+
 # --- Build the table for one method (msmc2 or psmc) -------------------------
 build_method_table <- function(files, id_of, reader) {
   results <- list()
+  low_depth <- character(0)
   for (f in files) {
     srr <- id_of(f)
     if (!is.null(sample_ids) && !(srr %in% sample_ids)) next
@@ -149,12 +161,22 @@ build_method_table <- function(files, id_of, reader) {
     if (!is_chrom_level_species(species)) next
     gen <- gen_for_run(srr)
     if (is.na(gen)) next
+    d <- depth_of(srr)
+    # floor() matches the pipeline gate, which truncates depth to an integer
+    if (is.na(d) || floor(d) < min_depth) {
+      low_depth <- c(low_depth, paste0(srr, " (", ifelse(is.na(d), "no depth", paste0(round(d, 1), "x")), ")"))
+      next
+    }
     curve <- reader(f, mu = mu, gen = gen)
     if (is.null(curve) || nrow(curve) == 0) next
     per <- periods_for_curve(curve)
     per$species <- species
     per$srr <- srr
     results[[srr]] <- per
+  }
+  if (length(low_depth) > 0) {
+    cat("Excluded (average depth below ", min_depth, "x or unknown): ", length(low_depth), " sample(s): ",
+        paste(low_depth, collapse = ", "), "\n", sep = "")
   }
   if (length(results) == 0) return(NULL)
   do.call(rbind, results)

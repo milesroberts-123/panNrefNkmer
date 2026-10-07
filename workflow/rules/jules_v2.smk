@@ -560,9 +560,25 @@ rule jules_psmc_gen_consensus:
         "../envs/psmc_legacy.yaml"
     params:
         mincov=lambda wc: int(get_avg_cov_value(wc.srr)) // 3,
-        maxcov=lambda wc: int(get_avg_cov_value(wc.srr)) * 2
+        maxcov=lambda wc: int(get_avg_cov_value(wc.srr)) * 2,
+        min_depth=MIN_ACCEPTABLE_AVG_DEPTH
     shell:
+        # Same depth floor as jules_bcftools_filter (ROH), so ROH, PSMC and
+        # MSMC2 all share one threshold: a too-shallow genome undercalls
+        # heterozygous sites, which biases PSMC's Ne estimates just as it
+        # inflates FROH. Read at run time (not in params) so it cannot
+        # crash DAG construction; an unreadable coverage file fails closed.
         """
+        avg_depth=$(awk '{{print int($3)}}' {input.cov})
+        if [[ -z "$avg_depth" ]]; then
+            echo "Error: could not read average depth for {wildcards.srr} from {input.cov}" >&2
+            exit 1
+        fi
+        if [[ "$avg_depth" -lt {params.min_depth} ]]; then
+            echo "Sample {wildcards.srr} has average depth ${{avg_depth}}x, below the {params.min_depth}x floor -- too shallow to trust for PSMC (undercalled heterozygosity biases Ne)." >&2
+            exit 1
+        fi
+
         samtools mpileup -C50 -uf {input.ref} {input.bam} | \
             bcftools call -c - | \
             vcfutils.pl vcf2fq -d {params.mincov} -D {params.maxcov} | \
