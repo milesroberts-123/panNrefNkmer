@@ -71,8 +71,8 @@ def open_text(path):
 @click.option("--subset-columns", type=click.IntRange(min=2), default=None, help="Randomly subset to this many columns before calculating distances. Must be an integer.")
 @click.option("--subset-rows", type=click.IntRange(min=2), default=None, help="Randomly subset to this many rows by bottom-k min-hash of the first column (k-mer string) before calculating distances. The k-mer column is always excluded from the distance matrix in this mode. Requires --no-ignore-first. Writes the kept rows to {prefix}_subset_rows.txt.")
 @click.option("--seed", default=1, help="Seed for the min-hash function used by --subset-rows.")
-@click.option("--cumsum-chunk", type=click.IntRange(min=1), default=None, help="Opt-in: write the running cumulative per-column k-mer count after every C rows to {prefix}_cumsum.txt (one row per snapshot, so the whole cumulative series is tracked rather than just the final total). Unset, the script behaves as before and writes no cumsum output.")
-@click.option("--normalize/--no-normalize", default=True, help="Divide cumulative sums by each column's total k-mer count from pass 1, so each snapshot is the fraction of the sample's total depth consumed so far (final row is 1.0 per non-empty column; zero-total columns become 0.0). Applies only to the cumulative sums output, not to the distance metrics.")
+@click.option("--cumsum-chunk", type=click.IntRange(min=1), default=None, help="Opt-in: track the whole cumulative series every C rows of k-mer counts through one snapshot per chunk, not just the final total. Writes {prefix}_cumsum.txt (per-column sums, one row per snapshot) and {prefix}_cumsum_total.txt (two columns: cumulative unique k-mers = rows processed, and cumulative total k-mer count summed across all processed samples). Unset, the script behaves as before and writes neither file.")
+@click.option("--normalize/--no-normalize", default=True, help="Divide cumulative sums so each snapshot is a fraction of full scale: per-column series by each column's total k-mer count from pass 1, and the two-column series by total rows (K) and the grand total of all processed counts (final row is 1.0 in every column; zero-total columns become 0.0). Applies only to the cumulative sums outputs, not to the distance metrics.")
 @click.option("-s", "--seperator", default=" ", help="Separator between columns")
 
 
@@ -184,16 +184,18 @@ def main(input, prefix, threads, chunk_size, print_freq, ignore_first, subset_co
     chunk_tracker = 0
 
     cumsum_path = prefix + "_cumsum.txt"
+    totals_path = prefix + "_cumsum_total.txt"
     cumsum_file = None
+    totals_file = None
     cum_runs = None
+    total_runs = 0.0
     rows_since_snapshot = 0
     rows_seen = 0
     if cumsum_chunk is not None:
         print(f"Writing cumulative per-column k-mer sums every {cumsum_chunk} rows to {cumsum_path}...")
+        print(f"Writing cumulative k-mers-seen and total-k-mer-count series every {cumsum_chunk} rows to {totals_path}...")
         cumsum_file = open(cumsum_path, "w")
-
-    def write_cumsum_snapshot(runs, rows_processed):
-        cumsum_file.write(str(rows_processed) + "," + ",".join(map(str, runs)) + "\n")
+        totals_file = open(totals_path, "w")
 
     for chunk in reader:
         s = chunk.sum(axis=0).values
@@ -202,16 +204,24 @@ def main(input, prefix, threads, chunk_size, print_freq, ignore_first, subset_co
         col_non_zero = b if col_non_zero is None else col_non_zero + b
 
         if cumsum_file is not None:
+            # Both series snapshot at the same C-row boundaries, which can
+            # fall inside a read chunk when C != chunk_size: split the chunk
+            # at the nearest C multiple each time. cum_runs (per-column) and
+            # total_runs (scalar, summed across samples) keep accumulating
+            # across snapshots; only the boundary counter resets.
             vals = chunk.values
             pos = 0
             while pos < vals.shape[0]:
                 take = min(cumsum_chunk - rows_since_snapshot, vals.shape[0] - pos)
                 seg_sum = vals[pos:pos + take].sum(axis=0)
                 cum_runs = seg_sum if cum_runs is None else cum_runs + seg_sum
+                total_runs += seg_sum.sum()
                 rows_since_snapshot += take
                 pos += take
                 if rows_since_snapshot == cumsum_chunk:
-                    write_cumsum_snapshot(cum_runs, rows_seen + pos)
+                    rows_processed = str(rows_seen + pos)
+                    cumsum_file.write(rows_processed + "," + ",".join(map(str, cum_runs)) + "\n")
+                    totals_file.write(rows_processed + "," + str(total_runs) + "\n")
                     rows_since_snapshot = 0
             rows_seen += vals.shape[0]
 
@@ -224,13 +234,15 @@ def main(input, prefix, threads, chunk_size, print_freq, ignore_first, subset_co
 
     if cumsum_file is not None:
         # Counts are integers, so the C-segment sums and the whole-chunk
-        # col_sums sums are both exact float64 values: the final partial
-        # snapshot equals col_sums bitwise, making the normalized final row
-        # exactly 1.0 per non-empty column and the series deterministic across
-        # any --chunk-size grouping.
+        # col_sums sums are both exact float64 values: each final total equals
+        # its pass-1 counterpart bitwise, making the normalized final rows
+        # exactly 1.0 and the series deterministic across any --chunk-size
+        # grouping.
         if rows_since_snapshot > 0:
-            write_cumsum_snapshot(cum_runs, rows_seen)
+            cumsum_file.write(str(rows_seen) + "," + ",".join(map(str, cum_runs)) + "\n")
+            totals_file.write(str(rows_seen) + "," + str(total_runs) + "\n")
         cumsum_file.close()
+        totals_file.close()
         if normalize:
             print(f"Normalizing cumulative sums in {cumsum_path} by per-column totals...")
             tmp_path = cumsum_path + ".tmp"
@@ -243,6 +255,17 @@ def main(input, prefix, threads, chunk_size, print_freq, ignore_first, subset_co
                     snap[col_sums == 0] = 0.0
                     dst.write(head + "," + ",".join(map(str, snap)) + "\n")
             os.replace(tmp_path, cumsum_path)
+            print(f"Normalizing cumulative series in {totals_path} by total rows and grand total...")
+            k_total = rows_seen
+            grand_total = col_sums.sum()
+            tmp_path = totals_path + ".tmp"
+            with open(totals_path) as src, open(tmp_path, "w") as dst:
+                for line in src:
+                    head, tail = line.rstrip("\n").split(",", 1)
+                    k_frac = float(head) / k_total
+                    count_frac = 0.0 if grand_total == 0 else float(tail) / grand_total
+                    dst.write(str(k_frac) + "," + str(count_frac) + "\n")
+            os.replace(tmp_path, totals_path)
     
     print(f"Write summed k-mer counts per column to {prefix}" + "_sums.txt" + "...")
     with open(prefix + "_sums.txt", "w") as file:
