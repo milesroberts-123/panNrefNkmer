@@ -71,10 +71,12 @@ def open_text(path):
 @click.option("--subset-columns", type=click.IntRange(min=2), default=None, help="Randomly subset to this many columns before calculating distances. Must be an integer.")
 @click.option("--subset-rows", type=click.IntRange(min=2), default=None, help="Randomly subset to this many rows by bottom-k min-hash of the first column (k-mer string) before calculating distances. The k-mer column is always excluded from the distance matrix in this mode. Requires --no-ignore-first. Writes the kept rows to {prefix}_subset_rows.txt.")
 @click.option("--seed", default=1, help="Seed for the min-hash function used by --subset-rows.")
+@click.option("--cumsum-chunk", type=click.IntRange(min=1), default=None, help="Opt-in: write the running cumulative per-column k-mer count after every C rows to {prefix}_cumsum.txt (one row per snapshot, so the whole cumulative series is tracked rather than just the final total). Unset, the script behaves as before and writes no cumsum output.")
+@click.option("--normalize/--no-normalize", default=True, help="Divide cumulative sums by each column's total k-mer count from pass 1, so each snapshot is the fraction of the sample's total depth consumed so far (final row is 1.0 per non-empty column; zero-total columns become 0.0). Applies only to the cumulative sums output, not to the distance metrics.")
 @click.option("-s", "--seperator", default=" ", help="Separator between columns")
 
 
-def main(input, prefix, threads, chunk_size, print_freq, ignore_first, subset_columns, subset_rows, seed, seperator):
+def main(input, prefix, threads, chunk_size, print_freq, ignore_first, subset_columns, subset_rows, seed, cumsum_chunk, normalize, seperator):
     """Average Bray-Curtis and cosine distances over all column pairs."""
     # Interpret escape sequences like '\t' (single quotes in bash pass the
     # literal two characters backslash+t) so both --seperator '\t' and
@@ -180,17 +182,67 @@ def main(input, prefix, threads, chunk_size, print_freq, ignore_first, subset_co
     col_sums = None
     col_non_zero = None
     chunk_tracker = 0
+
+    cumsum_path = prefix + "_cumsum.txt"
+    cumsum_file = None
+    cum_runs = None
+    rows_since_snapshot = 0
+    rows_seen = 0
+    if cumsum_chunk is not None:
+        print(f"Writing cumulative per-column k-mer sums every {cumsum_chunk} rows to {cumsum_path}...")
+        cumsum_file = open(cumsum_path, "w")
+
+    def write_cumsum_snapshot(runs, rows_processed):
+        cumsum_file.write(str(rows_processed) + "," + ",".join(map(str, runs)) + "\n")
+
     for chunk in reader:
         s = chunk.sum(axis=0).values
         b = chunk.astype(bool).sum(axis=0) 
         col_sums = s if col_sums is None else col_sums + s
         col_non_zero = b if col_non_zero is None else col_non_zero + b
+
+        if cumsum_file is not None:
+            vals = chunk.values
+            pos = 0
+            while pos < vals.shape[0]:
+                take = min(cumsum_chunk - rows_since_snapshot, vals.shape[0] - pos)
+                seg_sum = vals[pos:pos + take].sum(axis=0)
+                cum_runs = seg_sum if cum_runs is None else cum_runs + seg_sum
+                rows_since_snapshot += take
+                pos += take
+                if rows_since_snapshot == cumsum_chunk:
+                    write_cumsum_snapshot(cum_runs, rows_seen + pos)
+                    rows_since_snapshot = 0
+            rows_seen += vals.shape[0]
+
         chunk_tracker += 1
         if chunk_tracker % print_freq == 0:
             print(f"{chunk_tracker*chunk_size} rows processed.")
 
     if col_sums is None:
         raise ValueError(f"Input file {input} is empty")
+
+    if cumsum_file is not None:
+        # Counts are integers, so the C-segment sums and the whole-chunk
+        # col_sums sums are both exact float64 values: the final partial
+        # snapshot equals col_sums bitwise, making the normalized final row
+        # exactly 1.0 per non-empty column and the series deterministic across
+        # any --chunk-size grouping.
+        if rows_since_snapshot > 0:
+            write_cumsum_snapshot(cum_runs, rows_seen)
+        cumsum_file.close()
+        if normalize:
+            print(f"Normalizing cumulative sums in {cumsum_path} by per-column totals...")
+            tmp_path = cumsum_path + ".tmp"
+            with open(cumsum_path) as src, open(tmp_path, "w") as dst:
+                for line in src:
+                    head, tail = line.rstrip("\n").split(",", 1)
+                    snap = np.array(tail.split(","), dtype=np.float64)
+                    with np.errstate(divide="ignore", invalid="ignore"):
+                        snap = snap / col_sums
+                    snap[col_sums == 0] = 0.0
+                    dst.write(head + "," + ",".join(map(str, snap)) + "\n")
+            os.replace(tmp_path, cumsum_path)
     
     print(f"Write summed k-mer counts per column to {prefix}" + "_sums.txt" + "...")
     with open(prefix + "_sums.txt", "w") as file:
