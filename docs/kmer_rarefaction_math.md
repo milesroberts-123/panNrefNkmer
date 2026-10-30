@@ -38,7 +38,7 @@ By construction of the union dump, every row has at least one sample with a
 nonzero count, so $h(0) = 0$ and
 
 $$
-K \;=\; \sum_{k=1}^{N} h(k).
+K = \sum_{k=1}^{N} h(k).
 $$
 
 Because the table holds all union k-mers exactly once each per copy... (rows
@@ -54,7 +54,7 @@ anywhere: sums, spectra, and curves below are computed directly.
 Sample $j$'s depth in k-mer reads is exactly its column sum of the table:
 
 $$
-D_j \;=\; S_j.
+D_j = S_j.
 $$
 
 Two subtleties worth stating because the downstream target assumes them:
@@ -78,7 +78,7 @@ $$
 The per-sample thinning probability is
 
 $$
-p_j(d) \;=\; \mathrm{clip}\!\left(\frac{d \cdot G}{D_j},\ 0,\ 1\right)
+p_j(d) = \mathrm{clip}\!\left(\frac{d \cdot G}{D_j},\ 0,\ 1\right)
 \qquad\text{with } \mathrm{clip}(x, 0, 1) = \min\{1,\max\{0, x\}\}.
 $$
 
@@ -156,7 +156,7 @@ estimator (Heck et al. 1975; incidence-interpolation curve of iNEXT at hill
 number $q=0$):
 
 $$
-U(m) \;=\; \sum_{k=1}^{N} h(k)\;\Bigl(1 - \frac{\binom{N-m}{k}}{\binom{N}{k}}\Bigr).
+U(m) = \sum_{k=1}^{N} h(k) \Bigl(1 - \frac{\binom{N-m}{k}}{\binom{N}{k}}\Bigr).
 $$
 
 ### 3.2 Where the formula comes from
@@ -193,7 +193,7 @@ The expected number of so-far unseen k-mers contributed by individual
 $m{+}1$ is the discrete derivative; summing over the histogram,
 
 $$
-U(m{+}1) - U(m) \;=\; \sum_k h(k)\;\cdot\;\Pr(\text{disjoint after } m)\;\cdot\;\frac{k}{N-m},
+U(m{+}1) - U(m) = \sum_k h(k) \cdot \Pr(\text{disjoint after } m) \cdot \frac{k}{N-m},
 $$
 
 — survive $m$ draws unseen (weight $\binom{N-m}{k}/\binom{N}{k}$), then
@@ -300,7 +300,7 @@ union size:
 
 $$
 \hat\theta = \frac{K}{H_N}, \qquad
-\hat h(k) \;\propto\; \frac{\theta}{k}, \qquad k = 1 \dots N.
+\hat h(k) \propto \frac{\theta}{k}, \qquad k = 1 \dots N.
 $$
 
 Running the same rarefaction (§3.1) on $\hat h$ yields the *theoretical* curve
