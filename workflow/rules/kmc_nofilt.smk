@@ -140,14 +140,60 @@ rule subset_kmer_distances_nofilt:
         "results/nofilt/subset/kmer_tables/{species}.txt"
         #"results/nofilt/paste/{species}.txt.gz"
     output:
-        "results/nofilt/subset/kmer_distances/{species}_dist.txt"
+        dist="results/nofilt/subset/kmer_distances/{species}_dist.txt",
+        # the per-sample sums and per-sample nonzero counts are needed by the
+        # k-mer spectrum rule (depth estimates); declare them so the DAG can
+        # produce them for species whose distance pass predates this output
+        sums="results/nofilt/subset/kmer_distances/{species}_sums.txt",
+        non_zero="results/nofilt/subset/kmer_distances/{species}_non_zero.txt"
         #"results/nofilt/kmer_distances/{species}_dist.txt"
     conda:
         "../envs/cbf.yaml"
     shell:
         """
-        #python scripts/kmer_distances.py --input {input} --prefix $(echo {output} | sed 's:_dist.txt::g') --threads {threads} --seperator '\t'
-        python scripts/kmer_distances.py --input {input} --prefix $(echo {output} | sed 's:_dist.txt::g') --threads {threads} --seperator ' ' --no-ignore-first  
+        #python scripts/kmer_distances.py --input {input} --prefix $(echo {output.dist} | sed 's:_dist.txt::g') --threads {threads} --seperator '\t'
+        python scripts/kmer_distances.py --input {input} --prefix $(echo {output.dist} | sed 's:_dist.txt::g') --threads {threads} --seperator ' ' --no-ignore-first
+        """
+
+
+# K-mer incidence spectra (tier 2): h(k) at each depth standardization point and
+# count threshold, plus the sampling-based rarefaction curve and the neutral
+# (Ewens) comparison curve, from the minhash-subset table. The reference .fai
+# comes from the jules reference_genome_path directory; the paste table gives
+# the union size used to scale the per-sample depth estimates. The
+# c-thresholded and d>0 incidence files are produced as byproducts of the
+# tracked outputs (all from one script run).
+SPECTRUM_DEPTHS = [0, 0.5, 1, 2, 5, 10]
+SPECTRUM_COUNTS = [1, 2, 5, 10, 30, 100]
+
+
+def spectrum_depth_labels():
+    return ["0" if d == int(d) else str(d) for d in SPECTRUM_DEPTHS]
+
+
+rule kmer_spectrum_nofilt:
+    input:
+        table="results/nofilt/subset/kmer_tables/{species}.txt",
+        sums="results/nofilt/subset/kmer_distances/{species}_sums.txt",
+        paste="results/nofilt/paste/{species}.txt.gz",
+        fai=lambda wc: os.path.join(config["reference_genome_path"], wc.species, wc.species + ".fasta.fai"),
+    output:
+        info="results/nofilt/spectrum/{species}_spectrum_info.txt",
+        rarefaction="results/nofilt/spectrum/{species}_rarefaction.txt",
+        inc0="results/nofilt/spectrum/{species}_incidence_d0.txt",
+    params:
+        prefix="results/nofilt/spectrum/{species}",
+        depth_grid=",".join(str(d) for d in SPECTRUM_DEPTHS),
+        count_grid=",".join(str(c) for c in SPECTRUM_COUNTS),
+    conda:
+        "../envs/cbf.yaml"
+    shell:
+        """
+        UNION_ROWS=$(zcat {input.paste} | wc -l)
+
+        TABLE_ROWS=$(wc -l < {input.table})
+
+        python scripts/kmer_distances.py --input {input.table} --prefix {params.prefix} --spectrum-out {params.prefix} --depth-totals {input.sums} --genome-size $(awk '{{s+=$2}} END{{print s}}' {input.fai}) --depth-grid {params.depth_grid} --count-grid {params.count_grid} --subset-rows-count $TABLE_ROWS --union-rows $UNION_ROWS --chunk-size 20000 --print-freq 200 --threads {threads}
         """
 
 

@@ -862,3 +862,94 @@ ggsave(file.path(mar_out_dir, "c_by_number_of_kmers.pdf"))
 # z values vs k-mer distance
 
 ```
+
+## k-mer incidence spectra (tier 2: depth-standardized)
+
+Outputs of the `kmer_spectrum_nofilt` rule (workflow/rules/kmc_nofilt.smk), one run of `kmer_distances.py --spectrum-out` per species: incidence spectra h(k) (k-mers present in exactly k of N samples) for each depth standardization point d in {0, 0.5, 1, 2, 5, 10} genome-units and count threshold c in {1, 2, 5, 10, 30, 100}: `results/nofilt/spectrum/{species}_incidence_d<d>[_c<c>].txt` (rows: k, h(k); the k=0 bucket is reported as `h0_frac` in the info file instead). `{species}_rarefaction.txt` holds the sampling-based rarefaction curve u(m) = U(m)/U(1) and the neutral Ewens comparison curve (columns: m, u_emp, u_theo; U(m) = expected distinct k-mers in a random subset of m samples). `{species}_spectrum_info.txt` is a key-value summary (N, union size, genome size, theta, z fits, per-sample depths, h0_frac QA flag).
+
+Interpretation notes:
+
+- u(m) normalizes by the single-sample load, which anchors genome size to 1, so the curve's growth reflects within-population k-mer diversity only.
+- z_empirical fits u = c*m^z over m >= 2 incl. the m = N endpoint.
+- z_theoretical fits the Ewens infinite-sites comparison curve with theta matched to the observed union size; a large gap between the two z values flags spectra whose shape deviates from neutral expectations.
+- h0_frac far above 0 means the subset table predates the current count filter (union rows present in no sample) -- those tables need re-cutting.
+- per-sample depth is S_j scaled by union/subset rows; d expresses a target depth d*G; p_j = min(1, d*G/D_j) is the per-sample thinning probability.
+
+```{r}
+spectrum_dir <- "../../results/nofilt/spectrum"
+
+# one row per species from the info files
+spectrum_info_files <- list.files(spectrum_dir, "_spectrum_info.txt$", full.names = TRUE)
+spectrum_info <- map_dfr(spectrum_info_files, function(f) {
+  kv <- fread(f, header = FALSE, sep = " ", fill = TRUE)
+  val <- kv[[2]]
+  names(val) <- kv[[1]]
+  as.data.frame(as.list(val)) %>% mutate(species = basename(f) %>% str_replace("_spectrum_info[.]txt$", ""))
+})
+
+species_with_spectrum <- spectrum_info %>% filter(N >= 2)
+
+# QA: union rows present in no sample -- stale subset tables if far above 0
+spectrum_info %>%
+  select(species, N, table_rows, union_rows, h0_frac, z_empirical, z_empirical_r2, z_theoretical) %>%
+  arrange(desc(h0_frac)) %>%
+  head(20)
+```
+
+```{r}
+# rarefaction curves: u(m) = U(m)/U(1) (empirical) with the Ewens comparison
+# curve overlaid, on the common m grid
+rarefaction <- map_dfr(list.files(spectrum_dir, "_rarefaction.txt$", full.names = TRUE), function(f) {
+  sp <- basename(f) %>% str_replace("_rarefaction[.]txt$", "")
+  fread(f, header = FALSE, col.names = c("m", "u_emp", "u_theo")) %>%
+    mutate(species = sp, N = spectrum_info$N[spectrum_info$species == sp])
+})
+
+rarefaction %>%
+  filter(N >= 10) %>%
+  ggplot(aes(x = m, y = u_emp, group = species, colour = factor(N))) +
+  geom_line(alpha = 0.35) +
+  geom_point(size = 0.5, alpha = 0.35) +
+  geom_line(aes(y = u_theo), linetype = "dashed", alpha = 0.15) +
+  coord_trans(x = "log10", y = "log10") +
+  labs(x = "Samples (m)", y = "u(m) = U(m)/U(1)", colour = "N") +
+  ggtitle("K-mer accumulation across individuals (genome size anchored at u(1) = 1)")
+```
+
+```{r}
+# z from the rarefaction fit vs N: is the exponent an N artifact or biology?
+ggplot(species_with_spectrum, aes(x = N, y = as.numeric(z_empirical))) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(aes(group = 1), method = "loess") +
+  scale_x_log10() +
+  labs(x = "Samples (N)", y = "z (empirical)") +
+  ggtitle("K-mer accumulation exponent vs sample count")
+
+# empirical vs neutral-theory exponent: the gap is a non-neutrality diagnostic
+ggplot(species_with_spectrum %>%
+         mutate(across(c(z_empirical, z_theoretical), as.numeric)),
+       aes(x = z_theoretical, y = z_empirical)) +
+  geom_point(alpha = 0.6) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  coord_equal(xlim = c(0, 0.8), ylim = c(0, 0.8)) +
+  labs(x = "z (Ewens neutral comparison)", y = "z (empirical rarefaction)") +
+  ggtitle("Empirical vs neutral-theory k-mer accumulation exponent")
+
+# depth-thinned spectra: does the diversity signal survive depth standardization?
+# (read one d>0 incidence file per species and compare its u-curve to d=0)
+```
+
+```{r}
+# write the combined species table for downstream joins (threat status, etc.)
+spectrum_summary <- species_with_spectrum %>%
+  mutate(across(c(table_rows, union_rows, N, h0_frac, z_empirical, z_empirical_r2, z_theoretical, theta), as.numeric)) %>%
+  rename(spectrum_N = N)
+
+write.table(
+  spectrum_summary,
+  file.path(spectrum_dir, "spectrum_summary.txt"),
+  quote = FALSE,
+  row.names = FALSE,
+  sep = "\t"
+)
+```
