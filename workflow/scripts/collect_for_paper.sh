@@ -66,24 +66,31 @@ fi
 
 # ---- ROH: RG (segment) lines only, plus a per-sample provenance table ----
 # ST lines (per-site) are dropped: they make these files huge and are not needed.
-# Reuse ROH extractions from the most recent earlier collector run: the extraction reads each
-# 10-60 GB file in full. A file is reused only if it is newer than its source, and the newest file
-# in that folder is skipped because the earlier job may have been cut off while writing it.
-PREV=$(ls -dt /global/scratch/projects/fc_moilab/julesperez/paper_pull/*/ 2>/dev/null | grep -v "/$STAMP/" | head -1)
-PREV=${PREV%/}
-PREV_NEWEST=""
-[[ -n "$PREV" && -d "$PREV/roh_rg" ]] && PREV_NEWEST=$(ls -t "$PREV/roh_rg" 2>/dev/null | head -1)
-[[ -n "$PREV" ]] && echo "Reusing finished ROH extractions from $PREV where possible"
+# Reuse ROH extractions from ANY earlier collector folder: the extraction reads each 10-60 GB file in
+# full. A copy is reused only if it is newer than its source file, and each folder's newest file is
+# skipped because that job may have been cut off while writing it.
+PREVS=(); PREV_NEWEST=()
+while IFS= read -r d; do
+    d=${d%/}
+    [[ "$d" == "$OUT" || ! -d "$d/roh_rg" ]] && continue
+    PREVS+=("$d")
+    PREV_NEWEST+=("$(ls -t "$d/roh_rg" 2>/dev/null | head -1)")
+done < <(ls -dt /global/scratch/projects/fc_moilab/julesperez/paper_pull/*/ 2>/dev/null)
+echo "Reusing finished ROH extractions from ${#PREVS[@]} earlier folder(s) where possible"
 printf 'Run\tBioSample\tSpecies\troh_mtime\tn_RG_segments\tG\tAF_dflt\tab_mask_in_filtered_vcf\tmean_depth\n' > "$OUT/roh_provenance.tsv"
 : > "$OUT/missing_roh.txt"
 sheet_rows | while IFS=$'\t' read -r run bios sp; do
     f="results/roh/${run}_ROH.txt"
     if [[ ! -s "$f" ]]; then echo "$run" >> "$OUT/missing_roh.txt"; continue; fi
     dest="$OUT/roh_rg/${run}_ROH_RG.txt"
-    prev="$PREV/roh_rg/${run}_ROH_RG.txt"
-    if [[ -n "$PREV" && -s "$prev" && "$prev" -nt "$f" && "$(basename "$prev")" != "$PREV_NEWEST" ]]; then
-        cp -p "$prev" "$dest"
-    else
+    reused=0
+    for i in ${!PREVS[@]}; do
+        prev="${PREVS[$i]}/roh_rg/${run}_ROH_RG.txt"
+        if [[ -s "$prev" && "$prev" -nt "$f" && "$(basename "$prev")" != "${PREV_NEWEST[$i]}" ]]; then
+            cp -p "$prev" "$dest"; reused=1; break
+        fi
+    done
+    if [[ "$reused" -eq 0 ]]; then
         grep -E $'^(#|RG\t)' "$f" > "$dest.tmp" && mv "$dest.tmp" "$dest"
     fi
     cl=$(grep -m1 -i 'command line' "$dest")
