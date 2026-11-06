@@ -2,7 +2,6 @@
 #SBATCH --job-name=collect_for_paper
 #SBATCH --account=co_moilab
 #SBATCH --partition=savio4_htc
-#SBATCH --qos=co_moilab
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=8G
 #SBATCH --time=06:00:00

@@ -2,7 +2,6 @@
 #SBATCH --job-name=jules_driver
 #SBATCH --account=co_moilab
 #SBATCH --partition=savio4_htc
-#SBATCH --qos=co_moilab
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
