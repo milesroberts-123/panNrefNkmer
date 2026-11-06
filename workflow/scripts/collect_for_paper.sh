@@ -36,6 +36,16 @@ for c in ../config/samples_medium_chromosome.tsv ../samples_medium_chromosome.ts
 done
 [[ -n "$SHEET" ]] || { echo "sample sheet not found" >&2; exit 1; }
 
+# Read Run / BioSample / Species by header name, not by position.
+col() { head -1 "$SHEET" | tr -d '\r' | tr '\t' '\n' | grep -n -x "$1" | head -1 | cut -d: -f1; }
+C_RUN=$(col Run); C_BIO=$(col BioSample); C_SP=$(col Species)
+if [[ -z "$C_RUN" || -z "$C_SP" ]]; then
+    echo "sample sheet $SHEET needs 'Run' and 'Species' columns; header is:" >&2
+    head -1 "$SHEET" >&2
+    exit 1
+fi
+sheet_rows() { awk -F'\t' -v r="$C_RUN" -v b="${C_BIO:-0}" -v s="$C_SP" 'NR>1 && $r != "" {gsub(/\r/,""); print $r "\t" (b>0 ? $b : "NA") "\t" $s}' "$SHEET"; }
+
 mkdir -p "$OUT"/{roh_rg,fai,ne/psmc,ne/msmc2,coverage,picard,pi,het,summary_tables,metadata,audit}
 echo "Writing to $OUT"
 
@@ -66,7 +76,7 @@ PREV_NEWEST=""
 [[ -n "$PREV" ]] && echo "Reusing finished ROH extractions from $PREV where possible"
 printf 'Run\tBioSample\tSpecies\troh_mtime\tn_RG_segments\tG\tAF_dflt\tab_mask_in_filtered_vcf\tmean_depth\n' > "$OUT/roh_provenance.tsv"
 : > "$OUT/missing_roh.txt"
-tail -n +2 "$SHEET" | while IFS=$'\t' read -r run bios sp rest; do
+sheet_rows | while IFS=$'\t' read -r run bios sp; do
     f="results/roh/${run}_ROH.txt"
     if [[ ! -s "$f" ]]; then echo "$run" >> "$OUT/missing_roh.txt"; continue; fi
     dest="$OUT/roh_rg/${run}_ROH_RG.txt"
@@ -92,7 +102,7 @@ done
 
 # ---- reference .fai for chromosome lengths ----
 : > "$OUT/missing_fai.txt"
-tail -n +2 "$SHEET" | cut -f3 | sort -u | while read -r sp; do
+sheet_rows | cut -f3 | sort -u | while read -r sp; do
     [[ -z "$sp" ]] && continue
     if [[ -s "$REFROOT/$sp/$sp.fasta.fai" ]]; then cp -p "$REFROOT/$sp/$sp.fasta.fai" "$OUT/fai/"; else echo "$sp" >> "$OUT/missing_fai.txt"; fi
 done
