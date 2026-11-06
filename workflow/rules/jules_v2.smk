@@ -146,13 +146,29 @@ rule jules_fastq_dump:
                 local r1="${{dir}}/${{run}}_1.fastq.gz"
                 local r2="${{dir}}/${{run}}_2.fastq.gz"
 
-                # A run already found unusable on a previous attempt (it
-                # downloaded fine but never produced a valid R1/R2 pair) stays
-                # skipped on retry -- don't re-download hundreds of GB to
-                # reach the same conclusion.
+                # A run marked unusable on a previous attempt stays skipped,
+                # but only if a cheap 1-spot probe confirms it: a marker can
+                # be wrong (SRR30566771 was marked unusable on Oct 7 and then
+                # skipped forever, though the run is a valid pair). A probe
+                # that errors out is inconclusive, so the marker is cleared
+                # and the run is downloaded again.
                 if [[ -e "${{dir}}/${{run}}.skip" ]]; then
-                    echo "--- run ${{run}} previously marked unusable (no valid R1/R2 pair), skipping ---"
-                    return 0
+                    probe="${{dir}}/.probe_${{run}}"
+                    rm -rf "$probe"; mkdir -p "$probe"
+                    if fastq-dump -X 1 --split-3 --skip-technical -O "$probe" "$run" >/dev/null 2>&1; then
+                        if [[ -s "${{probe}}/${{run}}_1.fastq" && -s "${{probe}}/${{run}}_2.fastq" ]]; then
+                            echo "--- run ${{run}} was marked unusable earlier, but a 1-spot probe returns a valid R1/R2 pair -- clearing the stale marker and downloading ---"
+                            rm -f "${{dir}}/${{run}}.skip"
+                        else
+                            rm -rf "$probe"
+                            echo "--- run ${{run}} confirmed unusable by a 1-spot probe (no R1/R2 pair), skipping ---"
+                            return 0
+                        fi
+                    else
+                        echo "--- run ${{run}} probe failed; clearing its unusable marker and retrying the download ---"
+                        rm -f "${{dir}}/${{run}}.skip"
+                    fi
+                    rm -rf "$probe"
                 fi
 
                 if [[ -s "$r1" && -s "$r2" ]] && gzip -t "$r1" 2>/dev/null && gzip -t "$r2" 2>/dev/null; then
