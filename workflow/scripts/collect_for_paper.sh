@@ -4,7 +4,7 @@
 #SBATCH --partition=savio4_htc
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=8G
-#SBATCH --time=06:00:00
+#SBATCH --time=12:00:00
 #SBATCH --output=collect_for_paper_%j.out
 
 # Gather everything the paper analyses need from the Savio runs into one
@@ -17,6 +17,7 @@
 # Source mtimes are preserved (cp -p) and listed in MANIFEST.tsv so freshness can be checked.
 
 set -u
+stamp() { echo "[$(date +%H:%M:%S)] $*"; }
 
 WF=/global/scratch/projects/fc_moilab/julesperez/snakemake_pipeline/panNrefNkmer/workflow
 PROJ=/global/scratch/projects/fc_moilab/julesperez/snakemake_pipeline
@@ -64,6 +65,7 @@ if [[ "$n_jobs" -gt 0 ]]; then
     echo "WARNING: $n_jobs SLURM jobs still queued/running -- some samples will be missing; rerun this script when the pipeline finishes." | tee -a "$OUT/PROVENANCE.txt"
 fi
 
+stamp "starting ROH extraction"
 # ---- ROH: RG (segment) lines only, plus a per-sample provenance table ----
 # ST lines (per-site) are dropped: they make these files huge and are not needed.
 # Reuse ROH extractions from ANY earlier collector folder: the extraction reads each 10-60 GB file in
@@ -107,6 +109,7 @@ sheet_rows | while IFS=$'\t' read -r run bios sp; do
     printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$run" "$bios" "$sp" "$(stat -c '%y' "$f" | cut -d. -f1)" "$nrg" "$g" "$af" "$mask" "$depth" >> "$OUT/roh_provenance.tsv"
 done
 
+stamp "ROH done"
 # ---- reference .fai for chromosome lengths ----
 : > "$OUT/missing_fai.txt"
 sheet_rows | cut -f3 | sort -u | while read -r sp; do
@@ -122,6 +125,7 @@ for f in results/coverages/*.50k.coverage.txt; do
 done
 cp -p "$SHEET" "$OUT/metadata/"
 
+stamp "fai, coverage done"
 # ---- historical Ne: raw PSMC and MSMC2 curves (small; mu and generation time are applied later) ----
 find results/psmc -maxdepth 1 -name '*.psmc' -exec cp -p {} "$OUT/ne/psmc/" \; 2>/dev/null
 for d in results/msmc2/*/; do
@@ -130,49 +134,60 @@ for d in results/msmc2/*/; do
 done
 find results/picard_metrics -maxdepth 1 -name '*.txt' -exec cp -p {} "$OUT/picard/" \; 2>/dev/null
 
+stamp "Ne curves done"
 # ---- IUCN, generation times, audit tables ----
 for f in "$PROJ"/metadata/complete_2026.csv "$PROJ"/metadata/gen_times.csv; do [[ -s "$f" ]] && cp -p "$f" "$OUT/metadata/"; done
 for f in "$PROJ"/audit/*.tsv "$PROJ"/audit/*.txt; do [[ -s "$f" ]] && cp -p "$f" "$OUT/audit/"; done
 
 # ---- pi and heterozygosity: SPECIES_PROCESSING_GOAT is the newest source and takes priority;
 # ---- the older gatk_results outputs only fill species (pi) or samples (heterozygosity) GOAT lacks ----
+# Sets SP (no subshell, so it is cheap to call thousands of times).
 sp_from_path() {
-    local p="$1" c
+    local c
     local IFS=/
-    for c in $p; do
+    SP=UNKNOWN
+    for c in $1; do
         case "$c" in
             angsd_heterozygosity) continue ;;
-            angsd_pi_level_final_*) c=${c#angsd_pi_level_final_}; echo "${c%%_mincov*}"; return ;;
-            *_aligned_to_*) echo "${c%%_aligned_to_*}"; return ;;
-            *_heterozygosity) echo "${c%_heterozygosity}"; return ;;
+            angsd_pi_level_final_*) c=${c#angsd_pi_level_final_}; SP=${c%%_mincov*}; return ;;
+            *_aligned_to_*) SP=${c%%_aligned_to_*}; return ;;
+            *_heterozygosity) SP=${c%_heterozygosity}; return ;;
         esac
     done
-    echo UNKNOWN
 }
 
-# $1 = file name, $2 = gatk_results subfolder, $3 = find depth inside it.
-# Output: priority (0 = GOAT, 1 = GATK), epoch, date, path -- GOAT first, newest first within each.
-find_sources() {
-    local R
+# ONE walk of each tree for all three file types. Per-species folders that only hold BAMs, VCFs,
+# logs and scripts are pruned, so the walk does not descend into them.
+# Output rows: priority (0 = GOAT, 1 = GATK), epoch, date, path -- GOAT first, newest first.
+stamp "searching GOAT and gatk_results for pi / heterozygosity / SFS files"
+CAND="$OUT/.candidates.tsv"
+{
     for R in $POSTROT_ROOTS; do
-        [[ -d "$R/SPECIES_PROCESSING_GOAT" ]] && find "$R/SPECIES_PROCESSING_GOAT" -maxdepth 6 -name "$1" -type f \
-            -printf '0\t%T@\t%TY-%Tm-%Td %TH:%TM\t%p\n' 2>/dev/null
-        [[ -d "$R/gatk_results/$2" ]] && find "$R/gatk_results/$2" -maxdepth "$3" -name "$1" -type f \
-            -printf '1\t%T@\t%TY-%Tm-%Td %TH:%TM\t%p\n' 2>/dev/null
-    done | sort -t$'\t' -k1,1n -k2,2nr
-}
+        if [[ -d "$R/SPECIES_PROCESSING_GOAT" ]]; then
+            find "$R/SPECIES_PROCESSING_GOAT" -maxdepth 6 \
+                \( -name mapped -o -name bcfvcfs -o -name temp -o -name tmp -o -name logs -o -name roh -o -name psmc -o -name scripts \) -prune -o \
+                -type f \( -name heterozygosity_summary.txt -o -name pi_summary.txt -o -name '*_mincov*.sfs' \) \
+                -printf '0\t%T@\t%TY-%Tm-%Td %TH:%TM\t%p\n' 2>/dev/null
+        fi
+        [[ -d "$R/gatk_results/angsd_heterozygosity" ]] && find "$R/gatk_results/angsd_heterozygosity" -maxdepth 4 -type f \
+            \( -name heterozygosity_summary.txt -o -name '*_mincov*.sfs' \) -printf '1\t%T@\t%TY-%Tm-%Td %TH:%TM\t%p\n' 2>/dev/null
+        [[ -d "$R/gatk_results/low_coverage_angsd" ]] && find "$R/gatk_results/low_coverage_angsd" -maxdepth 2 -type f \
+            -name pi_summary.txt -printf '1\t%T@\t%TY-%Tm-%Td %TH:%TM\t%p\n' 2>/dev/null
+    done
+} | sort -t$'\t' -k1,1n -k2,2nr > "$CAND"
+stamp "found $(awk -F'\t' '$4 ~ /heterozygosity_summary.txt$/' "$CAND" | wc -l) het summaries, $(awk -F'\t' '$4 ~ /pi_summary.txt$/' "$CAND" | wc -l) pi summaries, $(awk -F'\t' '$4 ~ /_mincov[^\/]*\.sfs$/' "$CAND" | wc -l) het SFS files"
 
 # pi: one file per species, from GOAT if GOAT has it, otherwise from gatk_results
 declare -A seen_pi
 printf 'Species\tsource\tmtime\tchosen_file\n' > "$OUT/pi/PI_SOURCES.tsv"
 while IFS=$'\t' read -r prio ep mt p; do
-    sp=$(sp_from_path "$p")
+    sp_from_path "$p"; sp=$SP
     [[ -n "${seen_pi[$sp]:-}" ]] && continue
     seen_pi[$sp]=1
     src=GOAT; [[ "$prio" == 1 ]] && src=GATK
     cp -p "$p" "$OUT/pi/${sp}_pi_summary.txt"
     printf '%s\t%s\t%s\t%s\n' "$sp" "$src" "$mt" "$p" >> "$OUT/pi/PI_SOURCES.tsv"
-done < <(find_sources pi_summary.txt low_coverage_angsd 2)
+done < <(awk -F'\t' '$4 ~ /\/pi_summary\.txt$/' "$CAND")
 for f in "$OUT"/pi/*_pi_summary.txt; do
     [[ -s "$f" ]] || continue
     tail -n +2 "$f" | awk -F, '!k[$1]++'
@@ -180,6 +195,7 @@ done | awk -F, '$5 != "" && $5+0 == $5 && tolower($5) !~ /nan|inf/ {s=$2; n[s]++
     END {print "Species,Replicates,Pi_Average,Pi_StdDev";
          for (s in n) {m=sum[s]/n[s]; v=(n[s]>1)?(sq[s]-n[s]*m*m)/(n[s]-1):0; if (v<0) v=0;
                        printf "%s,%d,%.9g,%.9g\n", s, n[s], m, sqrt(v)}}' > "$OUT/pi/pi_species_means_fresh.csv"
+stamp "pi summaries done"
 
 # heterozygosity: per-sample summaries. Every GOAT row is kept; a gatk_results row is added only
 # when GOAT has no row for that species + sample.
@@ -187,13 +203,13 @@ mkdir -p "$OUT/het/goat" "$OUT/het/gatk"
 declare -A seen_het
 printf 'Species\tsource\tmtime\tchosen_file\n' > "$OUT/het/HET_SOURCES.tsv"
 while IFS=$'\t' read -r prio ep mt p; do
-    sp=$(sp_from_path "$p")
+    sp_from_path "$p"; sp=$SP
     src=GOAT; d=goat; [[ "$prio" == 1 ]] && { src=GATK; d=gatk; }
     [[ -n "${seen_het[$sp,$src]:-}" ]] && continue
     seen_het[$sp,$src]=1
     cp -p "$p" "$OUT/het/$d/${sp}_heterozygosity_summary.txt"
     printf '%s\t%s\t%s\t%s\n' "$sp" "$src" "$mt" "$p" >> "$OUT/het/HET_SOURCES.tsv"
-done < <(find_sources heterozygosity_summary.txt angsd_heterozygosity 3)
+done < <(awk -F'\t' '$4 ~ /\/heterozygosity_summary\.txt$/' "$CAND")
 goat_files=(); gatk_files=()
 for f in "$OUT"/het/goat/*_heterozygosity_summary.txt; do [[ -e "$f" ]] && goat_files+=("$f"); done
 for f in "$OUT"/het/gatk/*_heterozygosity_summary.txt; do [[ -e "$f" ]] && gatk_files+=("$f"); done
@@ -212,33 +228,46 @@ if (( ${#goat_files[@]} + ${#gatk_files[@]} > 0 )); then
           print $0, (goat ? "GOAT" : "GATK") }' \
         ${goat_files[@]+"${goat_files[@]}"} ${gatk_files[@]+"${gatk_files[@]}"} > "$OUT/het/het_per_sample_merged.csv"
 fi
+stamp "heterozygosity summaries merged"
 
-# raw per-sample heterozygosity SFS (one line each), bundled into one table; GOAT first, GATK fills what GOAT lacks
-printf 'Species\tSample\tMinCov\tsource\tsfs\n' > "$OUT/het/het_sfs_all.tsv"
+# raw per-sample heterozygosity SFS (one line each) bundled into one table; GOAT first, GATK fills what
+# GOAT lacks. Built with shell built-ins only (no subprocess per file).
 declare -A have_sfs
-while IFS=$'\t' read -r prio ep mt p; do
-    sp=$(sp_from_path "$p")
-    b=$(basename "$p" .sfs)
-    mc=${b##*_mincov}; sample=${b%_mincov*}
-    key="$sp|$sample|$mc"
-    [[ -n "${have_sfs[$key]:-}" ]] && continue
-    have_sfs[$key]=1
-    src=GOAT; [[ "$prio" == 1 ]] && src=GATK
-    vals=$(head -n 1 "$p" | tr -s ' \t' ',' | sed 's/^,//; s/,$//')
-    printf '%s\t%s\t%s\t%s\t%s\n' "$sp" "$sample" "$mc" "$src" "$vals" >> "$OUT/het/het_sfs_all.tsv"
-done < <(find_sources '*_mincov*.sfs' angsd_heterozygosity 4)
+{
+    printf 'Species\tSample\tMinCov\tsource\tsfs\n'
+    while IFS=$'\t' read -r prio ep mt p; do
+        sp_from_path "$p"; sp=$SP
+        b=${p##*/}; b=${b%.sfs}
+        mc=${b##*_mincov}; sample=${b%_mincov*}
+        key="$sp|$sample|$mc"
+        [[ -n "${have_sfs[$key]:-}" ]] && continue
+        have_sfs[$key]=1
+        src=GOAT; [[ "$prio" == 1 ]] && src=GATK
+        line=""; read -r line < "$p"
+        set -f; arr=($line); set +f
+        printf -v vals '%s,' "${arr[@]}"; vals=${vals%,}
+        printf '%s\t%s\t%s\t%s\t%s\n' "$sp" "$sample" "$mc" "$src" "$vals"
+    done < <(awk -F'\t' '$4 ~ /_mincov[^\/]*\.sfs$/' "$CAND")
+} > "$OUT/het/het_sfs_all.tsv"
+stamp "heterozygosity SFS table done ($(($(wc -l < "$OUT/het/het_sfs_all.tsv") - 1)) rows)"
 
 # raw per-replicate pi SFS (folded), from the same source that supplied each species' pi_summary
-printf 'Species\tReplicate\tsource\tfolded_sfs\n' > "$OUT/pi/pi_sfs_all.tsv"
-tail -n +2 "$OUT/pi/PI_SOURCES.tsv" | while IFS=$'\t' read -r sp src mt chosen; do
-    d=$(dirname "$chosen")
-    for f in "$d"/n_*_rep*/*_n*_rep*.sfs; do
-        [[ -s "$f" ]] || continue
-        rep=$(basename "$(dirname "$f")")
-        vals=$(head -n 1 "$f" | tr -s ' \t' ',' | sed 's/^,//; s/,$//')
-        printf '%s\t%s\t%s\t%s\n' "$sp" "$rep" "$src" "$vals" >> "$OUT/pi/pi_sfs_all.tsv"
+{
+    printf 'Species\tReplicate\tsource\tfolded_sfs\n'
+    tail -n +2 "$OUT/pi/PI_SOURCES.tsv" | while IFS=$'\t' read -r sp src mt chosen; do
+        d=${chosen%/*}
+        for f in "$d"/n_*_rep*/*_n*_rep*.sfs; do
+            [[ -s "$f" ]] || continue
+            rep=${f%/*}; rep=${rep##*/}
+            line=""; read -r line < "$f"
+            set -f; arr=($line); set +f
+            printf -v vals '%s,' "${arr[@]}"; vals=${vals%,}
+            printf '%s\t%s\t%s\t%s\n' "$sp" "$rep" "$src" "$vals"
+        done
     done
-done
+} > "$OUT/pi/pi_sfs_all.tsv"
+stamp "pi SFS table done"
+rm -f "$CAND"
 
 # ---- consolidated pi / heterozygosity tables if they exist on the cluster (newest copy of each) ----
 {
@@ -252,6 +281,7 @@ for key in pi_averages het_per_sample consolidated_heterozygosity; do
     [[ -n "$p" ]] && cp -p "$p" "$OUT/summary_tables/"
 done
 
+stamp "summary tables done"
 # ---- manifest ----
 (cd "$OUT" && find . -type f ! -name MANIFEST.tsv -printf '%P\t%s\t%TY-%Tm-%Td %TH:%TM\n' | sort) > "$OUT/MANIFEST.tsv"
 
