@@ -51,7 +51,7 @@ rule kmc_ref_db:
         fi
 
         # build kmc db
-        kmc -k{params.k} -m23 -t{threads} -ci1 -cs2 -fm {input} results/kmc_ref_dbs/{wildcards.species} kmc_tmp_{wildcards.species}/
+        kmc -k{params.k} -m23 -t{threads} -ci1 -cs1000000 -fm {input} results/kmc_ref_dbs/{wildcards.species} kmc_tmp_{wildcards.species}/
 
         # clean up
         rm -r kmc_tmp_{wildcards.species}/

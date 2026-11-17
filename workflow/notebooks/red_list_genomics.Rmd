@@ -467,15 +467,93 @@ ggplot(new_vs_old_dist, aes(x = bray_curtis.y, y = bray_curtis.x)) +
 ggsave(paste0("../../results/by-date/", today, "/new_vs_old_bray_curtis.pdf"), width = 5, height = 5)
 ```
 
-# k-mer mar
+# KMAR: Miles' version
+
+## cumulative sums, per species
+
 ```{r}
 
-kmer_tables_full <- list.files(path = "../results/nofilt/paste", pattern = ".txt.gz", full.names = T)
+kmer_cumsum_total <- list.files("../results/nofilt/kmer_distances", pattern = "cumsum_total.txt", full.names = T)
+
+kmer_cumsum_total <- read_csv(kmer_cumsum_total, id = "source_file", col_names = c("num_unique_kmers", "total_kmer_count"))
+
+kmer_cumsum_total <- kmer_cumsum_total %>%
+  mutate(species = gsub("../results/nofilt/kmer_distances/|_cumsum_total.txt", "", source_file))
+
+kmer_cumsum_total <- kmer_cumsum_total %>%
+  group_by(species) %>%
+  mutate(norm_total_kmer_count = total_kmer_count/max(total_kmer_count),
+         norm_num_unique_kmers = num_unique_kmers/max(num_unique_kmers))
+
+ggplot(kmer_cumsum_total, aes(x = total_kmer_count, y = num_unique_kmers, group = species)) +
+  geom_point(shape = 16) +
+  geom_line()
+
+ggplot(kmer_cumsum_total, aes(x = norm_total_kmer_count, y = norm_num_unique_kmers, group = species)) +
+  geom_point(shape = 16) +
+  geom_line()
+
+ggplot(kmer_cumsum_total, aes(x = norm_total_kmer_count, y = num_unique_kmers, group = species)) +
+  geom_point(shape = 16) +
+  scale_y_log10() +
+  geom_line()
+
+```
+
+## total sums, per sample
+
+```{r}
+
+kmer_sums <- list.files(path = "../results/nofilt/subset/kmer_distances", pattern = "sums.txt", full.names = T)
+
+kmer_unique <- list.files(path = "../results/nofilt/subset/kmer_distances", pattern = "non_zero.txt", full.names = T)
+
+stopifnot(length(kmer_sums) == length(kmer_unique))
+
+for(i in seq_along(kmer_sums)){
+  ks <- read_csv(kmer_sums[i], col_names = F) %>%
+    pivot_longer(cols = everything(), names_to = "name", values_to = "total_kmer_count")
+  
+  kn <- read_csv(kmer_unique[i], col_names = F) %>%
+    pivot_longer(cols = everything(), names_to = "name", values_to = "total_unique_kmers")
+  
+  kt <- ks %>% left_join(kn, by = "name")
+  
+  # 2. Fit the linear model on log-transformed data
+  log_model <- lm(log(total_unique_kmers) ~ log(total_kmer_count), data = kt)
+
+  # 3. Extract the coefficients
+  a_log <- exp(coef(log_model)[1]) # Back-transform intercept
+  b_log <- coef(log_model)[2]     # Exponent coefficient
+
+  # Print parameters
+  cat("Fitted equation: y =", a_log, "* x ^", b_log, "\n")
+  
+  # Fit direct power law curve
+  # We use the log-model estimates as perfect starting values
+  nls_model <- nls(total_unique_kmers ~ a * (total_kmer_count ^ b), 
+                 data = kt, 
+                 start = list(a = a_log, b = b_log))
+  
+  # Generate smooth grid of X values for a clean curve line
+  nls_grid <- data.frame(total_kmer_count = seq(min(kt$total_kmer_count), max(kt$total_kmer_count), length.out = nrow(kt)))
+  
+  lm_grid <- data.frame(total_kmer_count = seq(min(kt$total_kmer_count), max(kt$total_kmer_count), length.out = nrow(kt)))
+
+  # Predict Y values using the NLS model
+  nls_grid$total_unique_kmers <- predict(nls_model, newdata = nls_grid)
+  lm_grid$total_unique_kmers <- exp(predict(log_model, new_data = lm_grid))
+
+  ggplot(kt, aes(x = total_kmer_count, y = total_unique_kmers)) +
+    geom_point() +
+    geom_line(data = nls_grid, color = "blue", size = 1)
+    #geom_line(data = lm_grid, color = "red", size = 1)
+}
 
 kmer_tables_full <- names(sort(sapply(kmer_tables_full, file.size)))
 
 # file_path <- "../results/nofilt/paste/Oemleria_cerasiformis.txt.gz"
-chunk_size <- 100000  # rows per chunk, tune to your memory
+chunk_size <- 10000  # rows per chunk, tune to your memory
 
 # function to iterate through chunks
 sum_chunk <- function(chunk, pos) {
@@ -500,7 +578,8 @@ sum_chunk <- function(chunk, pos) {
 }
 
 # loop over k-mer tables and summarize coverage vs number of unique k-mers found
-for(file_path in kmer_tables_full) {
+getwd()
+for(file_path in kmer_tables_full[230]) {
   cat(file_path, "\n")
   
   # Accumulator for running column sums
@@ -511,7 +590,7 @@ for(file_path in kmer_tables_full) {
     file_path,
     callback = SideEffectChunkCallback$new(sum_chunk),
     chunk_size = chunk_size,
-    col_types = cols(),  # let it guess types; or specify explicitly for speed/safety
+    col_types = cols(.default = col_double()),
     col_names = F
   )
   
@@ -570,7 +649,7 @@ required: we fit the theoretical MAR (`MARtheory()`) against sample size
 # then remotes::install_github("meixilin/mar") inside that env.
 install.packages(c("sars", "matrixStats", "terra"))
 if (!requireNamespace("remotes", quietly = TRUE)) install.packages("remotes")
-remotes::install_github("meixilin/mar")
+remotes::install_github("meixilin/mar", build_vignettes = TRUE)
 ```
 
 ## load mar and choose species
@@ -861,4 +940,29 @@ ggsave(file.path(mar_out_dir, "c_by_number_of_kmers.pdf"))
 
 # z values vs k-mer distance
 
+```
+
+# k-mer histograms by species
+
+```{r}
+
+kmer_histos <- list.files("../results/kmc_histo", pattern = ".txt", full.names = T)
+
+kmer_histos <- read_tsv(kmer_histos, id = "sour_file", col_names = c("count", "num_kmers"))
+
+kmer_histos <- kmer_histos %>%
+  mutate(species = gsub(".*/|.txt", "", sour_file))
+
+ggplot(kmer_histos, aes(x = count, y = num_kmers)) +
+  geom_point(shape = 16, size = 0.1) +
+  geom_line() +
+  scale_x_log10() +
+  scale_y_log10() +
+  facet_wrap(~species) +
+    theme(axis.text = element_blank(),
+          strip.text = element_blank()) +
+  labs(x = "Count", y = "Number of k-mers")
+
+ggsave(paste0("../../results/by-date/", today, "/kmer_histograms.pdf"), width=9,height=9)
+ggsave(paste0("../../results/by-date/", today, "/kmer_histograms.png"), width=9,height=9)
 ```

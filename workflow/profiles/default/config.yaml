@@ -39,18 +39,18 @@ default-resources:
 set-resources:
     sra:
         cpus_per_task: 4
-        runtime: "2880m"
+        runtime: "480m"
     biosample:
         runtime: "20m"
     fastp:
-        runtime: "int(min(max(3*input.size_mb/(1024*threads), 30), 1440))"
+        runtime: "int(min(max(3*input.size_mb/(1024*threads), 45), 1440))"
         cpus_per_task: 4
     qc_post_rm_contam:
         runtime: "int(min(max(3*input.size_mb/(1024*threads), 10), 1440))"
         cpus_per_task: 8
     kmc_ref_db:
         runtime: "30m"
-        cpus_per_task: 4
+        cpus_per_task: 8
     kmc_rm_contam:
         runtime: "int(min(max(5*input.size_mb/1024, 10), 1440))"
         cpus_per_task: 8
@@ -58,7 +58,7 @@ set-resources:
         runtime: "int(min(max(4*input.size_mb/(1024*threads), 30), 1440))"
         cpus_per_task: 8
     kmc_nofilt: 
-        runtime: "int(min(max(6*input.size_mb/(1024*threads), 120), 1440))"
+        runtime: "int(min(max(8*input.size_mb/(1024*threads), 120), 1440))"
         cpus_per_task: 8
     kmc_kraken:
         runtime: "int(min(max(4*input.size_mb/(1024*threads), 30), 1440))"
@@ -94,7 +94,7 @@ set-resources:
         runtime: "int(min(max(input.size_mb/(1024*5), 30), 1440))"
     paste_nofilt:
         cpus_per_task: 4
-        runtime: "int(min(max(input.size_mb/(1024*1), 30), 1440))"
+        runtime: "int(min(max(input.size_mb/(1024*0.25), 60), 1440))"
     paste_nofilt_group:
         runtime: "int(min(max(input.size_mb/(1024*0.25), 60), 1440))"
     paste_kraken:
