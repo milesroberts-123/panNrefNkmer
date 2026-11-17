@@ -90,6 +90,11 @@ rule kmers_nofilt_only:
 rule kmers_histo_only:
     input:
         expand("results/kmc_histo/{species}.txt", species = reads["Species"].unique())
+# Incidence-spectrum outputs (tier 2) — depends on the distance rule for the
+# per-sample sums it needs, so it pulls in the full nofilt k-mer branch.
+rule kmer_spectra_only:
+    input:
+        expand("results/nofilt/spectrum/{species}_spectrum_info.txt", species = reads["Species"].unique())
 
 rule kmers_kraken_only:
     input:

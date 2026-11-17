@@ -131,6 +131,12 @@ set-resources:
     kmer_distances:
         cpus_per_task: 8
         runtime: "int(min(max(2*input.size_mb/(1024*threads), 30), 1440))"
+    kmer_spectrum_nofilt:
+        # single-threaded chunked python pass over the subset table plus a
+        # zcat/wc over the (much bigger) paste table; 4 cpus to unlock node
+        # memory on savio4
+        cpus_per_task: 4
+        runtime: "int(min(max(2*input.size_mb/(1024*threads), 60), 1440))"
 # --- alignment / calling pipeline (jules_*) ---
     jules_bwa_index:
         # bwa index's own algorithm (bwtsw) is single-threaded, but savio4_htc
@@ -343,6 +349,7 @@ set-threads:
     subset_kmer_distances_nofilt: 8
     subset_kmer_distances_kraken: 8
     kmer_distances: 8
+    kmer_spectrum_nofilt: 4
     jules_psmc_subset_bam: 8
     jules_trimmomatic: 8
     jules_bwa_mem: 8
