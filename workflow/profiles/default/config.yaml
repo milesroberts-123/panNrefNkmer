@@ -2,6 +2,11 @@ executor: slurm
 jobs: 10000
 cores: 100
 
+# Declared outputs of the sra rule are multi-GB FASTQ files; on Lustre the
+# post-job existence check can lose the race against client-side metadata
+# propagation, turning a successful download into MissingOutputException.
+latency_wait: 60
+
 # Global resource pools (separate from the per-rule cpus_per_task/mem_mb
 # under set-resources below, and from `jobs`/`cores` above which cap total
 # concurrency, not concurrency-per-rule). ncbi_slots throttles how many

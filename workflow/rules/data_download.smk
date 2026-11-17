@@ -18,10 +18,44 @@ rule sra:
             echo "Folder deleted successfully."
         fi
 
+        # drop stale split files from earlier attempts: they are not declared
+        # outputs, but leftover _3.fastq / partial _1.fastq would both inflate
+        # the file count below and waste tens of GB per sample
+        rm -f results/raw_reads/{wildcards.ID}_*.fastq
+
         prefetch --max-size 500G {wildcards.ID}
 
         # download data
-        fasterq-dump --progress --temp /tmp --threads {threads} --outdir ./results/raw_reads --split-files --skip-technical ./{wildcards.ID} 
+        fasterq-dump --progress --temp /tmp --threads {threads} --outdir ./results/raw_reads --split-files --skip-technical ./{wildcards.ID}
+
+        # fasterq-dump numbers the split files by SRA read-group index, not
+        # contiguously. Runs whose first division is technical (barcode read)
+        # therefore come out as _2/_3 instead of _1/_2 once --skip-technical
+        # drops the leading division. Renumber the emitted biological mates to
+        # _1/_2 so the fastp rule's paired-end inputs exist.
+        n=$(ls -1 results/raw_reads/{wildcards.ID}_*.fastq 2>/dev/null | wc -l)
+        if [ "$n" -ne 2 ]; then
+            echo "ERROR: expected 2 read divisions for {wildcards.ID} after --skip-technical, found $n:" >&2
+            ls -l results/raw_reads/{wildcards.ID}_*.fastq 2>/dev/null >&2
+            exit 1
+        fi
+        first=$(ls -1 results/raw_reads/{wildcards.ID}_*.fastq | sort -V | sed -n 1p)
+        second=$(ls -1 results/raw_reads/{wildcards.ID}_*.fastq | sort -V | sed -n 2p)
+        if [ "$first" != "results/raw_reads/{wildcards.ID}_1.fastq" ]; then
+            mv -f "$first" results/raw_reads/{wildcards.ID}_1.fastq
+        fi
+        if [ "$second" != "results/raw_reads/{wildcards.ID}_2.fastq" ]; then
+            mv -f "$second" results/raw_reads/{wildcards.ID}_2.fastq
+        fi
+        echo "Split files for {wildcards.ID}: $(basename "$first") $(basename "$second") -> _1.fastq _2.fastq"
+
+        # fail here, with a clear message, rather than as a MissingOutputException
+        for f in results/raw_reads/{wildcards.ID}_1.fastq results/raw_reads/{wildcards.ID}_2.fastq; do
+            if [ ! -s "$f" ]; then
+                echo "ERROR: $f is missing or empty after fasterq-dump" >&2
+                exit 1
+            fi
+        done
         """
 
 rule datasets:
