@@ -21,6 +21,13 @@ rule kmc:
 
         mkdir tmp_kmc_{wildcards.ID}
 
+        # a library whose reads are entirely contaminant leaves this file
+        # empty, which KMC reports as a gzip error; fail with a clear message
+        if [ ! -s {input} ]; then
+            echo "ERROR: no reads left after contaminant removal for {wildcards.ID}" >&2
+            exit 1
+        fi
+
         # count k-mers
         kmc -sm -m25 -t{threads} -ci{params.mincount} -cs{params.maxcount} -k{params.k} {input} results/kmc_db_{wildcards.ID} tmp_kmc_{wildcards.ID}
 

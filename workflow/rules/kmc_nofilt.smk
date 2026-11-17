@@ -24,7 +24,25 @@ rule kmc_nofilt:
 
         mkdir -p results/nofilt tmp_kmc_nofilt_{wildcards.ID}
 
-        echo {input} | tr ' ' '\n' > {output.list}
+        # fastp writes --unpaired1/--unpaired2 as 0-byte files when a library
+        # has no unpaired reads, and KMC aborts on such a file with
+        # "Error: Unexpected end of gzip file". Unpaired reads are optional,
+        # so list only the inputs that actually hold data and fail loudly if
+        # nothing is left.
+        for f in {input}; do
+            if [ -s "$f" ]; then
+                echo "$f"
+            else
+                echo "skipping empty input: $f" >&2
+            fi
+        done > {output.list}
+
+        if [ ! -s {output.list} ]; then
+            echo "ERROR: no non-empty FASTQ input for {wildcards.ID}" >&2
+            exit 1
+        fi
+
+        bash scripts/check_gzip_inputs.sh $(cat {output.list})
 
         kmc -sm -m25 -t{threads} -ci{params.mincount} -cs{params.maxcount} -k{params.k} @{output.list} results/nofilt/kmc_db_{wildcards.ID} tmp_kmc_nofilt_{wildcards.ID}
 

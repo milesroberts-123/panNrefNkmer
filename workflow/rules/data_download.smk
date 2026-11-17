@@ -99,4 +99,13 @@ rule biosample:
         else
             mv {input.reads} {output}
         fi
+
+        # fastp emits a 0-byte file for --unpaired1/--unpaired2 when a library
+        # has no unpaired reads. Such a file satisfies Snakemake's existence
+        # check but is not a valid gzip stream, so downstream KMC fails with
+        # "Unexpected end of gzip file". Substitute a valid empty gzip.
+        if [ ! -s {output} ]; then
+            echo "no reads for {output}; writing an empty gzip" >&2
+            gzip -c /dev/null > {output}
+        fi
         """
