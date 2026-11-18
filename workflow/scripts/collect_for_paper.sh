@@ -188,17 +188,21 @@ while IFS=$'\t' read -r prio ep mt p; do
     cp -p "$p" "$OUT/pi/${sp}_pi_summary.txt"
     printf '%s\t%s\t%s\t%s\n' "$sp" "$src" "$mt" "$p" >> "$OUT/pi/PI_SOURCES.tsv"
 done < <(awk -F'\t' '$4 ~ /\/pi_summary\.txt$/' "$CAND")
+# pi_summary.txt files often list a replicate twice (an empty row from a failed attempt, then the value), so empty /
+# non-numeric rows are dropped BEFORE replicates are deduplicated; each replicate (species + directory) counts once,
+# with its last valid value.
 for f in "$OUT"/pi/*_pi_summary.txt; do
-    [[ -s "$f" ]] || continue
-    tail -n +2 "$f" | awk -F, '!k[$1]++'
-done | awk -F, '$5 != "" && $5+0 == $5 && tolower($5) !~ /nan|inf/ {s=$2; n[s]++; sum[s]+=$5; sq[s]+=$5*$5}
+    [[ -s "$f" ]] && tail -n +2 "$f"
+done | tr -d '\r' | awk -F, '$5 != "" && $5+0 == $5 && tolower($5) !~ /nan|inf/ {val[$2 SUBSEP $1] = $5}
     END {print "Species,Replicates,Pi_Average,Pi_StdDev";
+         for (k in val) {split(k, a, SUBSEP); s=a[1]; n[s]++; sum[s]+=val[k]; sq[s]+=val[k]*val[k]}
          for (s in n) {m=sum[s]/n[s]; v=(n[s]>1)?(sq[s]-n[s]*m*m)/(n[s]-1):0; if (v<0) v=0;
                        printf "%s,%d,%.9g,%.9g\n", s, n[s], m, sqrt(v)}}' > "$OUT/pi/pi_species_means_fresh.csv"
 stamp "pi summaries done"
 
-# heterozygosity: per-sample summaries. Every GOAT row is kept; a gatk_results row is added only
-# when GOAT has no row for that species + sample.
+# heterozygosity: per-sample summaries. Every GOAT row with a value is kept; a gatk_results row is added only
+# when GOAT has no value for that species + sample. Rows without a numeric value are dropped. Files without a
+# header line (older script version, e.g. Eucalyptus pauciflora) are read as data.
 mkdir -p "$OUT/het/goat" "$OUT/het/gatk"
 declare -A seen_het
 printf 'Species\tsource\tmtime\tchosen_file\n' > "$OUT/het/HET_SOURCES.tsv"
@@ -216,9 +220,14 @@ for f in "$OUT"/het/gatk/*_heterozygosity_summary.txt; do [[ -e "$f" ]] && gatk_
 if (( ${#goat_files[@]} + ${#gatk_files[@]} > 0 )); then
     awk -F, -v OFS=, -v hdr="Species,Sample,AvgCoverage,MinCovThreshold,Heterozygosity" -v goatdir="$OUT/het/goat/" '
         BEGIN { print hdr ",source" }
-        FNR==1 { ok = ($0 == hdr); if (!ok) print "SKIPPED (unexpected header): " FILENAME > "/dev/stderr"
-                 goat = (index(FILENAME, goatdir) == 1); next }
+        { sub(/\r$/, "") }
+        FNR==1 { goat = (index(FILENAME, goatdir) == 1)
+                 if ($0 == hdr) { ok = 1; next }
+                 ok = (NF == 5 && $3 != "" && $3+0 == $3)
+                 if (ok) print "no header, read as data: " FILENAME > "/dev/stderr"
+                 else { print "SKIPPED (unexpected header): " FILENAME > "/dev/stderr"; next } }
         !ok { next }
+        !($5 != "" && $5+0 == $5 && tolower($5) !~ /nan|inf/) { next }
         { key = $1 SUBSEP $2
           if (goat) have[key] = 1
           else if (key in have) next
@@ -298,14 +307,21 @@ stamp "summary tables done"
 } | tee -a "$OUT/PROVENANCE.txt"
 du -sh "$OUT"
 
-# ---- copy to Google Drive ----
+touch "$OUT/COMPLETE"
+stamp "collection complete: $OUT"
+
+# ---- copy to Google Drive as ONE archive (about 1,700 small files take hours on Drive) ----
 if [[ "$UPLOAD" -eq 1 ]]; then
     command -v module >/dev/null 2>&1 && module load rclone 2>/dev/null
+    PARENT=$(dirname "$OUT")
+    tar -czf "$PARENT/$STAMP.tar.gz" -C "$PARENT" "$STAMP" && stamp "wrote $PARENT/$STAMP.tar.gz ($(du -h "$PARENT/$STAMP.tar.gz" | cut -f1))"
     if command -v rclone >/dev/null 2>&1; then
-        rclone copy "$OUT" "$DRIVE" --progress && echo "Uploaded to $DRIVE"
+        rclone copy "$PARENT/$STAMP.tar.gz" "gdrive_moilab:PROJECTS/redlist_and_genomics/paper_pull/" --progress \
+            && rclone copy "$OUT/PROVENANCE.txt" "$DRIVE/" \
+            && rclone copy "$OUT/MANIFEST.tsv" "$DRIVE/" \
+            && stamp "uploaded gdrive_moilab:PROJECTS/redlist_and_genomics/paper_pull/$STAMP.tar.gz"
     else
-        echo "rclone not available; upload manually:  rclone copy $OUT $DRIVE --progress"
+        echo "rclone not available; upload manually:  rclone copy $PARENT/$STAMP.tar.gz gdrive_moilab:PROJECTS/redlist_and_genomics/paper_pull/ --progress"
     fi
 fi
-touch "$OUT/COMPLETE"
 echo "Done: $OUT"
