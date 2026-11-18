@@ -428,10 +428,25 @@ rule jules_picard_mark_dup:
         metrics="results/picard_metrics/{srr}.txt",
         tmp_dir=temp(directory("results/tmp_picard_{srr}"))
     conda:
-        "../envs/picard.yaml"
+        "../envs/picard_samtools.yaml"
     shell:
+        # Picard's CREATE_INDEX writes a BAI, which cannot hold positions at or
+        # above 2^29 (536,870,912): MarkDuplicates itself finished but then
+        # crashed with "Read position too high for BAI bin indexing" on genomes
+        # with a chromosome that long (SAMEA2242590, SAMEA7522497,
+        # SAMN35298062). The index is built here with samtools instead: a CSI
+        # (sized to the longest contig) when any contig reaches 2^29, otherwise
+        # the usual BAI. Downstream rules find either next to the BAM.
         """
-        picard -Xmx28g MarkDuplicates I={input} O={output.bam} M={output.metrics} VALIDATION_STRINGENCY=SILENT CREATE_INDEX=true TMP_DIR={output.tmp_dir}
+        picard -Xmx28g MarkDuplicates I={input} O={output.bam} M={output.metrics} VALIDATION_STRINGENCY=SILENT CREATE_INDEX=false TMP_DIR={output.tmp_dir}
+
+        maxlen=$(samtools view -H {output.bam} | awk '/^@SQ/ {{for (i=1;i<=NF;i++) if ($i ~ /^LN:/) {{split($i,a,":"); if (a[2]+0 > m) m=a[2]+0}}}} END {{print m+0}}')
+        if [ "$maxlen" -ge 536870912 ]; then
+            echo "Longest contig is $maxlen bp (>= 2^29): building a CSI index, BAI cannot represent it"
+            samtools index -c -@ 4 {output.bam}
+        else
+            samtools index -@ 4 {output.bam}
+        fi
         """
 
 rule jules_samtools_index:
@@ -464,8 +479,7 @@ rule jules_bcftools_mpileup:
         fai=expand("{path_start}{ref}/{ref}.fasta.fai", path_start = config["reference_genome_path"], ref = lookup(query = "Run == '{srr}'", within = reads, cols = "Species")),
         bam="results/mark_reads/{srr}.bam"
     output:
-        vcf="results/bcfvcfs/{srr}_raw.vcf.gz",
-        tbi="results/bcfvcfs/{srr}_raw.vcf.gz.tbi"
+        vcf="results/bcfvcfs/{srr}_raw.vcf.gz"
     conda:
         "../envs/bcftools.yaml"
     params:
@@ -475,7 +489,9 @@ rule jules_bcftools_mpileup:
         """
         bcftools mpileup -f {input.ref} -a "FORMAT/AD,FORMAT/DP,FORMAT/SP" -q {params.q} -Q {params.Q} {input.bam} | bcftools call -mv -Oz -o {output.vcf}
 
-        tabix {output.vcf}
+        # TBI cannot index contigs of 2^29 bp or more; fall back to CSI for those
+        # genomes. Nothing downstream reads this index (the filter streams the VCF).
+        bcftools index -t {output.vcf} || bcftools index -f -c {output.vcf}
         """
 
 
