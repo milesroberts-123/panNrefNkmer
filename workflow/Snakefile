@@ -6,6 +6,9 @@ from snakemake.utils import min_version
 
 min_version("9.5.1")
 
+wildcard_constraints:
+    ID="[A-Za-z0-9]+"
+
 # configuration
 configfile: "../config/config.yaml"
 

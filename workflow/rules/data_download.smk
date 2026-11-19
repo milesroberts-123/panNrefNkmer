@@ -25,9 +25,9 @@ rule sra:
 
         prefetch --max-size 500G {wildcards.ID}
 
-        # NCBI serves the SRA Lite variant ({ID}.sralite) for runs whose
+        # NCBI serves the SRA Lite variant ({wildcards.ID}.sralite) for runs whose
         # original base qualities were never submitted, and the normalized
-        # {ID}.sra otherwise, so the cache is declared as the directory rather
+        # {wildcards.ID}.sra otherwise, so the cache is declared as the directory rather
         # than one specific filename. Report which one arrived: Lite files
         # carry reduced-precision qualities, which weakens quality-based
         # trimming downstream even though the sequences are identical.
