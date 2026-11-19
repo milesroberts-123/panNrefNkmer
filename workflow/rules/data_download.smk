@@ -2,7 +2,7 @@ rule sra:
     output:
         r1=temp("results/raw_reads/{ID}_1.fastq"),
         r2=temp("results/raw_reads/{ID}_2.fastq"),
-        sra=temp("{ID}/{ID}.sra")
+        sra=temp(directory("{ID}"))
     conda:
         "../envs/sra.yaml"
     shell:
@@ -24,6 +24,22 @@ rule sra:
         rm -f results/raw_reads/{wildcards.ID}_*.fastq
 
         prefetch --max-size 500G {wildcards.ID}
+
+        # NCBI serves the SRA Lite variant ({ID}.sralite) for runs whose
+        # original base qualities were never submitted, and the normalized
+        # {ID}.sra otherwise, so the cache is declared as the directory rather
+        # than one specific filename. Report which one arrived: Lite files
+        # carry reduced-precision qualities, which weakens quality-based
+        # trimming downstream even though the sequences are identical.
+        if [ -f "{wildcards.ID}/{wildcards.ID}.sra" ]; then
+            echo "prefetch: normalized SRA (full qualities)"
+        elif [ -f "{wildcards.ID}/{wildcards.ID}.sralite" ]; then
+            echo "prefetch: SRA Lite (reduced-precision qualities for {wildcards.ID})" >&2
+        else
+            echo "ERROR: prefetch produced no .sra/.sralite under {wildcards.ID}" >&2
+            ls -l "{wildcards.ID}" >&2
+            exit 1
+        fi
 
         # download data
         fasterq-dump --progress --temp /tmp --threads {threads} --outdir ./results/raw_reads --split-files --skip-technical ./{wildcards.ID}
