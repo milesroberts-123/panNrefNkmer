@@ -42,7 +42,30 @@ rule sra:
         fi
 
         # download data
-        fasterq-dump --progress --temp /tmp --threads {threads} --outdir ./results/raw_reads --split-files --skip-technical ./{wildcards.ID}
+        #
+        # fasterq-dump aborts on runs whose reads are stored in alignment
+        # context (the ones that make prefetch pull an extra
+        # ncbi-acc:...?vdb-ctx=refseq dependency): under 4 threads it dies with
+        # "double free or corruption", under 1 thread with
+        # "sorter.c producer_thread_func: rec.read.len = 0" and rcCanceled, in
+        # both cases within seconds of the lookup stage. fastq-dump reconstructs
+        # those layouts correctly, at the cost of being single threaded, so it
+        # is used as a fallback rather than the default.
+        dump_ok=0
+        if fasterq-dump --progress --temp /tmp --threads {threads} --outdir ./results/raw_reads --split-files --skip-technical ./{wildcards.ID}; then
+            dump_ok=1
+        else
+            echo "fasterq-dump failed for {wildcards.ID}; retrying with fastq-dump (alignment-context run?)" >&2
+            rm -f results/raw_reads/{wildcards.ID}_*.fastq
+            if fastq-dump --outdir ./results/raw_reads --split-3 --skip-technical ./{wildcards.ID}; then
+                dump_ok=1
+            else
+                echo "ERROR: both fasterq-dump and fastq-dump failed for {wildcards.ID}" >&2
+            fi
+        fi
+        if [ "$dump_ok" -ne 1 ]; then
+            exit 1
+        fi
 
         # fasterq-dump numbers the split files by SRA read-group index, not
         # contiguously. Runs whose first division is technical (barcode read)
@@ -68,7 +91,7 @@ rule sra:
         # fail here, with a clear message, rather than as a MissingOutputException
         for f in results/raw_reads/{wildcards.ID}_1.fastq results/raw_reads/{wildcards.ID}_2.fastq; do
             if [ ! -s "$f" ]; then
-                echo "ERROR: $f is missing or empty after fasterq-dump" >&2
+                echo "ERROR: $f is missing or empty after read extraction" >&2
                 exit 1
             fi
         done
