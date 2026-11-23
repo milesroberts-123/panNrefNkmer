@@ -32,8 +32,10 @@ rule sra:
         # carry reduced-precision qualities, which weakens quality-based
         # trimming downstream even though the sequences are identical.
         if [ -f "{wildcards.ID}/{wildcards.ID}.sra" ]; then
+            sra_file="{wildcards.ID}/{wildcards.ID}.sra"
             echo "prefetch: normalized SRA (full qualities)"
         elif [ -f "{wildcards.ID}/{wildcards.ID}.sralite" ]; then
+            sra_file="{wildcards.ID}/{wildcards.ID}.sralite"
             echo "prefetch: SRA Lite (reduced-precision qualities for {wildcards.ID})" >&2
         else
             echo "ERROR: prefetch produced no .sra/.sralite under {wildcards.ID}" >&2
@@ -43,24 +45,47 @@ rule sra:
 
         # download data
         #
-        # fasterq-dump aborts on runs whose reads are stored in alignment
-        # context (the ones that make prefetch pull an extra
-        # ncbi-acc:...?vdb-ctx=refseq dependency): under 4 threads it dies with
-        # "double free or corruption", under 1 thread with
-        # "sorter.c producer_thread_func: rec.read.len = 0" and rcCanceled, in
-        # both cases within seconds of the lookup stage. fastq-dump reconstructs
-        # those layouts correctly, at the cost of being single threaded, so it
-        # is used as a fallback rather than the default.
+        # The extraction chain, cheapest route first:
+        #   1. fasterq-dump, multi-threaded; works for ordinary unaligned runs.
+        #   2. fastq-dump; slower, handles some layouts fasterq-dump rejects.
+        #   3. ENA FASTQ mirror; required for runs stored in alignment context
+        #      (the ones whose prefetch pulls an extra
+        #      ncbi-acc:...?vdb-ctx=refseq dependency). Those objects abort
+        #      fasterq-dump with "double free or corruption" (4 threads) or
+        #      "sorter.c producer_thread_func: rec.read.len = 0" (1 thread), and
+        #      fastq-dump cannot open them at all ("cannot be opened as database
+        #      or table"), but ENA serves the same reads as plain FASTQ.
         dump_ok=0
-        if fasterq-dump --progress --temp /tmp --threads {threads} --outdir ./results/raw_reads --split-files --skip-technical ./{wildcards.ID}; then
+        if fasterq-dump --progress --temp /tmp --threads {threads} --outdir ./results/raw_reads --split-files --skip-technical "$sra_file"; then
             dump_ok=1
         else
             echo "fasterq-dump failed for {wildcards.ID}; retrying with fastq-dump (alignment-context run?)" >&2
             rm -f results/raw_reads/{wildcards.ID}_*.fastq
-            if fastq-dump --outdir ./results/raw_reads --split-3 --skip-technical ./{wildcards.ID}; then
+            if fastq-dump --outdir ./results/raw_reads --split-3 --skip-technical "$sra_file"; then
                 dump_ok=1
             else
-                echo "ERROR: both fasterq-dump and fastq-dump failed for {wildcards.ID}" >&2
+                # Neither SRA tool can read this object. Runs submitted in
+                # alignment context are stored against a reference and are not
+                # extractable by fasterq-dump/fastq-dump at all; the ENA mirror
+                # serves the same reads as plain FASTQ, so take them from there.
+                echo "both SRA tools failed for {wildcards.ID}; falling back to the ENA FASTQ mirror" >&2
+                rm -f results/raw_reads/{wildcards.ID}_*.fastq
+                ena_urls=$(curl -sf "https://www.ebi.ac.uk/ena/portal/api/filereport?accession={wildcards.ID}&result=read_run&fields=fastq_ftp&format=tsv" \
+                    | tail -n +2 | cut -f1)
+                if [ -z "$ena_urls" ]; then
+                    echo "ERROR: ENA has no FASTQ for {wildcards.ID}; no extraction route left" >&2
+                    exit 1
+                fi
+                i=1
+                for u in $(echo "$ena_urls" | tr ';' ' '); do
+                    echo "downloading https://$u -> results/raw_reads/{wildcards.ID}_$i.fastq" >&2
+                    curl -sfL "https://$u" | gzip -dc > results/raw_reads/{wildcards.ID}_$i.fastq
+                    i=$((i + 1))
+                done
+                # the cache directory is a declared output; create it so the
+                # rule's outputs are complete even though SRA was never readable
+                mkdir -p "{wildcards.ID}"
+                dump_ok=1
             fi
         fi
         if [ "$dump_ok" -ne 1 ]; then
