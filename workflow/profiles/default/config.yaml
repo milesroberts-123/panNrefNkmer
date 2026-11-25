@@ -278,7 +278,7 @@ set-resources:
         mem_mb: 16000
     jules_psmc_gen_input:
         cpus_per_task: 1
-        runtime: "10m"
+        runtime: "180m"
     jules_backup_bam_globus:
         # mostly idle (globus task wait polls Globus's own infra, not local
         # compute) -- low cpu/mem, but the SLURM job itself needs to stay
