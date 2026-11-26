@@ -92,7 +92,7 @@ set-resources:
     dump_combined_kmers_nofilt:
         # dumping a species-level union database takes hours, not the 30m
         # default it inherited before (which timed out at 00:30:14)
-        runtime: "int(min(max(4*input.size_mb/(1024*threads), 120), 2880))"
+        runtime: "int(min(max(16*input.size_mb/(1024*threads), 120), 2880))"
         cpus_per_task: 4
     prejoin:
         slurm_partition: "savio4_htc"
@@ -355,6 +355,7 @@ set-threads:
     kraken2_rm_microbial: 8
     kmc_combine_dbs: 8
     kmc_combine_dbs_nofilt: 4
+    dump_combined_kmers_nofilt: 4
     kmc_combine_dbs_kraken: 8
     kmc_ref_db: 4
     kmc_rm_contam: 8
