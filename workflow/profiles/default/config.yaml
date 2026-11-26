@@ -44,7 +44,9 @@ default-resources:
 set-resources:
     sra:
         cpus_per_task: 4
-        runtime: "480m"
+        # large runs exceed 8h: prefetch plus fasterq-dump, and the extraction
+        # chain (fasterq-dump -> fastq-dump -> ENA download) costs more still
+        runtime: "1440m"
     biosample:
         runtime: "20m"
     fastp:
@@ -63,7 +65,11 @@ set-resources:
         runtime: "int(min(max(4*input.size_mb/(1024*threads), 30), 1440))"
         cpus_per_task: 8
     kmc_nofilt: 
-        runtime: "int(min(max(8*input.size_mb/(1024*threads), 120), 1440))"
+        # KMC needs roughly 2 min per GB of input at 8 threads; the previous
+        # 1 min/GB rate with a 120m floor timed out on ~120 GB libraries at
+        # 2h. KMC runs with -m25 (25 GB) and peaked near 33 GB resident.
+        runtime: "int(min(max(16*input.size_mb/(1024*threads), 480), 2880))"
+        mem_mb: 40000
         cpus_per_task: 8
     kmc_kraken:
         runtime: "int(min(max(4*input.size_mb/(1024*threads), 30), 1440))"
@@ -83,6 +89,11 @@ set-resources:
     kmc_combine_dbs_kraken:
         runtime: "120m"
         cpus_per_task: 8
+    dump_combined_kmers_nofilt:
+        # dumping a species-level union database takes hours, not the 30m
+        # default it inherited before (which timed out at 00:30:14)
+        runtime: "int(min(max(4*input.size_mb/(1024*threads), 120), 2880))"
+        cpus_per_task: 4
     prejoin:
         slurm_partition: "savio4_htc"
         slurm_qos: "moilab_htc4_normal"
